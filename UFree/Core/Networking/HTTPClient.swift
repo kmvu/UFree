@@ -1,0 +1,10 @@
+//
+//  HTTPClient.swift
+//  Core Networking
+//
+
+import Foundation
+
+public protocol HTTPClient {
+    func get(from url: URL) async throws -> (Data, HTTPURLResponse)
+}
