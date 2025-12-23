@@ -111,8 +111,8 @@ struct ListViewController_Previews: PreviewProvider {
     private struct PreviewWrapper: UIViewControllerRepresentable {
         func makeUIViewController(context: Context) -> ListViewController {
             let vc = ListViewController()
-            vc.display(ResourceLoadingViewModel(isLoading: false))
-            vc.display(ResourceErrorViewModel.noError)
+            vc.display(.init(isLoading: false))
+            vc.display(.noError)
             return vc
         }
         

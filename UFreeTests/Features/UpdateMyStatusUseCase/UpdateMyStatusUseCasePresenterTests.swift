@@ -5,7 +5,7 @@
 
 import XCTest
 import Foundation
-@testable import UpdateMyStatusUseCase
+@testable import UFree
 
 final class UpdateMyStatusUseCasePresenterTests: XCTestCase {
     

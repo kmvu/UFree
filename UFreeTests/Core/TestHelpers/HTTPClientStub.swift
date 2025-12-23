@@ -4,6 +4,7 @@
 //
 
 import Foundation
+@testable import UFree
 
 class HTTPClientStub: HTTPClient {
     private let stub: (URL) -> Result<(Data, HTTPURLResponse), Error>

@@ -5,8 +5,13 @@
 
 import XCTest
 import Combine
-@testable import UpdateMyStatusUseCase
-@testable import Core
+@testable import UFree
+
+// MARK: - Helpers
+
+private func makeUpdateMyStatusUseCase() -> UpdateMyStatusUseCase {
+    UpdateMyStatusUseCase(id: UUID())
+}
 
 @MainActor
 final class UpdateMyStatusUseCaseUIIntegrationTests: XCTestCase {
@@ -49,9 +54,5 @@ final class UpdateMyStatusUseCaseUIIntegrationTests: XCTestCase {
         func completeLoadingWithError(at index: Int = 0) {
             requests[index].send(completion: .failure(anyNSError()))
         }
-    }
-    
-    private func makeUpdateMyStatusUseCase() -> UpdateMyStatusUseCase {
-        UpdateMyStatusUseCase(id: UUID())
     }
 }

@@ -9,9 +9,25 @@ import SwiftUI
 
 @main
 struct UFreeApp: App {
+    // 1. Create the concrete Repository
+    let repository = MockAvailabilityRepository()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            NavigationView {
+                // TODO: Wire up dependency injection once Use Case and ViewModel are created
+                // 2. Inject Repository into the Use Case
+                // let useCase = UpdateMyStatusUseCase(repository: repository)
+                //
+                // 3. Inject Use Case into the ViewModel
+                // let viewModel = MyScheduleViewModel(updateUseCase: useCase)
+                //
+                // 4. Pass ViewModel to the View
+                // MyScheduleView(viewModel: viewModel)
+                
+                // Temporary: Show ContentView until components are ready
+                ContentView()
+            }
         }
     }
 }
