@@ -18,6 +18,8 @@ See [Domain Layer Design section](#-domain-layer-design-decided) for full detail
 
 ### ✅ What's Already Built (Foundation)
 
+> Note: Recent rollback removed the WIP use case/viewmodel/view files. Domain + mock repo remain; use case implementation, view model, view, and wiring are still missing.
+
 #### Architecture Infrastructure
 - **Clean Architecture Structure**: Complete scaffolding with Domain/Data/Presentation/UI layers
 - **Core Architecture Components**:
@@ -30,12 +32,21 @@ See [Domain Layer Design section](#-domain-layer-design-decided) for full detail
 - **Combine Extensions**: `fallback`, `dispatchOnMainThread` utilities
 - **UI Foundation**: `ListViewController` (SwiftUI-backed, basic implementation)
 
+#### Domain Layer Foundation ✅ **IMPLEMENTED**
+- ✅ **`AvailabilityStatus`**: Fully implemented enum with Int backing, Codable, CaseIterable, and `displayName` property
+- ✅ **`DayAvailability`**: Fully implemented struct with Identifiable, Codable, all properties (id, date, status, note)
+- ✅ **`UserSchedule`**: Fully implemented aggregate with `status(for:)` helper method
+- ✅ **`AvailabilityRepository`**: Fully implemented protocol with all 3 async methods
+
+#### Data Layer Foundation ✅ **IMPLEMENTED**
+- ✅ **`MockAvailabilityRepository`**: Fully implemented with in-memory storage, pre-populated 7-day schedule, simulated network delays
+
 #### Existing Feature Scaffold
 - **`UpdateMyStatusUseCase`**: Template-generated feature structure
   - ⚠️ **Status**: Placeholder only - contains only `id: UUID`, no actual status/availability logic
   - **Structure**: Complete (Domain/Data/Presentation/UI layers)
   - **Tests**: Basic template tests exist
-  - **Potential**: Could be repurposed for Feature 1 or Feature 2, but needs complete redesign
+  - **Needs**: Complete redesign to use `AvailabilityRepository` and `DayAvailability`
 
 ---
 
@@ -47,20 +58,23 @@ See [Domain Layer Design section](#-domain-layer-design-decided) for full detail
 **Status**: 🚧 **IN PROGRESS** - Sprint 1 Implementation
 
 **Components**:
-- ✅ **Domain Models**: **DESIGNED** - `AvailabilityStatus`, `DayAvailability`, `UserSchedule` (ready to implement)
-- ✅ **Repository Protocol**: **DESIGNED** - `AvailabilityRepository` (ready to implement)
-- ✅ **Use Case**: **DESIGNED** - `UpdateMyStatusUseCase` with protocol (ready to implement)
-- ✅ **ViewModel**: **DESIGNED** - `MyScheduleViewModel` with status cycling (ready to implement)
-- ✅ **View**: **DESIGNED** - `MyScheduleView` SwiftUI interface (ready to implement)
-- [ ] **Mock Repository**: `MockAvailabilityRepository` for development (needs implementation)
+- ✅ **Domain Models**: **IMPLEMENTED** - `AvailabilityStatus`, `DayAvailability`, `UserSchedule` (complete)
+- ✅ **Repository Protocol**: **IMPLEMENTED** - `AvailabilityRepository` (complete)
+- ✅ **Mock Repository**: **IMPLEMENTED** - `MockAvailabilityRepository` (complete with in-memory storage)
+- [ ] **Use Case**: **MISSING** - `UpdateMyStatusUseCaseProtocol` and implementation class (placeholder exists)
+- [ ] **ViewModel**: **MISSING** - `MyScheduleViewModel` with status cycling (not created)
+- [ ] **View**: **MISSING** - `MyScheduleView` SwiftUI interface (not created)
+- [ ] **Integration**: **MISSING** - Dependency injection wiring in `UFreeApp.swift` (commented out)
 - [ ] **Local Storage**: Implementation using `AvailabilityRepository` protocol (Sprint 2)
 - [ ] **Remote API**: Implementation using `AvailabilityRepository` protocol (Sprint 3)
 
 **Current Scaffold Alignment**:
+- ✅ Domain layer is complete and ready to use
+- ✅ Mock repository is ready for development
 - ✅ Can repurpose existing `UpdateMyStatusUseCase` scaffold structure
 - ✅ Architecture patterns already established (presenters, adapters)
 - ✅ `ListViewController` exists but will use new SwiftUI view instead
-- ⚠️ Need to create Domain layer directory structure
+- ⚠️ Need to create actual use case implementation (not just placeholder model)
 
 ### Feature 2: Live Status Toggle
 **Status**: ❌ Not Started
@@ -250,33 +264,37 @@ protocol AvailabilityRepository {
 - Provides immediate UI feedback and momentum
 - Validates SOLID principles (Dependency Inversion via Repository injection)
 
-#### Phase 1.1: Domain Layer Foundation
-1. **Create `AvailabilityStatus` enum** (Domain layer)
+#### Phase 1.1: Domain Layer Foundation ✅ **COMPLETE**
+1. ✅ **`AvailabilityStatus` enum** (Domain layer) - **IMPLEMENTED**
    - Int-backed, Codable, CaseIterable
-   - Include `displayName` computed property
+   - `displayName` computed property
    - Cases: `.busy = 0`, `.free = 1`, `.eveningOnly = 2`, `.unknown = 3`
-2. **Create `DayAvailability` struct** (Domain layer)
+2. ✅ **`DayAvailability` struct** (Domain layer) - **IMPLEMENTED**
    - Identifiable, Codable
    - Date, status, optional note
    - Default `unknown` status
-3. **Create `UserSchedule` aggregate** (Domain layer)
+3. ✅ **`UserSchedule` aggregate** (Domain layer) - **IMPLEMENTED**
    - Identifiable
    - User metadata + weeklyStatus array
    - `status(for:)` helper method
-4. **Create `AvailabilityRepository` protocol** (Domain layer)
-   - Define interface: `getFriendsSchedules()`, `updateMySchedule(for:)`, `getMySchedule()`
+4. ✅ **`AvailabilityRepository` protocol** (Domain layer) - **IMPLEMENTED**
+   - Interface: `getFriendsSchedules()`, `updateMySchedule(for:)`, `getMySchedule()`
    - Async/await methods
+5. ✅ **`MockAvailabilityRepository`** (Data layer) - **IMPLEMENTED**
+   - In-memory storage with pre-populated 7-day schedule
+   - Simulated network delays
+   - All protocol methods implemented
 
-#### Phase 1.2: Use Case (Domain Layer)
-5. **Create `UpdateMyStatusUseCase`** (Domain layer)
+#### Phase 1.2: Use Case (Domain Layer) 🚧 **IN PROGRESS**
+5. **Create `UpdateMyStatusUseCase`** (Domain layer) - **MISSING**
    - Protocol: `UpdateMyStatusUseCaseProtocol` with `execute(day:)` method
-   - Implementation: `UpdateMyStatusUseCase` class
+   - Implementation: `UpdateMyStatusUseCase` class (not placeholder model)
    - Inject `AvailabilityRepository` (dependency inversion)
    - Business logic: validation (e.g., "Cannot set status for dates in the past")
-   - **Note**: Can repurpose existing `UpdateMyStatusUseCase` scaffold
+   - **Note**: Existing scaffold has placeholder `UpdateMyStatusUseCase` struct - needs replacement
 
-#### Phase 1.3: ViewModel (Presentation Layer)
-6. **Create `MyScheduleViewModel`** (Presentation layer)
+#### Phase 1.3: ViewModel (Presentation Layer) ❌ **NOT STARTED**
+6. **Create `MyScheduleViewModel`** (Presentation layer) - **MISSING**
    - `@MainActor` class conforming to `ObservableObject`
    - `@Published var weeklySchedule: [DayAvailability]`
    - `setupInitialWeek()`: Generate next 7 days with `unknown` status
@@ -284,8 +302,8 @@ protocol AvailabilityRepository {
    - `cycleStatus(_:)`: Logic to cycle through statuses (unknown → free → busy → eveningOnly → free)
    - Inject `UpdateMyStatusUseCaseProtocol`
 
-#### Phase 1.4: View (SwiftUI Layer)
-7. **Create `MyScheduleView`** (UI layer)
+#### Phase 1.4: View (SwiftUI Layer) ❌ **NOT STARTED**
+7. **Create `MyScheduleView`** (UI layer) - **MISSING**
    - `@StateObject` for view model
    - `List` displaying `weeklySchedule`
    - `HStack` with date formatting and status button
@@ -293,23 +311,25 @@ protocol AvailabilityRepository {
    - Color coding: green (free), red (busy), orange (eveningOnly), gray (unknown)
    - Navigation title: "My Week"
 
-#### Phase 1.5: Mock Repository (Data Layer - Temporary)
-8. **Create `MockAvailabilityRepository`** (Data layer - for development)
-   - Implement `AvailabilityRepository` protocol
+#### Phase 1.5: Mock Repository (Data Layer - Temporary) ✅ **COMPLETE**
+8. ✅ **`MockAvailabilityRepository`** (Data layer - for development) - **IMPLEMENTED**
+   - Implements `AvailabilityRepository` protocol
    - In-memory storage (no persistence)
+   - Pre-populated with 7-day schedule
+   - Simulated network delays
    - Allows app to run without backend
-   - Used for testing and initial development
 
-#### Phase 1.6: Integration & Testing
-9. **Wire up components**
-   - Create dependency injection setup
-   - Connect View → ViewModel → Use Case → Repository
-   - Update `ContentView` or create navigation to `MyScheduleView`
-10. **Write tests**
-    - Domain model tests
-    - Use case tests (with mock repository)
-    - ViewModel tests
-    - UI integration tests
+#### Phase 1.6: Integration & Testing 🚧 **IN PROGRESS**
+9. **Wire up components** - **PARTIALLY DONE** (commented out in `UFreeApp.swift`)
+   - ✅ `MockAvailabilityRepository` instance created in `UFreeApp`
+   - ❌ Dependency injection setup incomplete
+   - ❌ View → ViewModel → Use Case → Repository connection missing
+   - ❌ `ContentView` still shows placeholder
+10. **Write tests** - **PARTIALLY DONE**
+    - ✅ Domain model tests exist (basic structure)
+    - ❌ Use case tests (with mock repository) - need update for new use case
+    - ❌ ViewModel tests - not created
+    - ❌ UI integration tests - not created
 
 **Deliverable**: Working "My Week" Editor screen with status cycling functionality
 
@@ -504,36 +524,39 @@ Consider renaming:
 
 ### ✅ **CURRENT SPRINT** - Build Complete Feature End-to-End
 
-#### Step 1: Domain Layer Foundation
-1. **Create Domain layer directory structure**
-   - `UFree/Core/Domain/Entities/` (or `UFree/Core/Domain/Models/`)
-2. **Implement `AvailabilityStatus` enum**
+#### Step 1: Domain Layer Foundation ✅ **COMPLETE**
+1. ✅ **Domain layer directory structure** - **EXISTS**
+   - `UFree/Core/Domain/` contains all domain models
+2. ✅ **`AvailabilityStatus` enum** - **IMPLEMENTED**
    - File: `AvailabilityStatus.swift`
    - Cases: `.busy = 0`, `.free = 1`, `.eveningOnly = 2`, `.unknown = 3`
    - `displayName` computed property
-3. **Implement `DayAvailability` struct**
+3. ✅ **`DayAvailability` struct** - **IMPLEMENTED**
    - File: `DayAvailability.swift`
    - Properties: `id`, `date`, `status`, `note?`
    - Default initializer with `unknown` status
-4. **Implement `UserSchedule` aggregate**
+4. ✅ **`UserSchedule` aggregate** - **IMPLEMENTED**
    - File: `UserSchedule.swift`
    - Properties: `id`, `name`, `avatarURL?`, `weeklyStatus`
    - `status(for:)` helper method
-5. **Create `AvailabilityRepository` protocol**
+5. ✅ **`AvailabilityRepository` protocol** - **IMPLEMENTED**
    - File: `AvailabilityRepository.swift`
    - Methods: `getFriendsSchedules()`, `updateMySchedule(for:)`, `getMySchedule()`
    - All async/await
+6. ✅ **`MockAvailabilityRepository`** - **IMPLEMENTED**
+   - File: `MockAvailabilityRepository.swift`
+   - In-memory storage with pre-populated schedule
 
-#### Step 2: Use Case (Domain Layer)
-6. **Create/Update `UpdateMyStatusUseCase`**
-   - File: `UpdateMyStatusUseCase.swift` (can repurpose existing scaffold)
+#### Step 2: Use Case (Domain Layer) 🚧 **NEXT STEP**
+6. **Create/Update `UpdateMyStatusUseCase`** - **MISSING**
+   - File: `UpdateMyStatusUseCase.swift` (replace placeholder model)
    - Protocol: `UpdateMyStatusUseCaseProtocol` with `execute(day:) async throws`
-   - Implementation: `UpdateMyStatusUseCase` class
+   - Implementation: `UpdateMyStatusUseCase` class (not struct)
    - Inject `AvailabilityRepository` in initializer
    - Add validation logic (e.g., prevent past date updates)
 
-#### Step 3: ViewModel (Presentation Layer)
-7. **Create `MyScheduleViewModel`**
+#### Step 3: ViewModel (Presentation Layer) 🚧 **NEXT STEP**
+7. **Create `MyScheduleViewModel`** - **MISSING**
    - File: `MyScheduleViewModel.swift` (in Presentation layer)
    - `@MainActor class MyScheduleViewModel: ObservableObject`
    - `@Published var weeklySchedule: [DayAvailability]`
@@ -542,8 +565,8 @@ Consider renaming:
    - `cycleStatus(_:)`: unknown → free → busy → eveningOnly → free
    - Inject `UpdateMyStatusUseCaseProtocol`
 
-#### Step 4: View (SwiftUI Layer)
-8. **Create `MyScheduleView`**
+#### Step 4: View (SwiftUI Layer) 🚧 **NEXT STEP**
+8. **Create `MyScheduleView`** - **MISSING**
    - File: `MyScheduleView.swift` (in UI layer)
    - `@StateObject var viewModel: MyScheduleViewModel`
    - `List(viewModel.weeklySchedule)` with `HStack` rows
@@ -551,26 +574,26 @@ Consider renaming:
    - Button with `day.status.displayName` and color coding
    - Navigation title: "My Week"
 
-#### Step 5: Mock Repository (Data Layer - Temporary)
-9. **Create `MockAvailabilityRepository`**
+#### Step 5: Mock Repository (Data Layer - Temporary) ✅ **COMPLETE**
+9. ✅ **`MockAvailabilityRepository`** - **IMPLEMENTED**
    - File: `MockAvailabilityRepository.swift` (in Data layer)
-   - Implement `AvailabilityRepository` protocol
-   - In-memory storage (Dictionary or Array)
-   - `updateMySchedule(for:)` stores in memory
-   - `getMySchedule()` returns stored schedule or empty
-   - `getFriendsSchedules()` returns empty array for now
+   - Implements `AvailabilityRepository` protocol
+   - In-memory storage with pre-populated 7-day schedule
+   - `updateMySchedule(for:)` updates in-memory array
+   - `getMySchedule()` returns stored schedule
+   - `getFriendsSchedules()` returns empty array
 
-#### Step 6: Dependency Injection & Integration
-10. **Create dependency setup**
-    - In `ContentView` or app entry point
-    - Create `MockAvailabilityRepository` instance
-    - Create `UpdateMyStatusUseCase` with repository
-    - Create `MyScheduleViewModel` with use case
-    - Present `MyScheduleView` with view model
-11. **Write initial tests**
-    - Domain model tests (enum, structs)
-    - Use case tests with mock repository
-    - ViewModel tests (status cycling logic)
+#### Step 6: Dependency Injection & Integration 🚧 **IN PROGRESS**
+10. **Create dependency setup** - **PARTIALLY DONE**
+    - ✅ `MockAvailabilityRepository` instance created in `UFreeApp.swift`
+    - ❌ `UpdateMyStatusUseCase` creation (commented out)
+    - ❌ `MyScheduleViewModel` creation (commented out)
+    - ❌ `MyScheduleView` presentation (commented out)
+    - ❌ `ContentView` still shows placeholder
+11. **Write initial tests** - **PARTIALLY DONE**
+    - ✅ Domain model tests exist (basic structure)
+    - ❌ Use case tests with mock repository (needs update)
+    - ❌ ViewModel tests (status cycling logic) - not created
 
 ### Integration with Existing Code
 - ✅ Repurpose existing `UpdateMyStatusUseCase` scaffold (update model, add use case logic)
