@@ -11,7 +11,9 @@ import UIKit
 import SwiftUI
 import Combine
 
-public final class ListViewController: UIViewController, ResourceLoadingView, ResourceErrorView {
+public final class ListViewController: UIViewController,
+                                       ResourceLoadingView,
+                                       ResourceErrorView {
     var onRefresh: (() -> Void)?
     
     private let viewModel = Model()

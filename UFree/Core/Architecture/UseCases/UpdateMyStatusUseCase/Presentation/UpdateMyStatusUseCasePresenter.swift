@@ -15,7 +15,10 @@ public final class UpdateMyStatusUseCasePresenter {
         )
     }
     
+    // NOTE: This method is deprecated - kept for compatibility with old template code
+    // The new implementation uses SwiftUI and MyScheduleViewModel instead
     public static func map(_ LUpdateMyStatusUseCase: UpdateMyStatusUseCase) -> UpdateMyStatusUseCaseViewModel {
-        UpdateMyStatusUseCaseViewModel(id: LUpdateMyStatusUseCase.id)
+        // Return a placeholder view model - this is only used by old template tests
+        UpdateMyStatusUseCaseViewModel(id: UUID())
     }
 }

@@ -13,14 +13,6 @@ public struct LocalUpdateMyStatusUseCase: Codable {
     }
 }
 
-extension LocalUpdateMyStatusUseCase {
-    func toModel() -> UpdateMyStatusUseCase {
-        UpdateMyStatusUseCase(id: id)
-    }
-}
-
-extension UpdateMyStatusUseCase {
-    func toLocal() -> LocalUpdateMyStatusUseCase {
-        LocalUpdateMyStatusUseCase(id: id)
-    }
-}
+// NOTE: These extensions are deprecated - UpdateMyStatusUseCase is now a use case class, not a model
+// This file is kept for compatibility with old template code but the conversions are no longer valid
+// The new implementation uses DayAvailability and AvailabilityRepository directly
