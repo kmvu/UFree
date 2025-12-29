@@ -1,6 +1,6 @@
-# UFree Testing Architecture & Quality Metrics
+# UFree Testing Guide
 
-**Current Status:** ✅ Production Ready | **Tests:** 21 focused | **Coverage:** 85%+ target | **Quality:** Excellent
+**Current Status:** ✅ Production Ready | **Tests:** 31 total | **Coverage:** 85%+ target | **Quality:** Excellent
 
 ---
 
@@ -10,9 +10,78 @@ UFree maintains a comprehensive test suite across domain models, use cases, and 
 
 ---
 
+## Test Schemes
+
+UFree provides multiple schemes for different testing workflows:
+
+| Scheme | Purpose | Duration | Targets | When to Use |
+|--------|---------|----------|---------|------------|
+| **UFreeUnitTests** | Domain, data, use case tests | <4 sec | Domain models, repositories, use cases | Default development (Cmd+U) |
+| **UFreeUITests** | Full app with UI tests | ~10 sec | UFree app + UI test bundle | Before commits, CI/CD |
+| **UFree** | App run only | N/A | UFree app | Manual testing, previews |
+
+### UFreeUnitTests (Recommended for Development)
+
+**What it tests:**
+- Domain models (AvailabilityStatus, DayAvailability, UserSchedule)
+- Data layer (MockAvailabilityRepository)
+- Use cases (UpdateMyStatusUseCase)
+
+**What it skips:**
+- UI views (SwiftUI, buttons, lists)
+- ViewModels (tested via integration in UI tests)
+
+**Run via:**
+- **Terminal:** `./run_unit_tests.sh` (recommended)
+- **Xcode:** Product → Scheme → UFreeUnitTests, then Cmd+U
+- **xcodebuild:** `xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj -destination 'platform=iOS Simulator,name=iPad (A16),OS=latest'`
+
+**Output:**
+```
+🧪 Running UFree Unit Tests...
+Target: Domain models, use cases, data layer
+
+         Executed 31 tests, with 0 failures (0 unexpected) in 4.108 seconds
+
+✅ All tests passed
+```
+
+**Performance:**
+- Build: ~5-10 seconds (first time), <1 second (cached)
+- Test execution: ~4 seconds (31 tests)
+- Total first run: ~40 seconds (includes simulator startup)
+- Total subsequent runs: ~4 seconds (simulator cached)
+
+### UFreeUITests (Full Validation)
+
+**What it tests:**
+- Everything from UFreeUnitTests
+- MyScheduleView rendering
+- User interactions (button taps, state changes)
+- End-to-end workflows
+
+**Run via:**
+- **Terminal:** `./run_all_tests.sh`
+- **Xcode:** Product → Scheme → UFreeUITests, then Cmd+U
+- **xcodebuild:** `xcodebuild test -scheme UFreeUITests -project UFree.xcodeproj`
+
+### UFree (App Only)
+
+**Use to:**
+- Run the app manually
+- Test in preview
+- Debug with breakpoints
+- Profile performance
+
+**Run via:**
+- **Xcode:** Product → Scheme → UFree, then Cmd+R
+
+---
+
 ## Testing Architecture
 
 ### Test Organization
+
 ```
 UFreeTests/
 ├── Core/                           # Test Infrastructure
@@ -60,13 +129,13 @@ UFreeTests/
 | Use Cases | Critical | 90-100% | ✅ | Validation, business rules |
 | Data Layer | Critical | 100% | ✅ | All code paths tested |
 | Presentation | Important | 80%+ | ✅ | ViewModel state management |
-| UI Views | Optional | 30-50% | ✅ | SwiftUI rendering (preview handles) |
+| UI Views | Optional | 30-50% | ✅ | SwiftUI rendering (previews handle) |
 
 ### Test Quality Metrics
 
 | Metric | Status | Target |
 |--------|--------|--------|
-| **Total Tests** | 21 focused | >15 |
+| **Total Tests** | 31 focused | >15 |
 | **Code Quality** | 0 warnings | 0 |
 | **Memory Leaks** | 0 detected | 0 |
 | **Flaky Tests** | 0 | 0 |
@@ -86,7 +155,7 @@ UFreeTests/
 | Protocol Conformance | 3 | Interface compliance |
 | Memory Management | 2 | Deallocation, cleanup |
 | Integration | 1 | Cross-component interaction |
-| **TOTAL** | **21** | **100% essential behavior** |
+| **TOTAL** | **31** | **100% essential behavior** |
 
 ---
 
@@ -130,25 +199,6 @@ anyNSError()  // Generic error for testing error paths
 
 ---
 
-## Test Execution
-
-### Running Tests
-
-**Xcode UI:**
-- Press ⌘U to run full test suite
-- Tests run in sequence
-- Results show in Test Navigator
-
-**Command Line:**
-```bash
-xcodebuild test -scheme UFree \
-  -destination 'platform=iOS Simulator,name=iPad (A16),OS=26.1'
-```
-
-**Expected Results:** All 21 tests pass in <30 seconds
-
----
-
 ## Code Coverage Reporting
 
 ### How to Check Coverage
@@ -168,8 +218,8 @@ Generates coverage report and opens in terminal
 
 **Method 3: Command Line**
 ```bash
-xcodebuild test -scheme UFree -enableCodeCoverage YES \
-  -destination 'platform=iOS Simulator,name=iPad (A16),OS=26.1'
+xcodebuild test -scheme UFreeUnitTests -enableCodeCoverage YES \
+  -destination 'platform=iOS Simulator,name=iPad (A16),OS=latest'
 
 xcrun xccov view --report build/Logs/Test/*.xcresult/
 ```
@@ -186,7 +236,7 @@ xcrun xccov view --report build/Logs/Test/*.xcresult/
 3. Repositories (data access)
 
 **OK for Lower Coverage:**
-1. UI views (SwiftUI handles with previews)
+1. UI views (SwiftUI handled with previews)
 2. View models (behavior tested via integration)
 
 ---
@@ -194,6 +244,7 @@ xcrun xccov view --report build/Logs/Test/*.xcresult/
 ## Testing Standards & Best Practices
 
 ### Naming Convention
+
 ```swift
 test_[methodUnderTest]_[expectedBehavior]()
 
@@ -204,6 +255,7 @@ test_[methodUnderTest]_[expectedBehavior]()
 ```
 
 ### Test Structure
+
 ```swift
 final class SomeTests: XCTestCase {
     
@@ -227,6 +279,7 @@ final class SomeTests: XCTestCase {
 ```
 
 ### What to Test
+
 ✅ Business logic & rules  
 ✅ Error handling & edge cases  
 ✅ Data transformation & serialization  
@@ -234,6 +287,7 @@ final class SomeTests: XCTestCase {
 ✅ Memory management  
 
 ### What NOT to Test
+
 ❌ Trivial protocol conformance  
 ❌ Basic property mutation  
 ❌ Swift library behavior  
@@ -328,6 +382,54 @@ trackForMemoryLeaks(instance)
 
 ---
 
+## Integration with Development Workflow
+
+### Recommended Workflows
+
+**Local Development**
+```bash
+# After making changes to domain/use cases
+./run_unit_tests.sh  # 4 sec, full feedback
+
+# Before committing
+./run_all_tests.sh  # 10 sec, comprehensive
+```
+
+**Pre-Commit Checklist**
+- [ ] `./run_unit_tests.sh` passes
+- [ ] `./run_all_tests.sh` passes
+- [ ] No compiler warnings
+- [ ] All 31 tests passing
+
+**CI/CD Pipeline**
+```bash
+# Fast feedback
+xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj
+
+# Full validation
+xcodebuild test -scheme UFreeUITests -project UFree.xcodeproj
+```
+
+### Writing a New Feature
+
+1. **Write Tests First** (TDD approach)
+   - Define expected behavior in test
+   - Use patterns from this guide
+
+2. **Implement Feature**
+   - Make tests pass
+   - Follow established patterns
+
+3. **Verify Coverage**
+   - Run coverage report
+   - Target 85%+ on new code
+
+4. **Code Review**
+   - Check test quality
+   - Verify coverage targets met
+
+---
+
 ## Continuous Quality Assurance
 
 ### Automated Checks (CI/CD Ready)
@@ -351,45 +453,13 @@ trackForMemoryLeaks(instance)
 
 ---
 
-## Integration with Development Workflow
-
-### Writing a New Feature
-
-1. **Write Tests First** (TDD approach)
-   - Define expected behavior in test
-   - Use TESTING_GUIDE patterns
-
-2. **Implement Feature**
-   - Make tests pass
-   - Follow established patterns
-
-3. **Verify Coverage**
-   - Run coverage report
-   - Target 85%+ on new code
-
-4. **Code Review**
-   - Check test quality
-   - Verify coverage targets met
-
-### Pre-Commit Checklist
-
-- [ ] All tests pass locally (⌘U)
-- [ ] No compiler warnings
-- [ ] Coverage above target (85%+)
-- [ ] Test names are descriptive
-- [ ] No redundant tests
-- [ ] MARK sections organized
-- [ ] Memory management verified
-
----
-
 ## Tooling & Reports
 
 ### Tools Used
 - **Xcode Test Framework** - Native iOS testing
 - **XCTest** - Test case framework
 - **Xcode Coverage UI** - Visual coverage navigator
-- **Custom Scripts** - check_coverage.sh for automation
+- **Custom Scripts** - check_coverage.sh, run_unit_tests.sh, run_all_tests.sh
 
 ### Available Reports
 - **Coverage by File** - Line-by-line from Xcode
@@ -400,7 +470,7 @@ trackForMemoryLeaks(instance)
 ### Sharing Test Results
 
 For stakeholders:
-- **Test Count:** 21 focused tests
+- **Test Count:** 31 focused tests
 - **Pass Rate:** 100%
 - **Coverage:** 85%+ on business logic
 - **Reliability:** Zero flaky tests
@@ -432,20 +502,24 @@ For stakeholders:
 
 | Task | Command |
 |------|---------|
-| Run all tests | ⌘U |
+| Run unit tests only (fast, ~4 sec) | `./run_unit_tests.sh` |
+| Run all tests (unit + UI, ~10 sec) | `./run_all_tests.sh` |
+| Run via Xcode (default scheme) | ⌘U (UFreeUnitTests) |
 | Run one test class | Click test name, ⌘U |
-| View coverage | Product → Scheme → Edit → Test tab → Code Coverage → ⌘U → ⌘9 |
-| Generate report | ./check_coverage.sh |
-| Check diagnostics | Product → Perform Action → Run Build |
+| View coverage in Xcode | Product → Scheme → Edit → Test tab → Code Coverage → ⌘U → ⌘9 |
+| Generate coverage report | ./check_coverage.sh |
+| Check compiler diagnostics | Product → Perform Action → Run Build |
 
 ---
 
 ## Summary
 
 UFree maintains a comprehensive, well-organized test suite with:
-- **21 focused tests** covering all essential behavior
+- **31 focused tests** covering all essential behavior
 - **85%+ coverage target** on business-critical code
 - **Zero technical debt** - no flaky tests or memory leaks
+- **Multiple schemes** for different workflows
+- **Helper scripts** for fast development feedback
 - **Clear patterns** - easy to write new tests
 - **Production ready** - suitable for immediate deployment
 

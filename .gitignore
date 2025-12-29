@@ -30,3 +30,6 @@ DerivedData/
 *.swp
 *.swo
 *~
+UFree.xcodeproj/xcshareddata/xcschemes/UFree.xcscheme
+UFree.xcodeproj/xcshareddata/xcschemes/UFreeUITests.xcscheme
+UFree.xcodeproj/xcshareddata/xcschemes/UFreeUnitTests.xcscheme
