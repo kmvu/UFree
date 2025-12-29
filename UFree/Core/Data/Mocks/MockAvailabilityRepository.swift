@@ -7,9 +7,9 @@
 
 import Foundation
 
-public class MockAvailabilityRepository: AvailabilityRepository {
+public actor MockAvailabilityRepository: AvailabilityRepository {
     // In-memory storage for our mock data
-    private var mySchedule: [DayAvailability] = []
+    private var mySchedule: [DayAvailability]
 
     public init() {
         // Pre-populate with some data for the next 7 days

@@ -11,6 +11,8 @@ import Foundation
 
 final class DayAvailabilityTests: XCTestCase {
     
+    // MARK: - Initialization Tests
+    
     func test_init_withDefaultValues_createsDayWithUnknownStatus() {
         let date = Date()
         let day = DayAvailability(date: date)
@@ -43,7 +45,9 @@ final class DayAvailabilityTests: XCTestCase {
         XCTAssertNotEqual(day1.id, day2.id)
     }
     
-    func test_mutatingStatus_updatesStatus() {
+    // MARK: - Mutability Tests
+    
+    func test_properties_canBeMutated() {
         var day = DayAvailability(date: Date(), status: .unknown)
         
         day.status = .free
@@ -51,10 +55,6 @@ final class DayAvailabilityTests: XCTestCase {
         
         day.status = .busy
         XCTAssertEqual(day.status, .busy)
-    }
-    
-    func test_mutatingNote_updatesNote() {
-        var day = DayAvailability(date: Date())
         
         day.note = "Free for dinner"
         XCTAssertEqual(day.note, "Free for dinner")
@@ -63,7 +63,9 @@ final class DayAvailabilityTests: XCTestCase {
         XCTAssertNil(day.note)
     }
     
-    func test_codable_encodesAndDecodesCorrectly() throws {
+    // MARK: - Codable Tests
+    
+    func test_codable_encodesAndDecodesWithAllValues() throws {
         let date = Date()
         let original = DayAvailability(
             id: UUID(),
@@ -81,7 +83,7 @@ final class DayAvailabilityTests: XCTestCase {
         XCTAssertEqual(decoded.note, original.note)
     }
     
-    func test_codable_withoutNote_encodesAndDecodesCorrectly() throws {
+    func test_codable_encodesAndDecodesWithoutNote() throws {
         let date = Date()
         let original = DayAvailability(date: date, status: .free)
         
@@ -91,14 +93,6 @@ final class DayAvailabilityTests: XCTestCase {
         XCTAssertEqual(decoded.id, original.id)
         XCTAssertEqual(decoded.status, original.status)
         XCTAssertNil(decoded.note)
-    }
-    
-    func test_identifiable_conformsToIdentifiable() {
-        let day = DayAvailability(date: Date())
-        let id = day.id
-        
-        // Verify it conforms to Identifiable by checking id property exists
-        XCTAssertNotNil(id)
     }
 }
 

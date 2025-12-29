@@ -17,9 +17,11 @@ public final class MyScheduleViewModel: ObservableObject {
     private let updateUseCase: UpdateMyStatusUseCaseProtocol
     private let repository: AvailabilityRepository
     
-    public init(updateUseCase: UpdateMyStatusUseCaseProtocol, repository: AvailabilityRepository) {
+    public init(updateUseCase: UpdateMyStatusUseCaseProtocol,
+                repository: AvailabilityRepository) {
         self.updateUseCase = updateUseCase
         self.repository = repository
+        
         setupInitialWeek()
     }
     
@@ -28,8 +30,8 @@ public final class MyScheduleViewModel: ObservableObject {
         let calendar = Calendar.current
         let today = Date()
         
-        self.weeklySchedule = (0..<7).compactMap { i in
-            guard let date = calendar.date(byAdding: .day, value: i, to: today) else {
+        weeklySchedule = (0..<7).compactMap { index in
+            guard let date = calendar.date(byAdding: .day, value: index, to: today) else {
                 return nil
             }
             return DayAvailability(date: date, status: .unknown)
@@ -37,6 +39,8 @@ public final class MyScheduleViewModel: ObservableObject {
     }
     
     public func loadSchedule() async {
+        defer { isLoading = false }
+        
         isLoading = true
         errorMessage = nil
         
@@ -46,6 +50,7 @@ public final class MyScheduleViewModel: ObservableObject {
             // Merge loaded schedule with generated week
             // If a day exists in loaded schedule, use it; otherwise keep generated day
             let calendar = Calendar.current
+            
             for (index, generatedDay) in weeklySchedule.enumerated() {
                 if let loadedDay = userSchedule.weeklyStatus.first(where: { day in
                     calendar.isDate(day.date, inSameDayAs: generatedDay.date)
@@ -56,14 +61,10 @@ public final class MyScheduleViewModel: ObservableObject {
         } catch {
             errorMessage = "Failed to load schedule: \(error.localizedDescription)"
         }
-        
-        isLoading = false
     }
     
     public func toggleStatus(for day: DayAvailability) {
-        guard let index = weeklySchedule.firstIndex(where: { $0.id == day.id }) else {
-            return
-        }
+        guard let index = weeklySchedule.firstIndex(where: { $0.id == day.id }) else { return }
         
         // Cycle to next status
         let nextStatus = cycleStatus(weeklySchedule[index].status)

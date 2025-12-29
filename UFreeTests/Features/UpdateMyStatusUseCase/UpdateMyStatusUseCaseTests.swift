@@ -11,91 +11,89 @@ import Foundation
 
 final class UpdateMyStatusUseCaseTests: XCTestCase {
     
-    func test_init_createsUseCaseWithRepository() {
-        let repository = MockAvailabilityRepository()
-        let sut = UpdateMyStatusUseCase(repository: repository)
-        
-        XCTAssertNotNil(sut)
+    private var spy: AvailabilityRepositorySpy!
+    private var sut: UpdateMyStatusUseCase!
+    
+    override func setUp() async throws {
+        try await super.setUp()
+        spy = AvailabilityRepositorySpy()
+        sut = UpdateMyStatusUseCase(repository: spy)
     }
     
-    func test_execute_callsRepositoryUpdateMySchedule() async throws {
-        let repository = AvailabilityRepositorySpy()
-        let sut = UpdateMyStatusUseCase(repository: repository)
+    // MARK: - Core Functionality Tests
+    
+    func test_execute_callsRepositoryAndPassesDay() async throws {
         let day = DayAvailability(date: Date(), status: .free)
         
         try await sut.execute(day: day)
         
-        XCTAssertEqual(repository.updateCallCount, 1)
-        XCTAssertEqual(repository.updatedDay?.id, day.id)
-        XCTAssertEqual(repository.updatedDay?.status, day.status)
+        XCTAssertEqual(spy.updateCallCount, 1)
+        XCTAssertEqual(spy.updatedDay?.id, day.id)
+        XCTAssertEqual(spy.updatedDay?.status, day.status)
     }
     
-    func test_execute_withPastDate_throwsError() async {
-        let repository = AvailabilityRepositorySpy()
-        let sut = UpdateMyStatusUseCase(repository: repository)
-        
-        // Create a date in the past
+    // MARK: - Date Validation Tests
+    
+    func test_execute_rejectsPastDates() async {
         guard let pastDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) else {
-            XCTFail("Failed to create past date")
+            XCTFail("Could not create past date")
             return
         }
         let pastDay = DayAvailability(date: pastDate, status: .free)
         
         do {
             try await sut.execute(day: pastDay)
-            XCTFail("Expected error for past date")
+            XCTFail("Should reject past dates")
         } catch UpdateMyStatusUseCaseError.cannotUpdatePastDate {
-            // Expected error
-            XCTAssertEqual(repository.updateCallCount, 0, "Repository should not be called for past dates")
+            XCTAssertEqual(spy.updateCallCount, 0, "Should not call repository for past dates")
         } catch {
-            XCTFail("Unexpected error: \(error)")
+            XCTFail("Wrong error: \(error)")
         }
     }
     
-    func test_execute_withTodayDate_succeeds() async throws {
-        let repository = AvailabilityRepositorySpy()
-        let sut = UpdateMyStatusUseCase(repository: repository)
+    func test_execute_acceptsTodayAndFutureDates() async throws {
         let today = Calendar.current.startOfDay(for: Date())
         let todayDay = DayAvailability(date: today, status: .busy)
         
         try await sut.execute(day: todayDay)
+        XCTAssertEqual(spy.updateCallCount, 1)
         
-        XCTAssertEqual(repository.updateCallCount, 1)
-    }
-    
-    func test_execute_withFutureDate_succeeds() async throws {
-        let repository = AvailabilityRepositorySpy()
-        let sut = UpdateMyStatusUseCase(repository: repository)
-        guard let futureDate = Calendar.current.date(byAdding: .day, value: 1, to: Date()) else {
-            XCTFail("Failed to create future date")
+        spy.reset()
+        
+        guard let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date()) else {
+            XCTFail("Could not create future date")
             return
         }
-        let futureDay = DayAvailability(date: futureDate, status: .eveningOnly)
+        let tomorrowDay = DayAvailability(date: tomorrow, status: .eveningOnly)
         
-        try await sut.execute(day: futureDay)
-        
-        XCTAssertEqual(repository.updateCallCount, 1)
+        try await sut.execute(day: tomorrowDay)
+        XCTAssertEqual(spy.updateCallCount, 1)
     }
     
-    func test_execute_propagatesRepositoryError() async {
-        let repository = AvailabilityRepositorySpy()
-        repository.shouldThrowError = true
-        let sut = UpdateMyStatusUseCase(repository: repository)
+    // MARK: - Error Handling Tests
+    
+    func test_execute_propagatesRepositoryErrors() async {
+        spy.shouldThrowError = true
         let day = DayAvailability(date: Date(), status: .free)
         
         do {
             try await sut.execute(day: day)
-            XCTFail("Expected error from repository")
+            XCTFail("Should propagate repository error")
         } catch {
-            XCTAssertEqual(repository.updateCallCount, 1, "Repository should still be called")
+            XCTAssertEqual(spy.updateCallCount, 1)
         }
     }
     
-    // MARK: - Helpers
+    // MARK: - Test Helpers
     
-    private class AvailabilityRepositorySpy: AvailabilityRepository {
-        var updateCallCount = 0
-        var updatedDay: DayAvailability?
+    /// Test spy for AvailabilityRepository
+    /// Uses a class (not actor) because:
+    /// - Test mocks don't need concurrent safety (tests run sequentially)
+    /// - Easier property access from test assertions
+    /// - No risk of actual concurrent access in test environment
+    private final class AvailabilityRepositorySpy: AvailabilityRepository {
+        private(set) var updateCallCount = 0
+        private(set) var updatedDay: DayAvailability?
         var shouldThrowError = false
         
         func getFriendsSchedules() async throws -> [UserSchedule] {
@@ -113,6 +111,11 @@ final class UpdateMyStatusUseCaseTests: XCTestCase {
         
         func getMySchedule() async throws -> UserSchedule {
             return UserSchedule(id: "test", name: "Test", weeklyStatus: [])
+        }
+        
+        func reset() {
+            updateCallCount = 0
+            updatedDay = nil
         }
     }
 }

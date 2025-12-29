@@ -11,7 +11,11 @@ import Foundation
 
 final class UserScheduleTests: XCTestCase {
     
-    func test_init_createsScheduleWithAllProperties() {
+    private let calendar = Calendar.current
+    
+    // MARK: - Initialization Tests
+    
+    func test_init_withAllParameters_createsScheduleCorrectly() {
         let id = "user_123"
         let name = "John Doe"
         let avatarURL = URL(string: "https://example.com/avatar.jpg")
@@ -28,17 +32,17 @@ final class UserScheduleTests: XCTestCase {
         XCTAssertEqual(schedule.weeklyStatus.count, 2)
     }
     
-    func test_init_withoutAvatarURL_createsScheduleWithNilAvatar() {
+    func test_init_withoutAvatarURL_defaultsToNil() {
         let schedule = UserSchedule(id: "user_123", name: "John Doe", weeklyStatus: [])
-        
         XCTAssertNil(schedule.avatarURL)
     }
     
-    func test_status_forDate_returnsMatchingDayAvailability() {
-        let calendar = Calendar.current
+    // MARK: - Date Lookup Tests
+    
+    func test_status_forDate_returnsCorrectDayAvailability() {
         let today = Date()
         guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) else {
-            XCTFail("Failed to create tomorrow's date")
+            XCTFail("Could not create tomorrow's date")
             return
         }
         
@@ -63,10 +67,10 @@ final class UserScheduleTests: XCTestCase {
         XCTAssertEqual(foundTomorrow?.id, tomorrowStatus.id)
     }
     
-    func test_status_forDate_returnsNilWhenNoMatch() {
+    func test_status_forDate_returnsNilWhenNotFound() {
         let today = Date()
-        guard let futureDate = Calendar.current.date(byAdding: .day, value: 10, to: today) else {
-            XCTFail("Failed to create future date")
+        guard let futureDate = calendar.date(byAdding: .day, value: 10, to: today) else {
+            XCTFail("Could not create future date")
             return
         }
         
@@ -76,50 +80,42 @@ final class UserScheduleTests: XCTestCase {
             weeklyStatus: [DayAvailability(date: today, status: .free)]
         )
         
-        let result = schedule.status(for: futureDate)
-        
-        XCTAssertNil(result)
+        XCTAssertNil(schedule.status(for: futureDate))
     }
     
-    func test_status_forDate_matchesSameDayIgnoringTime() {
-        let calendar = Calendar.current
-        let today = Date()
-        // Set hour, minute, and second separately using the correct API
-        guard var todayMorning = calendar.date(bySetting: .hour, value: 9, of: today),
-              let morningWithMinute = calendar.date(bySetting: .minute, value: 0, of: todayMorning),
-              let morningWithSecond = calendar.date(bySetting: .second, value: 0, of: morningWithMinute),
-              var todayEvening = calendar.date(bySetting: .hour, value: 18, of: today),
-              let eveningWithMinute = calendar.date(bySetting: .minute, value: 0, of: todayEvening),
-              let eveningWithSecond = calendar.date(bySetting: .second, value: 0, of: eveningWithMinute) else {
-            XCTFail("Failed to create test dates")
+    func test_status_forDate_matchesSameDayRegardlessOfTime() {
+        let today = calendar.startOfDay(for: Date())
+        
+        // Create morning and evening dates (same day, different times)
+        guard let morning = calendar.date(byAdding: .hour, value: 9, to: today),
+              let evening = calendar.date(byAdding: .hour, value: 18, to: today) else {
+            XCTFail("Could not create test dates")
             return
         }
         
-        todayMorning = morningWithSecond
-        todayEvening = eveningWithSecond
-        
-        let status = DayAvailability(date: todayMorning, status: .free)
+        let status = DayAvailability(date: morning, status: .free)
         let schedule = UserSchedule(
             id: "user_123",
             name: "John Doe",
             weeklyStatus: [status]
         )
         
-        let result = schedule.status(for: todayEvening)
+        let result = schedule.status(for: evening)
         
         XCTAssertNotNil(result, "Should match same day regardless of time")
         XCTAssertEqual(result?.status, .free)
     }
     
-    func test_identifiable_conformsToIdentifiable() {
+    // MARK: - Identifiable Conformance Tests
+    
+    func test_conformsToIdentifiable() {
         let schedule = UserSchedule(id: "user_123", name: "John Doe", weeklyStatus: [])
-        let id = schedule.id
-        
-        // Verify it conforms to Identifiable by checking id property exists
-        XCTAssertEqual(id, "user_123")
+        XCTAssertEqual(schedule.id, "user_123")
     }
     
-    func test_mutatingWeeklyStatus_updatesStatus() {
+    // MARK: - Mutability Tests
+    
+    func test_weeklyStatus_canBeMutated() {
         var schedule = UserSchedule(
             id: "user_123",
             name: "John Doe",
@@ -133,4 +129,3 @@ final class UserScheduleTests: XCTestCase {
         XCTAssertEqual(schedule.weeklyStatus.last?.status, .free)
     }
 }
-
