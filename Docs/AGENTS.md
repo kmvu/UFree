@@ -47,6 +47,18 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 
 **Testing:** Arrange-Act-Assert pattern. Name tests as `test_[method]_[expectedBehavior]()`. Use MockAvailabilityRepository (actor for thread safety) and in-memory SwiftData containers.
 
+**Actor Isolation in Tests:** When testing actor methods that return structs with properties, extract properties into local variables before using them in assertions/autoclosures to avoid main actor isolation warnings:
+```swift
+// ❌ Causes warnings
+let schedule = try await repository.getMySchedule()
+XCTAssertEqual(schedule.weeklyStatus.count, 7)
+
+// ✅ Correct pattern
+let schedule = try await repository.getMySchedule()
+let count = schedule.weeklyStatus.count
+XCTAssertEqual(count, 7)
+```
+
 **Error Handling:** Use typed errors (UpdateMyStatusUseCaseError.cannotUpdatePastDate). Propagate repository errors; catch and rollback in ViewModel.
 
 **Imports:** Group into Foundation, SwiftUI, SwiftData, then local modules. Follow clean architecture boundaries.
