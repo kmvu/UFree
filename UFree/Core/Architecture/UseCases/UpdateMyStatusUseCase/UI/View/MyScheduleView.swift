@@ -9,14 +9,16 @@ import SwiftUI
 
 public struct MyScheduleView: View {
     @StateObject private var viewModel: MyScheduleViewModel
+    let rootViewModel: RootViewModel
     
-    public init(viewModel: MyScheduleViewModel) {
+    public init(viewModel: MyScheduleViewModel, rootViewModel: RootViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.rootViewModel = rootViewModel
     }
     
     public var body: some View {
         List(viewModel.weeklySchedule) { day in
-            HStack {
+            HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(day.date.formatted(.dateTime.weekday(.wide)))
                         .font(.headline)
@@ -44,6 +46,21 @@ public struct MyScheduleView: View {
             .padding(.vertical, 4)
         }
         .navigationTitle("My Week")
+        .navigationSubtitle("Manage your availability")
+        .toolbar {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Menu {
+                    Button(role: .destructive, action: {
+                        rootViewModel.signOut()
+                    }) {
+                        Label("Sign Out", systemImage: "power")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 18))
+                }
+            }
+        }
         .task {
             await viewModel.loadSchedule()
         }
@@ -78,7 +95,8 @@ public struct MyScheduleView: View {
             viewModel: MyScheduleViewModel(
                 updateUseCase: UpdateMyStatusUseCase(repository: MockAvailabilityRepository()),
                 repository: MockAvailabilityRepository()
-            )
+            ),
+            rootViewModel: RootViewModel(authRepository: MockAuthRepository())
         )
     }
 }

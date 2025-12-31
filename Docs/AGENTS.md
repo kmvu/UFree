@@ -4,14 +4,14 @@
 
 **Run all unit tests (fast feedback):**
 ```bash
-./run_unit_tests.sh          # ~4 seconds, 51 tests
+./run_unit_tests.sh          # ~5-6 seconds, 69 tests
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj
 ```
 
 **Run single test:**
 ```bash
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
-  -only-testing UFreeTests/UpdateMyStatusUseCaseTests
+  -only-testing UFreeTests/MockAuthRepositoryTests
 ```
 
 **Run UI tests (comprehensive):**
@@ -22,43 +22,86 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 ## Architecture & Structure
 
 **Clean Architecture Layers:**
-- **Domain:** Entities (AvailabilityStatus, DayAvailability, UserSchedule), use cases, repository protocols
-- **Data:** SwiftDataAvailabilityRepository (production), MockAvailabilityRepository (testing), PersistentDayAvailability model
-- **Presentation:** MyScheduleViewModel (@MainActor, @Published for state)
-- **UI:** MyScheduleView (SwiftUI), driven by view model
+- **Domain:** User, AvailabilityStatus, DayAvailability, UserSchedule, AuthRepository (protocol), AvailabilityRepository (protocol), UpdateMyStatusUseCase
+- **Data:** FirebaseAuthRepository, MockAuthRepository, SwiftDataAvailabilityRepository, MockAvailabilityRepository, PersistentDayAvailability, FirebaseAvailabilityRepository (skeleton)
+- **Presentation:** RootViewModel (auth), MyScheduleViewModel (schedule)
+- **UI:** RootView (auth routing), LoginView, MyScheduleView
 
 **Key Subprojects:**
 - UFree: Main app bundle
-- UFreeTests: Unit tests (51 tests covering domain, data, use cases)
+- UFreeTests: Unit tests (69 tests covering auth, domain, data, use cases)
 - UFreeUITests: UI integration tests
 
-**Persistence:** SwiftData with in-memory containers for testing. Domain entities remain SwiftData-free.
+**Persistence:** SwiftData local-only (Sprint 2.5). Firebase auth ready. Firestore integration pending (Sprint 3).
 
 ## Code Style & Conventions
 
 **Swift/iOS Standards:**
 - SwiftUI for UI (avoid UIKit)
 - Async/await for concurrency (not Combine Publishers)
-- @MainActor on UI/presentation components
+- @MainActor on UI/presentation components (RootViewModel, auth repositories)
 - Dependency injection via init parameters
-- Protocol-based repositories for testability
+- Protocol-based repositories for testability (AuthRepository, AvailabilityRepository)
+- Actor for test doubles that need concurrent access (MockAuthRepository, MockAvailabilityRepository)
 
-**Naming:** CamelCase types/classes, camelCase properties/functions. Use descriptive names reflecting domain (e.g., AvailabilityStatus, DayAvailability, not Status, Day).
+**Naming:** CamelCase types/classes, camelCase properties/functions. Use descriptive names reflecting domain (e.g., AuthRepository, User, not Auth, CurrentUser).
 
-**Testing:** Arrange-Act-Assert pattern. Name tests as `test_[method]_[expectedBehavior]()`. Use MockAvailabilityRepository (actor for thread safety) and in-memory SwiftData containers.
+**Testing:** Arrange-Act-Assert pattern. Name tests as `test_[method]_[expectedBehavior]()`. Use MockAuthRepository (actor for thread safety) and MockAvailabilityRepository (actor for thread safety) and in-memory SwiftData containers.
 
-**Actor Isolation in Tests:** When testing actor methods that return structs with properties, extract properties into local variables before using them in assertions/autoclosures to avoid main actor isolation warnings:
+**Auth State Streaming:** Use AsyncStream for reactive UI updates instead of Combine. Example:
 ```swift
-// ❌ Causes warnings
-let schedule = try await repository.getMySchedule()
-XCTAssertEqual(schedule.weeklyStatus.count, 7)
+var authState: AsyncStream<User?> { get }
 
-// ✅ Correct pattern
-let schedule = try await repository.getMySchedule()
-let count = schedule.weeklyStatus.count
-XCTAssertEqual(count, 7)
+// In ViewModel:
+Task {
+    for await user in authRepository.authState {
+        self.currentUser = user
+    }
+}
 ```
 
-**Error Handling:** Use typed errors (UpdateMyStatusUseCaseError.cannotUpdatePastDate). Propagate repository errors; catch and rollback in ViewModel.
+**Actor Isolation Patterns:**
+1. Make initializers `nonisolated` if they don't access actor state:
+```swift
+nonisolated public init(user: User? = nil) {
+    self.user = user
+}
+```
 
-**Imports:** Group into Foundation, SwiftUI, SwiftData, then local modules. Follow clean architecture boundaries.
+2. Make properties `nonisolated` if they don't need isolation (e.g., AsyncStream):
+```swift
+nonisolated public var authState: AsyncStream<User?> {
+    authStateStream
+}
+```
+
+3. In tests, extract properties to local variables before assertions:
+```swift
+// ❌ Causes warnings
+let user = await repository.currentUser
+XCTAssertEqual(user?.id, "123")
+
+// ✅ Correct pattern
+let user = await repository.currentUser
+let userId = user?.id
+XCTAssertEqual(userId, "123")
+```
+
+**Error Handling:** Use typed errors (UpdateMyStatusUseCaseError.cannotUpdatePastDate). Propagate repository errors; catch and rollback in ViewModel. Auth errors propagate to RootViewModel as `errorMessage: String?` for display.
+
+**Imports:** Group into Foundation, SwiftUI, SwiftData, FirebaseAuth, FirebaseFirestore (when needed), then local modules. Follow clean architecture boundaries.
+
+## Sprint 2.5 Context
+
+**What's New:**
+- User domain entity and AuthRepository protocol
+- FirebaseAuthRepository wrapping Firebase Auth SDK
+- RootViewModel managing auth state via AsyncStream
+- RootView routing between LoginView (not authenticated) and MainAppView (authenticated)
+- MockAuthRepository for testing (actor-based, concurrent access safe)
+
+**For Next Sprint (3):**
+- Implement FirebaseAvailabilityRepository methods (currently skeleton throwing "Not implemented yet")
+- Build CompositeAvailabilityRepository pattern (local + remote fallback)
+- Define Firestore document schema for UserSchedule
+- Add network tests with Firebase emulator

@@ -1,305 +1,226 @@
 # UFree - Weekly Availability Scheduler
 
-**Status:** ✅ Sprint 2 Complete | **Version:** 2.0.0 | **Tests:** 51 | **Coverage:** 85%+
+**Status:** ✅ Sprint 2.5 Complete | **Version:** 2.5.0 | **Tests:** 69 | **Coverage:** 85%+
 
 ---
 
 ## Quick Status
 
-**Production Ready:** Local persistence fully implemented. All core features tested and working. Ready for Sprint 3 (remote API integration).
+**Production Ready:** Local persistence complete. Firebase auth infrastructure in place. Schedule sync ready for Sprint 3.
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Domain Models | ✅ Complete | AvailabilityStatus, DayAvailability, UserSchedule - stable API |
-| Mock Repository | ✅ Complete | In-memory testing, actor-based for thread safety |
+| Domain Models | ✅ Complete | AvailabilityStatus, DayAvailability, UserSchedule |
+| Authentication | ✅ Complete | User entity, AuthRepository protocol, Firebase auth wrapper |
 | SwiftData Persistence | ✅ Complete | Local storage with upsert pattern, date normalization |
-| Update Status Use Case | ✅ Complete | Validation for past dates, error handling |
-| MyScheduleViewModel | ✅ Complete | State management, immediate UI updates with rollback |
-| MyScheduleView (UI) | ✅ Complete | SwiftUI list, color-coded status buttons |
-| **Remote API Layer** | ⏳ Pending | Sprint 3: Cloud sync via Composite Repository |
-| **Real-time Sync** | ⏳ Pending | Sprint 3: WebSocket/Firestore integration |
-| **Friend Schedules** | ⏳ Pending | Sprint 3+: Uses existing UserSchedule model |
+| Use Cases | ✅ Complete | UpdateMyStatusUseCase with validation |
+| MyScheduleViewModel & View | ✅ Complete | SwiftUI list, color-coded status buttons |
+| Login/Root Navigation | ✅ Complete | RootView routes between LoginView and MainAppView |
+| **Remote API Layer** | ⏳ Pending | Sprint 3: Firestore read/write (skeleton in place) |
+| **Composite Repository** | ⏳ Pending | Sprint 3: Local + remote with fallback |
+| **Real-time Sync** | ⏳ Pending | Sprint 3+: WebSocket/Firestore integration |
 
 ---
 
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        UI Layer                             │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ MyScheduleView (SwiftUI)                              │  │
-│  │ - List of 7 days, color-coded status buttons          │  │
-│  │ - Tap to cycle status, error alerts                   │  │
-│  └───────────────────────────────────────────────────────┘  │
-│                           ↓                                  │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ MyScheduleViewModel (@MainActor)                      │  │
-│  │ - State: @Published weeklyStatus: [DayAvailability]   │  │
-│  │ - Methods: loadSchedule(), toggleStatus()             │  │
-│  │ - Error handling: rollback on failure                 │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    UI Layer                             │
+│  RootView (auth state) → LoginView OR MainAppView       │
+│  MainAppView → MyScheduleView                           │
+└─────────────────────────────────────────────────────────┘
                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Presentation Layer (DONE)                 │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│            Presentation Layer                           │
+│  RootViewModel (auth state) + MyScheduleViewModel       │
+└─────────────────────────────────────────────────────────┘
                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    Domain Layer (DONE)                       │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ UpdateMyStatusUseCase                                 │  │
-│  │ - Validate date not in past                           │  │
-│  │ - Call repository.updateMySchedule()                  │  │
-│  │ - Throw UpdateMyStatusUseCaseError.cannotUpdatePastD. │  │
-│  └───────────────────────────────────────────────────────┘  │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ AvailabilityRepository (protocol)                     │  │
-│  │ - getMySchedule() → UserSchedule                      │  │
-│  │ - updateMySchedule(for: DayAvailability)              │  │
-│  │ - getFriendsSchedules() → [UserSchedule]              │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│              Domain Layer                               │
+│  User, AuthRepository, UpdateMyStatusUseCase            │
+│  AvailabilityRepository (protocol)                      │
+└─────────────────────────────────────────────────────────┘
                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                     Data Layer                               │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ SwiftDataAvailabilityRepository (@MainActor) - PROD   │  │
-│  │ - Reads/writes to SwiftData container                 │  │
-│  │ - Upsert pattern for updates                          │  │
-│  │ - Date normalization (midnight)                       │  │
-│  │ ⏳ NEXT: Add RemoteAvailabilityRepository (Sprint 3)   │  │
-│  │ ⏳ NEXT: Create CompositeRepository pattern            │  │
-│  └───────────────────────────────────────────────────────┘  │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ MockAvailabilityRepository (actor) - TESTING          │  │
-│  │ - In-memory storage for unit tests                    │  │
-│  │ - Thread-safe via actor isolation                     │  │
-│  └───────────────────────────────────────────────────────┘  │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │ PersistentDayAvailability (SwiftData model)           │  │
-│  │ - Bidirectional mapping to DayAvailability            │  │
-│  │ - Date normalization constraint                       │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────┐
-│                  SwiftData Container                         │
-│  - In-memory for tests, persistent for production           │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│               Data Layer                                │
+│  FirebaseAuthRepository + MockAuthRepository            │
+│  SwiftDataAvailabilityRepository (local)                │
+│  FirebaseAvailabilityRepository (skeleton for Sprint 3) │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## File Structure & Current State
+## Core Models
 
-### Domain Layer (Stable)
+### User (Sprint 2.5 - NEW)
+```swift
+struct User: Identifiable, Equatable, Codable {
+    let id: String
+    let isAnonymous: Bool
+}
+```
+
+### DayAvailability (Sprint 1-2)
+```swift
+struct DayAvailability: Identifiable, Codable {
+    let id: UUID
+    let date: Date        // Normalized to midnight
+    var status: AvailabilityStatus
+    var note: String?
+}
+```
+
+### UserSchedule (Sprint 1-2)
+```swift
+struct UserSchedule: Identifiable {
+    let id: String
+    let name: String
+    let avatarURL: URL?
+    var weeklyStatus: [DayAvailability]  // Exactly 7 consecutive days
+}
+```
+
+---
+
+## Sprint Summary
+
+### Sprint 1: Core Features ✅
+- Domain models (AvailabilityStatus, DayAvailability, UserSchedule)
+- Update status use case with validation
+- Mock repository for testing
+- MyScheduleView & MyScheduleViewModel
+- 31 tests
+
+### Sprint 2: Local Persistence ✅
+- SwiftData integration (SwiftDataAvailabilityRepository)
+- PersistentDayAvailability mapping model
+- Upsert pattern for updates
+- Date normalization (midnight constraint)
+- 20 new tests
+
+### Sprint 2.5: Infrastructure & Identity ✅ (NEW)
+- User domain entity + AuthRepository protocol
+- FirebaseAuthRepository (Firebase Auth wrapper, @MainActor)
+- MockAuthRepository (testing, actor-based)
+- RootViewModel + RootView for auth navigation
+- LoginView (anonymous sign-in)
+- FirebaseAvailabilityRepository skeleton
+- 18 new tests
+
+### Sprint 3: Remote Sync (Upcoming)
+- Implement FirebaseAvailabilityRepository (Firestore)
+- CompositeRepository pattern (local + remote fallback)
+- Schedule sync over network
+- Real-time updates via listeners
+
+---
+
+## File Structure
+
 ```
 UFree/Core/Domain/
-├── AvailabilityStatus.swift         ✅ Enum with 4 states, Codable
-├── DayAvailability.swift            ✅ Identifiable, mutable status/note
-├── UserSchedule.swift               ✅ Contains exactly 7 DayAvailability
-├── AvailabilityRepository.swift      ✅ Protocol (3 methods)
-└── UseCases/
-    └── UpdateMyStatusUseCase.swift   ✅ Validates past date, propagates errors
-```
+├── Auth/                          ✅ Sprint 2.5
+│   ├── User.swift
+│   └── AuthRepository.swift
+├── AvailabilityStatus.swift       ✅ Sprint 1
+├── DayAvailability.swift          ✅ Sprint 1
+└── UserSchedule.swift             ✅ Sprint 1
 
-### Data Layer (Partially Complete)
-```
 UFree/Core/Data/
+├── Auth/                          ✅ Sprint 2.5
+│   └── FirebaseAuthRepository.swift
 ├── Mocks/
-│   └── MockAvailabilityRepository.swift  ✅ Actor, in-memory storage, thread-safe
+│   ├── MockAuthRepository.swift   ✅ Sprint 2.5
+│   └── MockAvailabilityRepository.swift  ✅ Sprint 1
 ├── Repositories/
-│   └── SwiftDataAvailabilityRepository.swift  ✅ @MainActor, upsert pattern
+│   ├── SwiftDataAvailabilityRepository.swift  ✅ Sprint 2
+│   └── FirebaseAvailabilityRepository.swift   ✅ Sprint 2.5 (skeleton)
 └── Persistence/
-    ├── PersistentDayAvailability.swift       ✅ SwiftData model, bidirectional mapping
-    └── ⏳ RemoteAvailabilityRepository.swift  (Pending Sprint 3)
-    └── ⏳ CompositeRepository.swift           (Pending Sprint 3)
-```
+    └── PersistentDayAvailability.swift  ✅ Sprint 2
 
-### Presentation Layer (Complete)
-```
-UFree/Features/MySchedule/
-├── Presentation/
-│   └── MyScheduleViewModel.swift     ✅ @MainActor, state management
-└── UI/
-    └── MyScheduleView.swift          ✅ SwiftUI List with status buttons
-```
-
-### Tests (Comprehensive)
-```
-UFreeTests/
-├── Domain/                           ✅ 16 tests
-│   ├── AvailabilityStatusTests
-│   ├── DayAvailabilityTests
-│   └── UserScheduleTests
-├── Data/
-│   ├── Mocks/
-│   │   └── MockAvailabilityRepositoryTests  ✅ 7 tests
-│   └── Persistence/
-│       ├── PersistentDayAvailabilityTests   ✅ 9 tests
-│       └── SwiftDataAvailabilityRepositoryTests  ✅ 11 tests
-└── Features/                         ✅ 5 tests
-    └── UpdateMyStatusUseCase/
+UFree/Features/
+├── Root/                          ✅ Sprint 2.5 (NEW)
+│   ├── RootViewModel.swift
+│   ├── RootView.swift
+│   └── LoginView.swift
+└── MySchedule/                    ✅ Sprint 1-2
+    ├── MyScheduleViewModel.swift
+    └── MyScheduleView.swift
 ```
 
 ---
 
-## Current Implementation Details
+## Test Coverage (69 Total)
 
-### Domain Models (Sprint 1 - Complete)
-```swift
-// AvailabilityStatus: Int-backed enum
-// DayAvailability: Struct with UUID id, Date, status, optional note
-// UserSchedule: Aggregate with 7 consecutive DayAvailability objects
-```
-
-### Data Layer (Sprint 2 - Complete)
-**SwiftDataAvailabilityRepository:**
-- @MainActor for thread safety
-- Upsert pattern: checks existing record by date, updates or inserts
-- Date normalization: all dates stored at midnight
-- Uses PersistentDayAvailability as persistence model
-
-**PersistentDayAvailability:**
-- SwiftData @Model with @Attribute(\.unique) for id
-- Maps bidirectionally to domain DayAvailability
-- Stores note as optional String
-
-**MockAvailabilityRepository:**
-- Actor-based for concurrent test access
-- In-memory array storage
-- Simulated 500ms/300ms delays for testing
-
-### Presentation Layer (Sprint 1 - Complete)
-**MyScheduleViewModel:**
-- @MainActor with @Published properties
-- Async operation for load/update without blocking UI
-- Error handling with state rollback
-- toggleStatus() cycles: unknown → free → busy → eveningOnly
-
-### UI Layer (Sprint 1 - Complete)
-**MyScheduleView:**
-- SwiftUI List with 7 rows
-- Status button with color coding
-- Tap to cycle, shows error alerts
+| Layer | Tests | Sprint |
+|-------|-------|--------|
+| Domain Models | 16 | 1 |
+| Mock Repository (Availability) | 7 | 1 |
+| Persistence Layer | 20 | 2 |
+| Use Cases | 5 | 1 |
+| Integration | 3 | 1 |
+| User Entity | 6 | 2.5 |
+| Mock Repository (Auth) | 6 | 2.5 |
+| RootViewModel | 6 | 2.5 |
+| **Total** | **69** | — |
 
 ---
 
-## Test Coverage (51 Tests Total)
+## Key Features Working End-to-End
 
-| Layer | Tests | Details |
-|-------|-------|---------|
-| Domain | 16 | All model initialization, behavior, serialization |
-| Mock Repo | 7 | Storage, async, protocol conformance |
-| Persistence | 20 | Upsert, mapping, durability, date normalization |
-| Use Cases | 5 | Validation, error handling, async |
-| Integration | 3 | Cross-layer communication |
-
-**All tests use:**
-- Async/await patterns
-- Actor isolation handling (extract properties before assertions)
-- Arrange-Act-Assert structure
-- In-memory containers (no disk I/O)
+1. **Authentication Flow:** App launch → Firebase init → LoginView → anonymous sign-in → MainAppView
+2. **Schedule Management:** View 7 days, update status per day (cycles through 4 states)
+3. **Persistence:** Schedule saved locally via SwiftData (survives app restart)
+4. **Auth State:** Real-time UI updates via AsyncStream when user logs in/out
+5. **Error Handling:** Past date rejection, network errors, auth failures with rollback
 
 ---
 
-## Dependencies & Integrations
+## What's Next (Sprint 3)
 
-**Production App Initialization (UFreeApp.swift):**
-```swift
-let container = ModelContainer(for: PersistentDayAvailability.self)
-let repository = SwiftDataAvailabilityRepository(container: container)
-let useCase = UpdateMyStatusUseCase(repository: repository)
-let viewModel = MyScheduleViewModel(useCase: useCase, repository: repository)
-```
+**Firestore Integration:**
+- Implement FirebaseAvailabilityRepository methods
+- Define Firestore document schema
+- Set up CompositeRepository pattern
+- Test with Firebase emulator
 
-**Testing Initialization:**
-```swift
-let repository = MockAvailabilityRepository()  // Actor-based, thread-safe
-```
+**User Experience:**
+- Sync schedules to cloud
+- Enable friend schedule viewing
+- Real-time schedule updates
 
 ---
 
-## Key Decisions & Patterns
+## Technical Highlights
 
-1. **Repository Protocol First:** Enables multiple implementations (Mock, SwiftData, Remote)
-2. **Domain Entities are Swift Structs:** Codable, SwiftData-free, reusable
-3. **Persistence Model Separate:** PersistentDayAvailability maps to/from domain
-4. **Actor for Thread Safety:** MockAvailabilityRepository is actor for concurrent tests
-5. **@MainActor for UI:** ViewModel and production repo isolated to main thread
-6. **Upsert Pattern:** SwiftData inserts new or updates existing by date
-7. **Date Normalization:** All dates stored at midnight, no time component
-
----
-
-## What's Ready for Next Sprint (Sprint 3)
-
-### Remote API Layer
-**What to build:**
-- `RemoteAvailabilityRepository` - Implements AvailabilityRepository protocol
-- HTTP client wrapper (URLSession or third-party)
-- Network error handling with retry logic
-- API endpoint definitions for:
-  - GET /schedule (fetch user's schedule)
-  - PATCH /schedule/{dayId} (update day status)
-  - GET /friends (fetch friends' schedules)
-
-**Where to add:**
-```
-UFree/Core/Data/Repositories/RemoteAvailabilityRepository.swift
-UFree/Core/Data/Network/HTTPClient.swift  (or similar)
-```
-
-### Composite Repository Pattern
-**What to build:**
-- `CompositeAvailabilityRepository` - Combines local + remote
-- Logic: Try remote first, fallback to local on failure
-- Sync strategy: Update local after remote succeeds
-
-**Where to add:**
-```
-UFree/Core/Data/Repositories/CompositeAvailabilityRepository.swift
-```
-
-### Real-time Sync (Optional for Sprint 3)
-- WebSocket listener for schedule changes
-- Firestore integration as alternative to custom API
-- Push updates to local storage
-
-### Friend Schedules
-- Reuses existing `UserSchedule` model
-- Filter/search friends
-- Display in list alongside own schedule
-
----
-
-## Known Constraints & Technical Debt
-
-**None currently.** Sprint 1 & 2 completed with:
+- ✅ Clean Architecture (Domain → Data → Presentation → UI)
+- ✅ Protocol-based dependency injection (swap repositories easily)
+- ✅ @MainActor isolation for thread safety on auth repos
+- ✅ Actor-based mock repositories with `nonisolated` initializers & AsyncStream
+- ✅ AsyncStream for reactive auth state (no Combine)
+- ✅ Conditional Firebase init (uses MockAuthRepository in tests)
+- ✅ Async/await throughout with proper actor isolation patterns
 - ✅ Zero compiler warnings
-- ✅ Zero flaky tests
 - ✅ Zero memory leaks
-- ✅ Clean architecture enforced
-- ✅ 85%+ test coverage
+- ✅ Zero flaky tests
 
 ---
 
-## How to Continue Development
+## Running the App
 
-**Start Sprint 3:**
-1. Review this README for current state
-2. Focus on RemoteAvailabilityRepository (implement AvailabilityRepository protocol)
-3. Run `./run_unit_tests.sh` after each change
-4. All existing tests should still pass (Liskov Substitution Principle)
-5. Add network tests in `UFreeTests/Data/Network/`
+```bash
+# Run unit tests (includes auth layer tests)
+./run_unit_tests.sh          # ~5-6 seconds
 
-**Add new features:**
-1. Identify which layer: Domain (entity), Data (repository), Presentation (ViewModel), or UI (View)
-2. Check AGENTS.md for code style
-3. Check TESTING_GUIDE.md for test patterns
-4. Write tests first (TDD approach recommended)
-5. Target 85%+ coverage on new code
+# Run all tests with UI
+./run_all_tests.sh           # ~10 seconds
+
+# Run specific test suite
+xcodebuild test -scheme UFreeUnitTests \
+  -only-testing UFreeTests/MockAuthRepositoryTests
+```
 
 ---
 

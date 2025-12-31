@@ -15,7 +15,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        FirebaseApp.configure()
+        // Configure Firebase only if GoogleService-Info.plist exists (not in unit tests)
+        if FirebaseApp.app() == nil {
+            FirebaseApp.configure()
+        }
         return true
     }
 }
@@ -28,6 +31,9 @@ struct UFreeApp: App {
     // 1. Initialize SwiftData container for persistence
     let container: ModelContainer
     
+    // 2. Initialize auth repository
+    let authRepository: AuthRepository
+    
     init() {
         do {
             // Configure container with PersistentDayAvailability model
@@ -39,22 +45,23 @@ struct UFreeApp: App {
         } catch {
             fatalError("Failed to initialize SwiftData container: \(error)")
         }
+        
+        // Initialize auth repository
+        // Use Firebase in production, Mock in tests/previews
+        if FirebaseApp.app() != nil {
+            authRepository = FirebaseAuthRepository()
+        } else {
+            authRepository = MockAuthRepository()
+        }
     }
     
     var body: some Scene {
         WindowGroup {
             NavigationView {
-                // 2. Create the persistent repository (swapped from MockAvailabilityRepository)
-                let repository = SwiftDataAvailabilityRepository(container: container)
-                
-                // 3. Inject Repository into the Use Case
-                let useCase = UpdateMyStatusUseCase(repository: repository)
-                
-                // 4. Inject Use Case and Repository into the ViewModel
-                let viewModel = MyScheduleViewModel(updateUseCase: useCase, repository: repository)
-                
-                // 5. Pass ViewModel to the View
-                MyScheduleView(viewModel: viewModel)
+                RootView(
+                    container: container,
+                    authRepository: authRepository
+                )
             }
         }
     }

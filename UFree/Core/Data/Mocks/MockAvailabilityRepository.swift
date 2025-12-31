@@ -11,7 +11,7 @@ public actor MockAvailabilityRepository: AvailabilityRepository {
     // In-memory storage for our mock data
     private var mySchedule: [DayAvailability]
 
-    public init() {
+    nonisolated public init() {
         // Pre-populate with some data for the next 7 days
         self.mySchedule = (0..<7).map { i in
             DayAvailability(
