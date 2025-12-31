@@ -1,6 +1,6 @@
 # UFree - Weekly Availability Scheduler
 
-**Status:** ✅ Sprint 2.5 Complete | **Version:** 2.5.0 | **Tests:** 69 | **Coverage:** 85%+
+**Status:** ✅ Sprint 2.5 Complete | **Version:** 2.5.0 | **Tests:** 83 | **Coverage:** 85%+
 
 ---
 
@@ -152,19 +152,19 @@ UFree/Features/
 
 ---
 
-## Test Coverage (69 Total)
+## Test Coverage (83 Total)
 
 | Layer | Tests | Sprint |
 |-------|-------|--------|
-| Domain Models | 16 | 1 |
-| Mock Repository (Availability) | 7 | 1 |
+| Domain Models | 18 | 1 |
+| Mock Repository (Availability) | 6 | 1 |
 | Persistence Layer | 20 | 2 |
-| Use Cases | 5 | 1 |
-| Integration | 3 | 1 |
-| User Entity | 6 | 2.5 |
-| Mock Repository (Auth) | 6 | 2.5 |
-| RootViewModel | 6 | 2.5 |
-| **Total** | **69** | — |
+| Use Cases | 4 | 1 |
+| User Entity | 7 | 2.5 |
+| Mock Repository (Auth) | 10 | 2.5 |
+| RootViewModel | 7 | 2.5 |
+| MyScheduleViewModel | 11 | 1-2 |
+| **Total** | **83** | — |
 
 ---
 
@@ -221,6 +221,18 @@ UFree/Features/
 xcodebuild test -scheme UFreeUnitTests \
   -only-testing UFreeTests/MockAuthRepositoryTests
 ```
+
+---
+
+## Recent Changes
+
+**Legacy Code & Test Coverage Cleanup (Today):**
+- Removed MVP architecture patterns (Presenters, Adapters, Protocols)
+- Removed unused template boilerplate (ContentView, UpdateMyStatusUseCaseViewModel, mapper files)
+- Simplified to lean clean architecture 
+- Repository pattern now the sole abstraction for backend integration
+- Added MyScheduleViewModelTests (11 tests) for full coverage
+- Tests: 83 total (all active code paths covered)
 
 ---
 

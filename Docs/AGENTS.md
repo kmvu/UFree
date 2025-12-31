@@ -29,7 +29,7 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 
 **Key Subprojects:**
 - UFree: Main app bundle
-- UFreeTests: Unit tests (69 tests covering auth, domain, data, use cases)
+- UFreeTests: Unit tests (83 tests covering auth, domain, data, use cases, view models)
 - UFreeUITests: UI integration tests
 
 **Persistence:** SwiftData local-only (Sprint 2.5). Firebase auth ready. Firestore integration pending (Sprint 3).

@@ -1,6 +1,6 @@
 # UFree Testing Guide
 
-**Status:** ✅ Production Ready (Sprint 2.5) | **Total Tests:** 69 | **Coverage:** 85%+ | **Quality:** Zero flaky tests, zero memory leaks
+**Status:** ✅ Production Ready (Sprint 2.5) | **Total Tests:** 83 | **Coverage:** 85%+ | **Quality:** Zero flaky tests, zero memory leaks
 
 ---
 
@@ -24,27 +24,27 @@ xcodebuild test -scheme UFreeUITests -project UFree.xcodeproj
 
 ```
 UFreeTests/
-├── Auth/                           ✅ Sprint 2.5 (NEW)
-│   ├── UserTests.swift (6 tests)
-│   └── MockAuthRepositoryTests.swift (6 tests)
+├── Auth/                           ✅ Sprint 2.5 (17 tests)
+│   ├── UserTests.swift (7 tests)
+│   └── MockAuthRepositoryTests.swift (10 tests)
 │
-├── Domain/                         ✅ Sprint 1 (16 tests)
-│   ├── AvailabilityStatusTests.swift
-│   ├── DayAvailabilityTests.swift
-│   └── UserScheduleTests.swift
+├── Domain/                         ✅ Sprint 1 (18 tests)
+│   ├── AvailabilityStatusTests.swift (5 tests)
+│   ├── DayAvailabilityTests.swift (6 tests)
+│   └── UserScheduleTests.swift (7 tests)
 │
-├── Data/                           ✅ Sprint 2 (20 tests)
+├── Data/                           ✅ Sprint 2 (26 tests)
 │   ├── Mocks/
-│   │   └── MockAvailabilityRepositoryTests.swift (7 tests)
+│   │   └── MockAvailabilityRepositoryTests.swift (6 tests)
 │   └── Persistence/
 │       ├── PersistentDayAvailabilityTests.swift (9 tests)
 │       └── SwiftDataAvailabilityRepositoryTests.swift (11 tests)
 │
-└── Features/                       ✅ Sprint 2.5 (6 tests)
-    ├── RootViewModelTests.swift (6 tests)
+└── Features/                       ✅ Sprint 1-2.5 (22 tests)
+    ├── RootViewModelTests.swift (7 tests)
+    ├── MyScheduleViewModelTests.swift (11 tests)
     └── UpdateMyStatusUseCase/
-        ├── UpdateMyStatusUseCaseTests.swift (4 tests)
-        └── UpdateMyStatusUseCaseUIIntegrationTests.swift (1 test)
+        └── UpdateMyStatusUseCaseTests.swift (4 tests)
 ```
 
 ---
@@ -53,15 +53,15 @@ UFreeTests/
 
 | Layer | Tests | Purpose | Sprint |
 |-------|-------|---------|--------|
-| **Auth Domain** | 6 | User entity: Codable, Equatable, Identifiable | 2.5 |
-| **Auth Mock Repo** | 6 | MockAuthRepository: sign in/out, auth state stream | 2.5 |
-| **Root ViewModel** | 6 | Auth state management, navigation logic | 2.5 |
-| **Domain Models** | 16 | Entity behavior, serialization, lookups | 1 |
-| **Mock Repository** | 7 | In-memory storage, async operations | 1 |
+| **User Entity** | 7 | Codable, Equatable, Identifiable | 2.5 |
+| **Auth Mock Repo** | 10 | MockAuthRepository: sign in/out, auth state stream | 2.5 |
+| **Root ViewModel** | 7 | Auth state management, navigation logic | 2.5 |
+| **Domain Models** | 18 | Entity behavior, serialization, lookups | 1 |
+| **Mock Repository** | 6 | In-memory storage, async operations | 1 |
 | **Persistence** | 20 | SwiftData storage, upsert, mapping, durability | 2 |
-| **Use Cases** | 5 | Business logic, validation, errors | 1 |
-| **Integration** | 3 | Cross-layer communication | 1 |
-| **Total** | **69** | **100% critical paths** | — |
+| **Use Cases** | 4 | Business logic, validation, errors | 1 |
+| **MySchedule ViewModel** | 11 | Schedule loading, status toggling, initialization | 1-2 |
+| **Total** | **83** | **100% critical paths** | — |
 
 ---
 
@@ -192,13 +192,15 @@ XCTAssertNotNil(authRepository.currentUser)
 
 | Metric | Status | Target |
 |--------|--------|--------|
-| Total Tests | 69 focused | >15 ✅ |
+| Total Tests | 83 focused | >15 ✅ |
 | Code Quality | 0 warnings | 0 ✅ |
 | Memory Leaks | 0 detected | 0 ✅ |
 | Flaky Tests | 0 | 0 ✅ |
 | Async/Await Correctness | ✅ | 100% ✅ |
 | Auth Layer Coverage (Sprint 2.5) | ✅ 100% | 100% ✅ |
 | Persistence Coverage (Sprint 2) | ✅ 100% | 100% ✅ |
+| ViewModel Coverage | ✅ 100% | 100% ✅ |
+| Legacy Code Cleanup | ✅ Complete | Clean ✅ |
 
 ---
 
