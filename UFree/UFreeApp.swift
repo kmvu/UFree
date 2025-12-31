@@ -6,22 +6,39 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct UFreeApp: App {
-    // 1. Create the concrete Repository
-    let repository = MockAvailabilityRepository()
+    // 1. Initialize SwiftData container for persistence
+    let container: ModelContainer
+    
+    init() {
+        do {
+            // Configure container with PersistentDayAvailability model
+            let configuration = ModelConfiguration(isStoredInMemoryOnly: false)
+            container = try ModelContainer(
+                for: PersistentDayAvailability.self,
+                configurations: configuration
+            )
+        } catch {
+            fatalError("Failed to initialize SwiftData container: \(error)")
+        }
+    }
     
     var body: some Scene {
         WindowGroup {
             NavigationView {
-                // 2. Inject Repository into the Use Case
+                // 2. Create the persistent repository (swapped from MockAvailabilityRepository)
+                let repository = SwiftDataAvailabilityRepository(container: container)
+                
+                // 3. Inject Repository into the Use Case
                 let useCase = UpdateMyStatusUseCase(repository: repository)
                 
-                // 3. Inject Use Case and Repository into the ViewModel
+                // 4. Inject Use Case and Repository into the ViewModel
                 let viewModel = MyScheduleViewModel(updateUseCase: useCase, repository: repository)
                 
-                // 4. Pass ViewModel to the View
+                // 5. Pass ViewModel to the View
                 MyScheduleView(viewModel: viewModel)
             }
         }
