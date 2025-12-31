@@ -30,3 +30,5 @@ DerivedData/
 *.swp
 *.swo
 *~
+GoogleService-Info.plist
+Package.resolved
