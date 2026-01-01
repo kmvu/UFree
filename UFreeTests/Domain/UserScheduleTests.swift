@@ -119,7 +119,7 @@ final class UserScheduleTests: XCTestCase {
         var schedule = UserSchedule(
             id: "user_123",
             name: "John Doe",
-            weeklyStatus: [DayAvailability(date: Date(), status: .unknown)]
+            weeklyStatus: [DayAvailability(date: Date(), status: .busy)]
         )
         
         let newStatus = DayAvailability(date: Date(), status: .free)

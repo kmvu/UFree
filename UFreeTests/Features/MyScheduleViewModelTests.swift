@@ -28,10 +28,10 @@ final class MyScheduleViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.weeklySchedule.count, 7)
     }
     
-    func test_init_setsAllDaysToUnknownStatus() {
-        let unknownDays = viewModel.weeklySchedule.filter { $0.status == .unknown }
+    func test_init_setsAllDaysToBusyStatus() {
+        let busyDays = viewModel.weeklySchedule.filter { $0.status == .busy }
         
-        XCTAssertEqual(unknownDays.count, 7)
+        XCTAssertEqual(busyDays.count, 7)
     }
     
     func test_init_isLoadingIsFalse() {
@@ -79,7 +79,7 @@ final class MyScheduleViewModelTests: XCTestCase {
     
     // MARK: - Toggle Status
     
-    func test_toggleStatus_cyclesFromUnknownToFree() {
+    func test_toggleStatus_cyclesFromBusyToFree() {
         let originalDay = viewModel.weeklySchedule[0]
         
         viewModel.toggleStatus(for: originalDay)
@@ -87,36 +87,36 @@ final class MyScheduleViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.weeklySchedule[0].status, .free)
     }
     
-    func test_toggleStatus_cyclesFromFreeTobusy() {
+    func test_toggleStatus_cyclesFromFreeToMorningOnly() {
         let day = viewModel.weeklySchedule[0]
         viewModel.toggleStatus(for: day)
         
         // Now it's free, toggle again
         viewModel.toggleStatus(for: viewModel.weeklySchedule[0])
         
-        XCTAssertEqual(viewModel.weeklySchedule[0].status, .busy)
+        XCTAssertEqual(viewModel.weeklySchedule[0].status, .morningOnly)
     }
     
-    func test_toggleStatus_cyclesFromBusyToEveningOnly() {
+    func test_toggleStatus_cyclesFromMorningOnlyToAfternoonOnly() {
         let day = viewModel.weeklySchedule[0]
         viewModel.toggleStatus(for: day)
         viewModel.toggleStatus(for: viewModel.weeklySchedule[0])
         
-        // Now it's busy, toggle again
+        // Now it's morningOnly, toggle again
+        viewModel.toggleStatus(for: viewModel.weeklySchedule[0])
+        
+        XCTAssertEqual(viewModel.weeklySchedule[0].status, .afternoonOnly)
+    }
+    
+    func test_toggleStatus_cyclesFromAfternoonOnlyToEveningOnly() {
+        let day = viewModel.weeklySchedule[0]
+        viewModel.toggleStatus(for: day)
+        viewModel.toggleStatus(for: viewModel.weeklySchedule[0])
+        viewModel.toggleStatus(for: viewModel.weeklySchedule[0])
+        
+        // Now it's afternoonOnly, toggle again
         viewModel.toggleStatus(for: viewModel.weeklySchedule[0])
         
         XCTAssertEqual(viewModel.weeklySchedule[0].status, .eveningOnly)
-    }
-    
-    func test_toggleStatus_cyclesFromEveningOnlyBackToFree() {
-        let day = viewModel.weeklySchedule[0]
-        viewModel.toggleStatus(for: day)
-        viewModel.toggleStatus(for: viewModel.weeklySchedule[0])
-        viewModel.toggleStatus(for: viewModel.weeklySchedule[0])
-        
-        // Now it's eveningOnly, toggle again
-        viewModel.toggleStatus(for: viewModel.weeklySchedule[0])
-        
-        XCTAssertEqual(viewModel.weeklySchedule[0].status, .free)
     }
 }

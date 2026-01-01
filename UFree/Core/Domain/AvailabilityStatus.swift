@@ -18,9 +18,9 @@ public enum AvailabilityStatus: Int, Codable, CaseIterable {
         switch self {
         case .busy: return "Busy"
         case .free: return "Free"
-        case .morningOnly: return "Morning Only"
-        case .afternoonOnly: return "Afternoon Only"
-        case .eveningOnly: return "Evening Only"
+        case .morningOnly: return "Morning"
+        case .afternoonOnly: return "Afternoon"
+        case .eveningOnly: return "Evening"
         }
     }
 }

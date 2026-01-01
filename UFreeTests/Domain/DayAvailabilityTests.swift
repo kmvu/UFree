@@ -13,12 +13,12 @@ final class DayAvailabilityTests: XCTestCase {
     
     // MARK: - Initialization Tests
     
-    func test_init_withDefaultValues_createsDayWithUnknownStatus() {
+    func test_init_withDefaultValues_createsDayWithBusyStatus() {
         let date = Date()
         let day = DayAvailability(date: date)
         
         XCTAssertEqual(day.date.timeIntervalSince1970, date.timeIntervalSince1970, accuracy: 0.001)
-        XCTAssertEqual(day.status, .unknown)
+        XCTAssertEqual(day.status, .busy)
         XCTAssertNil(day.note)
         XCTAssertNotNil(day.id)
     }
@@ -48,7 +48,7 @@ final class DayAvailabilityTests: XCTestCase {
     // MARK: - Mutability Tests
     
     func test_properties_canBeMutated() {
-        var day = DayAvailability(date: Date(), status: .unknown)
+        var day = DayAvailability(date: Date(), status: .busy)
         
         day.status = .free
         XCTAssertEqual(day.status, .free)

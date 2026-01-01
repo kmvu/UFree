@@ -37,7 +37,7 @@ final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
         let schedule = try await sut.getMySchedule()
         assertScheduleDefaults(schedule)
         XCTAssertEqual(schedule.weeklyStatus.count, 7)
-        schedule.weeklyStatus.forEach { XCTAssertEqual($0.status, .unknown) }
+        schedule.weeklyStatus.forEach { XCTAssertEqual($0.status, .busy) }
     }
     
     @MainActor
@@ -90,9 +90,9 @@ final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
     @MainActor
     func test_updateMySchedule_multipleUpdates_persistsLatestValue() async throws {
         let testDate = makeDate(daysOffset: 3)
-        var testDay = DayAvailability(date: testDate, status: .unknown)
+        var testDay = DayAvailability(date: testDate, status: .busy)
         
-        for status in [AvailabilityStatus.free, .busy, .eveningOnly, .free] {
+        for status in [AvailabilityStatus.free, .busy, .morningOnly, .free] {
             testDay.status = status
             try await sut.updateMySchedule(for: testDay)
         }

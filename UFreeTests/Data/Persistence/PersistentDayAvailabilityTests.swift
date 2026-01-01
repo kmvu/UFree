@@ -44,14 +44,14 @@ final class PersistentDayAvailabilityTests: XCTestCase {
         assertDomainDay(domain, matchesId: id, date: date, status: .free, note: "Dinner")
     }
 
-    func test_toDomain_withUnknownStatus_convertsCorrectly() {
-        let persistent = makePersistentDay(status: .unknown)
-        XCTAssertEqual(persistent.toDomain().status, .unknown)
+    func test_toDomain_withBusyStatus_convertsCorrectly() {
+        let persistent = makePersistentDay(status: .busy)
+        XCTAssertEqual(persistent.toDomain().status, .busy)
     }
 
-    func test_toDomain_withInvalidStatusValue_defaultsToUnknown() {
+    func test_toDomain_withInvalidStatusValue_defaultsToBusy() {
         let persistent = PersistentDayAvailability(id: UUID(), date: Date(), statusValue: 999)
-        XCTAssertEqual(persistent.toDomain().status, .unknown)
+        XCTAssertEqual(persistent.toDomain().status, .busy)
     }
 
     // MARK: - Persistence Conversion Tests
@@ -85,7 +85,7 @@ final class PersistentDayAvailabilityTests: XCTestCase {
     }
 
     func test_roundTripConversion_allStatusValues() {
-        for status in [AvailabilityStatus.busy, .free, .eveningOnly, .unknown] {
+        for status in [AvailabilityStatus.busy, .free, .morningOnly, .afternoonOnly, .eveningOnly] {
             let original = makeDomainDay(status: status)
             let restored = original.toPersistent().toDomain()
             XCTAssertEqual(restored.status, status, "Status \(status) not preserved")
@@ -97,7 +97,7 @@ final class PersistentDayAvailabilityTests: XCTestCase {
     private func makePersistentDay(
         id: UUID = UUID(),
         date: Date = Date(),
-        status: AvailabilityStatus = .unknown,
+        status: AvailabilityStatus = .busy,
         statusValue: Int? = nil,
         note: String? = nil
     ) -> PersistentDayAvailability {
@@ -112,7 +112,7 @@ final class PersistentDayAvailabilityTests: XCTestCase {
     private func makeDomainDay(
         id: UUID = UUID(),
         date: Date = Date(),
-        status: AvailabilityStatus = .unknown,
+        status: AvailabilityStatus = .busy,
         note: String? = nil
     ) -> DayAvailability {
         DayAvailability(id: id, date: date, status: status, note: note)
