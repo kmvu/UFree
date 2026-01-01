@@ -1,16 +1,33 @@
 # UFree Agent Instructions
 
+## Testing Protocol
+
+**IMPORTANT: Only run tests when explicitly requested or when code logic changes. Do NOT run tests for documentation-only updates.**
+- For Docs, README, or comments changes: Skip testing unless user asks
+- For code/logic changes: Run tests only after checking with user first
+- Always ask before test execution: "Should I run tests to validate?"
+
 ## Build & Test Commands
 
-**Run all unit tests (fast feedback):**
+**Run all unit tests (fast feedback) — RECOMMENDED:**
 ```bash
-./run_unit_tests.sh          # ~5-6 seconds, 69 tests
-xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj
+xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | \
+  grep -E '(PASS|FAIL|Test Session|passed|failed|warning)'
+# ~30 seconds total, includes full build + 90 tests
+```
+
+**Alternative (cleaner output):**
+```bash
+xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+# Full output; scroll to end for test summary
 ```
 
 **Run single test:**
 ```bash
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   -only-testing UFreeTests/MockAuthRepositoryTests
 ```
 
@@ -18,6 +35,24 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 ```bash
 ./run_all_tests.sh           # ~10 seconds
 ```
+
+## Build Troubleshooting
+
+**Issue: `xcodebuild build -scheme UFree` fails with provisioning profile error**
+- Do NOT use `-scheme UFree` for validation; use `-scheme UFreeUnitTests` instead
+- Avoid `xcodebuild build` entirely; go straight to `xcodebuild test` with a simulator destination
+- Always specify `-destination 'platform=iOS Simulator,name=iPhone 17 Pro'` to avoid device-selection errors
+
+**Issue: Tests fail because no simulator specified**
+- Error: "Tests must be run on a concrete device"
+- Solution: Always include `-destination 'platform=iOS Simulator,name=iPhone 17 Pro'`
+- Available simulators: iPhone 17, iPhone 17 Pro, iPhone 17 Pro Max, iPhone Air, iPad Pro (M4/M5), iPad Air (M3), iPad mini (A17 Pro)
+
+**Fastest validation workflow:**
+1. Make code changes
+2. Run test command above with grep filter
+3. Look for "passed" in output; if all tests passed, code is good
+4. Scroll full output for details if needed
 
 ## Architecture & Structure
 
@@ -29,7 +64,7 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 
 **Key Subprojects:**
 - UFree: Main app bundle
-- UFreeTests: Unit tests (83 tests covering auth, domain, data, use cases, view models)
+- UFreeTests: Unit tests (90 tests covering auth, domain, data, use cases, view models)
 - UFreeUITests: UI integration tests
 
 **Persistence:** SwiftData local-only (Sprint 2.5). Firebase auth ready. Firestore integration pending (Sprint 3).
@@ -91,6 +126,31 @@ XCTAssertEqual(userId, "123")
 
 **Imports:** Group into Foundation, SwiftUI, SwiftData, FirebaseAuth, FirebaseFirestore (when needed), then local modules. Follow clean architecture boundaries.
 
+## Navigation & UI Patterns
+
+**Navigation Bar (Standard Apple-Compliant):**
+- Use `.navigationTitle("Title")` + `.navigationBarTitleDisplayMode(.large)`
+- Add buttons via `.toolbar(placement: .navigationBarTrailing)` for right-side buttons
+- Do NOT use custom header sections; let SwiftUI handle nav bar rendering
+- Example:
+```swift
+NavigationStack {
+    VStack { /* content */ }
+        .navigationTitle("UFree")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Sign Out") { /* action */ }
+            }
+        }
+}
+```
+
+**Dependency Passing:**
+- Pass `rootViewModel` down through container views when auth actions (sign out) needed
+- In `ScheduleContainer`, receive both container and rootViewModel, pass to MyScheduleView
+- MyScheduleView takes `viewModel` (for schedule) and `rootViewModel` (for auth actions)
+
 ## Sprint 2.5 Context
 
 **What's New:**
@@ -99,6 +159,7 @@ XCTAssertEqual(userId, "123")
 - RootViewModel managing auth state via AsyncStream
 - RootView routing between LoginView (not authenticated) and MainAppView (authenticated)
 - MockAuthRepository for testing (actor-based, concurrent access safe)
+- Standard navigation bar with Sign Out button in MyScheduleView
 
 **For Next Sprint (3):**
 - Implement FirebaseAvailabilityRepository methods (currently skeleton throwing "Not implemented yet")

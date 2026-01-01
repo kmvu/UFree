@@ -48,7 +48,7 @@ struct MainAppView: View {
         ZStack {
             VStack(spacing: 0) {
                 // Main schedule view
-                ScheduleContainer(container: container)
+                ScheduleContainer(container: container, rootViewModel: rootViewModel)
             }
         }
     }
@@ -58,6 +58,7 @@ struct MainAppView: View {
 
 struct ScheduleContainer: View {
     let container: ModelContainer
+    @ObservedObject var rootViewModel: RootViewModel
     
     var body: some View {
         // Create the persistent repository
@@ -70,7 +71,7 @@ struct ScheduleContainer: View {
         let viewModel = MyScheduleViewModel(updateUseCase: useCase, repository: repository)
         
         // Pass ViewModel to the View
-        return MyScheduleView(viewModel: viewModel)
+        return MyScheduleView(viewModel: viewModel, rootViewModel: rootViewModel)
     }
 }
 

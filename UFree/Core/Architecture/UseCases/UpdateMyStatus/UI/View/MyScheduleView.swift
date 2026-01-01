@@ -9,18 +9,17 @@ import SwiftUI
 
 public struct MyScheduleView: View {
     @StateObject private var viewModel: MyScheduleViewModel
+    @ObservedObject var rootViewModel: RootViewModel
     @State private var selectedDay: Date?
 
-    public init(viewModel: MyScheduleViewModel) {
+    public init(viewModel: MyScheduleViewModel, rootViewModel: RootViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.rootViewModel = rootViewModel
     }
 
     public var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Header
-                headerSection
-
                 // Main Content
                 if viewModel.weeklySchedule.isEmpty {
                     emptyStateSection
@@ -37,11 +36,27 @@ public struct MyScheduleView: View {
                             whosFreOnFilterSection
                         }
                         .padding()
-                        .padding(.top, 12)
                     }
                 }
             }
-            .navigationTitle("UFree")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItemGroup(placement: .principal) {
+                    NavigationTitleView()
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button(role: .destructive, action: {
+                            rootViewModel.signOut()
+                        }) {
+                            Label("Sign Out", systemImage: "arrow.left.square")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.body)
+                    }
+                }
+            }
             .task {
                 await viewModel.loadSchedule()
             }
@@ -55,30 +70,6 @@ public struct MyScheduleView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Sections
-
-    private var headerSection: some View {
-        HStack {
-            Text("UFree")
-                .font(.title2)
-                .fontWeight(.bold)
-
-            Spacer()
-
-            Button(action: {
-                Task {
-                    await viewModel.loadSchedule()
-                }
-            }) {
-                Image(systemName: "arrow.clockwise")
-                    .font(.body)
-                    .foregroundColor(.primary)
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
     }
 
     private var statusBannerSection: some View {
@@ -228,6 +219,21 @@ public struct MyScheduleView: View {
     }
 }
 
+// MARK: - Navigation Title View
+
+struct NavigationTitleView: View {
+    var body: some View {
+        VStack(alignment: .center, spacing: 2) {
+            Text("UFree")
+                .font(.title)
+                .fontWeight(.bold)
+            Text("See when friends are available")
+                .font(.subheadline)
+                .foregroundColor(.gray)
+        }
+    }
+}
+
 // MARK: - DayStatusCard Component
 
 struct DayStatusCard: View {
@@ -298,6 +304,7 @@ struct DayStatusCard: View {
         viewModel: MyScheduleViewModel(
             updateUseCase: UpdateMyStatusUseCase(repository: MockAvailabilityRepository()),
             repository: MockAvailabilityRepository()
-        )
+        ),
+        rootViewModel: RootViewModel(authRepository: MockAuthRepository())
     )
 }

@@ -1,12 +1,12 @@
 # UFree - Weekly Availability Scheduler
 
-**Status:** ✅ Sprint 2.5 Complete | **Version:** 2.5.0 | **Tests:** 83 | **Coverage:** 85%+
+**Status:** ✅ Sprint 2.5 Complete | **Version:** 2.5.1 | **Tests:** 90 | **Coverage:** 85%+
 
 ---
 
 ## Quick Status
 
-**Production Ready:** Local persistence complete. Firebase auth infrastructure in place. Schedule sync ready for Sprint 3.
+**Production Ready:** Local persistence complete. Firebase auth infrastructure in place. Standard Apple-compliant navigation. Schedule sync ready for Sprint 3.
 
 | Component | Status | Notes |
 |-----------|--------|-------|
@@ -14,8 +14,9 @@
 | Authentication | ✅ Complete | User entity, AuthRepository protocol, Firebase auth wrapper |
 | SwiftData Persistence | ✅ Complete | Local storage with upsert pattern, date normalization |
 | Use Cases | ✅ Complete | UpdateMyStatusUseCase with validation |
-| MyScheduleViewModel & View | ✅ Complete | SwiftUI list, color-coded status buttons |
+| MyScheduleViewModel & View | ✅ Complete | SwiftUI schedule, color-coded status buttons, standard nav bar |
 | Login/Root Navigation | ✅ Complete | RootView routes between LoginView and MainAppView |
+| Navigation Bar | ✅ Complete | Standard large title bar, Sign Out button on right |
 | **Remote API Layer** | ⏳ Pending | Sprint 3: Firestore read/write (skeleton in place) |
 | **Composite Repository** | ⏳ Pending | Sprint 3: Local + remote with fallback |
 | **Real-time Sync** | ⏳ Pending | Sprint 3+: WebSocket/Firestore integration |
@@ -28,7 +29,8 @@
 ┌─────────────────────────────────────────────────────────┐
 │                    UI Layer                             │
 │  RootView (auth state) → LoginView OR MainAppView       │
-│  MainAppView → MyScheduleView                           │
+│  MainAppView → ScheduleContainer → MyScheduleView       │
+│  MyScheduleView: Standard nav bar + Sign Out button     │
 └─────────────────────────────────────────────────────────┘
                            ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -54,7 +56,7 @@
 
 ## Core Models
 
-### User (Sprint 2.5 - NEW)
+### User (Sprint 2.5)
 ```swift
 struct User: Identifiable, Equatable, Codable {
     let id: String
@@ -100,14 +102,16 @@ struct UserSchedule: Identifiable {
 - Date normalization (midnight constraint)
 - 20 new tests
 
-### Sprint 2.5: Infrastructure & Identity ✅ (NEW)
+### Sprint 2.5: Infrastructure & UX Refinement ✅
 - User domain entity + AuthRepository protocol
 - FirebaseAuthRepository (Firebase Auth wrapper, @MainActor)
 - MockAuthRepository (testing, actor-based)
 - RootViewModel + RootView for auth navigation
 - LoginView (anonymous sign-in)
+- **Standard Apple-compliant navigation bar** (large title, Sign Out button)
 - FirebaseAvailabilityRepository skeleton
-- 18 new tests
+- 7 new Color+Hex tests
+- 39 total tests (90 across all suites)
 
 ### Sprint 3: Remote Sync (Upcoming)
 - Implement FirebaseAvailabilityRepository (Firestore)
@@ -141,18 +145,21 @@ UFree/Core/Data/
     └── PersistentDayAvailability.swift  ✅ Sprint 2
 
 UFree/Features/
-├── Root/                          ✅ Sprint 2.5 (NEW)
+├── Root/                          ✅ Sprint 2.5
 │   ├── RootViewModel.swift
 │   ├── RootView.swift
 │   └── LoginView.swift
-└── MySchedule/                    ✅ Sprint 1-2
+└── MySchedule/                    ✅ Sprint 1-2.5
     ├── MyScheduleViewModel.swift
     └── MyScheduleView.swift
+
+UFree/Core/Extensions/
+└── Color+Hex.swift                ✅ Sprint 2.5
 ```
 
 ---
 
-## Test Coverage (83 Total)
+## Test Coverage (90 Total)
 
 | Layer | Tests | Sprint |
 |-------|-------|--------|
@@ -164,17 +171,19 @@ UFree/Features/
 | Mock Repository (Auth) | 10 | 2.5 |
 | RootViewModel | 7 | 2.5 |
 | MyScheduleViewModel | 11 | 1-2 |
-| **Total** | **83** | — |
+| Color+Hex | 7 | 2.5 |
+| **Total** | **90** | — |
 
 ---
 
 ## Key Features Working End-to-End
 
 1. **Authentication Flow:** App launch → Firebase init → LoginView → anonymous sign-in → MainAppView
-2. **Schedule Management:** View 7 days, update status per day (cycles through 4 states)
+2. **Schedule Management:** View 7 days, update status per day (cycles through 5 states: busy → free → morningOnly → afternoonOnly → eveningOnly → busy)
 3. **Persistence:** Schedule saved locally via SwiftData (survives app restart)
 4. **Auth State:** Real-time UI updates via AsyncStream when user logs in/out
-5. **Error Handling:** Past date rejection, network errors, auth failures with rollback
+5. **Navigation:** Standard Apple-compliant large title nav bar with Sign Out button
+6. **Error Handling:** Past date rejection, network errors, auth failures with rollback
 
 ---
 
@@ -202,38 +211,100 @@ UFree/Features/
 - ✅ AsyncStream for reactive auth state (no Combine)
 - ✅ Conditional Firebase init (uses MockAuthRepository in tests)
 - ✅ Async/await throughout with proper actor isolation patterns
+- ✅ Standard Apple-compliant navigation (no custom styling)
 - ✅ Zero compiler warnings
 - ✅ Zero memory leaks
 - ✅ Zero flaky tests
 
 ---
 
-## Running the App
+## Running Tests
 
+**Quick validation (recommended):**
 ```bash
-# Run unit tests (includes auth layer tests)
-./run_unit_tests.sh          # ~5-6 seconds
+xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | \
+  grep -E '(PASS|FAIL|Test Session|passed|failed|warning)'
+```
 
-# Run all tests with UI
-./run_all_tests.sh           # ~10 seconds
+**Full test output:**
+```bash
+xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+```
 
-# Run specific test suite
-xcodebuild test -scheme UFreeUnitTests \
+**Run specific test suite:**
+```bash
+xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   -only-testing UFreeTests/MockAuthRepositoryTests
 ```
+
+See `AGENTS.md` for troubleshooting and build command details.
+
+---
+
+## UI Terminology & Conventions (Sprint 2.5+)
+
+### App-Level Copy
+- **Main Title:** "UFree"
+- **Subtitle:** "See when friends are available" (displayed below title in navigation bar)
+- **Status Banner Headline:** "Check My Schedule"
+- **Status Banner Subheadline:** "Tap to change your live status"
+
+### Navigation Bar Style
+- Uses `.navigationTitle("UFree")` for main title string
+- Subtitle added via `.toolbar` with `.principal` placement for Apple-compliant large title effect
+- Subtitle uses `.subheadline` font with `.gray` foreground color
+- Sign Out button: trailing placement via `.toolbar`, dropdown menu (ellipsis icon), destructive role
+
+### Schedule Sections
+- **My Week:** Horizontal carousel of day status cards (5 colors: green/busy/yellow/pink/orange)
+- **Who's free on...:** Day filter buttons with purple selection highlight
+
+### Empty State
+- **Heading:** "No Friends Yet"
+- **Subheading:** "Invite friends to see their availability"
+- **CTA Button:** "Find Friends" (purple background)
+
+### Availability Status & Colors
+| Status | Color | Icon |
+|--------|-------|------|
+| Free | Green | `checkmark.circle.fill` |
+| Busy | Gray | `xmark.circle.fill` |
+| Morning Only | Yellow | `sunrise.fill` |
+| Afternoon Only | Pink | `sun.max.fill` |
+| Evening Only | Orange | `moon.stars.fill` |
+
+### Design System
+- **Primary Color:** Purple gradient (`#8180f9` → `#6e6df0`)
+- **Large Spacing:** 24pt (between sections)
+- **Medium Spacing:** 12pt (within sections)
+- **Small Spacing:** 8pt (tight grouping)
+- **Card Corner Radius:** 20pt
+- **Button Corner Radius:** 8pt
+- **Status Banner Corner Radius:** 24pt
 
 ---
 
 ## Recent Changes
 
-**Legacy Code & Test Coverage Cleanup (Today):**
+**Navigation Bar & UI Refinement (Sprint 2.5 Final):**
+- Removed custom header section from MyScheduleView
+- Implemented standard Apple-compliant large title navigation bar with subtitle
+- Added subtitle "See when friends are available" below main title "UFree"
+- Added Sign Out button via toolbar (right side only, dropdown menu with destructive styling)
+- Documented UI terminology and conventions for consistent styling across sprints
+- Passed rootViewModel through dependency hierarchy for auth actions
+- All 90 tests passing, zero warnings
+
+**Previous: Legacy Code & Test Coverage Cleanup:**
 - Removed MVP architecture patterns (Presenters, Adapters, Protocols)
 - Removed unused template boilerplate (ContentView, UpdateMyStatusUseCaseViewModel, mapper files)
-- Simplified to lean clean architecture 
+- Simplified to lean clean architecture
 - Repository pattern now the sole abstraction for backend integration
-- Added MyScheduleViewModelTests (11 tests) for full coverage
-- Tests: 83 total (all active code paths covered)
+- Added Color+Hex extension tests (7 tests)
 
 ---
 
-**Last Updated:** December 31, 2025 | **Status:** Production Ready ✅
+**Last Updated:** January 1, 2026 | **Status:** Production Ready ✅
