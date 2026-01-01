@@ -23,6 +23,41 @@
 
 ---
 
+## Architecture Evolution (Sprint 1 → 3)
+
+### Sprint 1-2: Local-Only Foundation
+```
+UI → ViewModel → Repository → SwiftData
+```
+- Single source of truth: SwiftData
+- Fully functional offline
+- No network layer
+
+### Sprint 2.5: Auth Infrastructure
+```
+UI → ViewModel → FirebaseAuthRepository → Firebase Auth
+     ↓ (also)
+     RootViewModel (auth state management)
+```
+- Added anonymous authentication
+- Firebase Auth initialization
+- AsyncStream for reactive auth state
+
+### Sprint 3: Cloud-Synced (Offline-First)
+```
+UI → ViewModel → CompositeRepository → SwiftData (Local) [instant]
+                       ↓ (background)
+                       FirebaseAvailabilityRepository → Firestore
+                              ↓ (on success)
+                       Syncs back to SwiftData
+```
+- **Local-first:** UI always gets instant data
+- **Background sync:** Remote fetch doesn't block
+- **Resilient:** Works offline, syncs when connected
+- **Clean:** No Firebase in Domain layer
+
+---
+
 ## Architecture Overview
 
 ```
@@ -136,12 +171,15 @@ UFree/Core/Domain/
 UFree/Core/Data/
 ├── Auth/                          ✅ Sprint 2.5
 │   └── FirebaseAuthRepository.swift
+├── Network/                       ⏳ Sprint 3
+│   └── FirestoreDayDTO.swift      (DTO for Firestore ↔ Domain mapping)
 ├── Mocks/
 │   ├── MockAuthRepository.swift   ✅ Sprint 2.5
 │   └── MockAvailabilityRepository.swift  ✅ Sprint 1
 ├── Repositories/
 │   ├── SwiftDataAvailabilityRepository.swift  ✅ Sprint 2
-│   └── FirebaseAvailabilityRepository.swift   ✅ Sprint 2.5 (skeleton)
+│   ├── FirebaseAvailabilityRepository.swift   ⏳ Sprint 3 (implement)
+│   └── CompositeAvailabilityRepository.swift  ⏳ Sprint 3 (new)
 └── Persistence/
     └── PersistentDayAvailability.swift  ✅ Sprint 2
 
@@ -199,18 +237,92 @@ UFree/Core/Extensions/
 
 ---
 
-## What's Next (Sprint 3)
+## Sprint 3: Cloud Sync & Resilience (Upcoming)
 
-**Firestore Integration:**
-- Implement FirebaseAvailabilityRepository methods
-- Define Firestore document schema
-- Set up CompositeRepository pattern
-- Test with Firebase emulator
+**Architecture: Offline-First Pattern**
 
-**User Experience:**
-- Sync schedules to cloud
-- Enable friend schedule viewing
-- Real-time schedule updates
+Instead of replacing SwiftData with Firestore, we chain them for resilience:
+1. UI requests data
+2. Composite Repository returns Local Data (SwiftData) immediately (instant, offline-capable)
+3. Composite Repository triggers Remote Fetch (Firebase) in background
+4. On success: Remote data syncs into Local Data
+5. UI updates automatically (observes Local Data)
+
+**Benefits:**
+- Never shows loading spinner for user's own schedule
+- Works offline (local data always available)
+- Syncs in background (non-blocking)
+- Clean Architecture preserved (no Firebase in Domain layer)
+
+**Implementation Roadmap:**
+
+Step 3.1: Create FirestoreDayDTO.swift
+- DTO for mapping Firestore documents to DayAvailability
+- Encoder: DayAvailability → Firestore JSON
+- Decoder: Firestore JSON → DayAvailability
+
+Step 3.2: Implement FirebaseAvailabilityRepository.swift
+- updateMySchedule(day:) - Write to Firestore at users/{uid}/availability/{YYYY-MM-DD}
+- getMySchedule() - Query Firebase for current week availability
+- Handle date normalization (YYYY-MM-DD format)
+- Map Firebase responses via FirestoreDayDTO
+
+Step 3.3: Create CompositeAvailabilityRepository.swift
+- Orchestrate Local + Remote sync
+- updateMySchedule: Optimistic local update + background remote sync
+- getMySchedule: Return local immediately + background refresh
+- Error resilience (remote failures don't block UI)
+
+**Firestore Schema (NoSQL Document Structure):**
+
+```
+Collection: users
+├── Document: {auth_uid}
+│   ├── displayName: String
+│   ├── lastUpdated: Timestamp
+│   └── Subcollection: availability
+│       ├── Document: 2026-01-01
+│       │   ├── status: Int (0=Busy, 1=Free, 2=MorningOnly, 3=AfternoonOnly, 4=EveningOnly)
+│       │   ├── note: String? (optional)
+│       │   └── updatedAt: Timestamp
+│       ├── Document: 2026-01-02
+│       └── ... (one doc per day)
+```
+
+**Security Rules (Firebase Console):**
+
+Copy/paste into Firestore Security Rules tab:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // User Profiles
+    match /users/{userId} {
+      allow read: if request.auth != null; // Friends can read
+      allow write: if isOwner(userId);     // Only you can write
+      
+      // Availability Subcollection
+      match /availability/{dayId} {
+        allow read: if request.auth != null;
+        allow write: if isOwner(userId);
+      }
+    }
+  }
+}
+```
+
+**Why This Schema?**
+- Scalable: Only fetch days you need (current week), not entire history
+- Queryable: Later enable "Collection Group Query" to find all users free on specific date
+- Practical: YYYY-MM-DD document ID matches DayAvailability date normalization
+- Subcollections: Avoid fetching user profile every time you query availability
 
 ---
 

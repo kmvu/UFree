@@ -229,8 +229,65 @@ NavigationStack {
 - All components have previews for design iteration without launching app
 - Single responsibility per file: easier to test, maintain, and extend
 
-**For Next Sprint (3):**
-- Implement FirebaseAvailabilityRepository methods (currently skeleton throwing "Not implemented yet")
-- Build CompositeAvailabilityRepository pattern (local + remote fallback)
-- Define Firestore document schema for UserSchedule
-- Add network tests with Firebase emulator
+## Sprint 3 Context: Cloud Sync & Resilience
+
+**Architecture: Offline-First with Composite Repository**
+
+The app will use a resilience chain instead of replacing local storage:
+1. UI requests data → Composite Repository
+2. Composite returns Local Data (SwiftData) immediately
+3. Composite triggers Remote Fetch (Firebase) in background
+4. On success: Remote data syncs into Local Storage
+5. UI observes Local Data and auto-updates
+
+Benefits:
+- Never blocks UI with network calls
+- Works completely offline (local data always available)
+- Background syncing doesn't interrupt user experience
+- Clean Architecture preserved (Firebase never in Domain layer)
+
+**Data Layer Structure (3 Steps):**
+
+Step 3.1: FirestoreDayDTO.swift
+- Maps Firestore documents ↔ Domain DayAvailability
+- No Firebase imports in Domain layer
+- Encoder: DayAvailability → Firestore JSON
+- Decoder: Firestore JSON → DayAvailability
+- Handles date normalization (YYYY-MM-DD format)
+
+Step 3.2: FirebaseAvailabilityRepository.swift (Implement skeleton)
+- updateMySchedule(day:) - Write to Firestore at users/{uid}/availability/{YYYY-MM-DD}
+- getMySchedule() - Query Firebase for current week
+- Uses FirestoreDayDTO for mapping
+- Handles authentication and error cases
+
+Step 3.3: CompositeAvailabilityRepository.swift (New orchestrator)
+- Implements AvailabilityRepository protocol
+- Delegates to local for immediate response
+- Triggers remote sync in background Task
+- updateMySchedule: Optimistic local update + async remote write
+- getMySchedule: Return local + background refresh
+- Error resilience: Network failures don't block UI
+
+**Firestore Schema (NoSQL):**
+
+```
+users/{auth_uid}
+  ├── displayName: String
+  ├── lastUpdated: Timestamp
+  └── availability/{YYYY-MM-DD}
+      ├── status: Int (0=Busy, 1=Free, 2=MorningOnly, 3=AfternoonOnly, 4=EveningOnly)
+      ├── note: String?
+      └── updatedAt: Timestamp
+```
+
+**Security Rules:** Copy/paste into Firebase Console
+- Only owner can write their own data
+- All authenticated users can read (for friend features later)
+- Enforced at Firestore level (no backend needed)
+
+**Testing Strategy for Sprint 3:**
+- Unit tests: FirestoreDayDTO mapping with mock Firestore data
+- Integration tests: FirebaseAvailabilityRepository with Firebase emulator
+- Composite tests: Verify local-first, background sync behavior
+- Maintain 85%+ coverage on active code

@@ -385,7 +385,50 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 
 ## Sprint 3 Testing Roadmap
 
-### Priority 1: Clean Up Legacy Code
+**Focus:** Validate Offline-First + Composite Repository pattern while maintaining 85%+ coverage
+
+### Priority 1: DTO Mapping Tests (Step 3.1)
+```swift
+// UFreeTests/Data/Network/FirestoreDayDTOTests.swift
+// Tests: Firestore dict → DayAvailability, DayAvailability → Firestore dict
+// Coverage: Date normalization, status enum mapping, optional note handling
+// No Firebase dependency (pure data mapping)
+```
+
+**Test Scenarios:**
+- Encode DayAvailability to Firestore JSON (checks status rawValue, serverTimestamp())
+- Decode Firestore dict to DayAvailability (checks date parsing YYYY-MM-DD)
+- Handle edge cases (missing note, invalid status)
+
+### Priority 2: Firebase Repository Tests (Step 3.2)
+```swift
+// UFreeTests/Data/Repositories/FirebaseAvailabilityRepositoryTests.swift
+// Requires: Firebase emulator running on localhost:8080
+// Tests: getMySchedule(), updateMySchedule(), error handling
+```
+
+**Test Scenarios:**
+- updateMySchedule: Write to path users/{uid}/availability/{YYYY-MM-DD}
+- getMySchedule: Query users/{uid}/availability for week range
+- Handle auth errors (user not signed in)
+- Handle network errors (emulator unavailable)
+- Verify FirestoreDayDTO mapping used correctly
+
+### Priority 3: Composite Repository Tests (Step 3.3)
+```swift
+// UFreeTests/Data/Repositories/CompositeAvailabilityRepositoryTests.swift
+// Tests: Local-first behavior, background sync orchestration
+// No Firebase emulator needed (uses Mock + SwiftData)
+```
+
+**Test Scenarios:**
+- updateMySchedule: Local update happens immediately, remote happens in background
+- getMySchedule: Local data returned instantly, remote fetch queued
+- Verify background Tasks don't block main thread
+- Error resilience: Remote failure doesn't affect local data
+- Verify sync updates local store when remote succeeds
+
+### Priority 4: Clean Up Legacy Code
 Remove unused files to improve coverage metrics:
 - `Core/Architecture/Adapters/*`
 - `Core/Architecture/Presenters/*`
@@ -395,30 +438,20 @@ Remove unused files to improve coverage metrics:
 - `ContentView.swift`
 - `HTTPClient.swift`
 
-**Impact:** Reduces coverage denominator, makes 85%+ baseline clearer, simplifies codebase, reduces build time
+**Impact:** Reduces coverage denominator, makes 85%+ baseline clearer
 
-### Priority 2: Firebase Integration Tests
-Test FirebaseAuthRepository with Firebase emulator:
+### Priority 5: Firebase Auth Integration (Optional)
+If time permits, test FirebaseAuthRepository with emulator:
 ```swift
 // UFreeTests/Auth/FirebaseAuthRepositoryTests.swift
-// Requires: Firebase emulator running
 // Tests: signInAnonymously(), signOut(), authState stream
 ```
 
-### Priority 3: Firebase Availability Repository Tests
-Once Firestore schema is defined:
-```swift
-// UFreeTests/Data/FirebaseAvailabilityRepositoryTests.swift
-// Tests: getMySchedule(), updateMySchedule(), getFriendsSchedules()
-```
-
-### Priority 4: UI Integration Tests
-Enhance `UFreeUITests` suite:
-- Test RootView auth routing (LoginView → MainAppView)
-- Test MyScheduleView interactions (tap buttons, verify state)
-- Test error states (invalid dates, network errors)
-
-**Target for Sprint 3:** Maintain 85%+ active code coverage + add 20-30 Firebase integration tests
+**Target for Sprint 3:** 
+- 25-30 new tests (DTO, Firebase, Composite)
+- Maintain 85%+ coverage on active code
+- Total test count: 130-135 tests
+- All tests passing with zero flaky runs
 
 ---
 
