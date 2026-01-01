@@ -128,22 +128,31 @@ XCTAssertEqual(userId, "123")
 
 ## Navigation & UI Patterns
 
+**Apple Guidelines First:**
+- Always prefer native SwiftUI modifiers (`.navigationTitle()`, `.navigationSubtitle()`, `.navigationBarTitleDisplayMode()`, etc.)
+- These modifiers couple UI elements automatically and handle platform-specific behavior
+- Only customize or create workarounds if native implementation is impossible
+- This convention ensures consistency, reduces maintenance, and respects Apple's design patterns
+
 **Navigation Bar (Standard Apple-Compliant):**
-- Use `.navigationTitle("Title")` + `.navigationBarTitleDisplayMode(.large)`
+- Use `.navigationTitle("Title")` for main title
+- Use `.navigationSubtitle("Subtitle")` for subtitle (couples automatically with title)
+- Use `.navigationBarTitleDisplayMode(.large)` for large title style
 - Add buttons via `.toolbar(placement: .navigationBarTrailing)` for right-side buttons
-- Do NOT use custom header sections; let SwiftUI handle nav bar rendering
+- Do NOT use custom header sections or toolbar `.principal` placement for titles/subtitles
 - Example:
 ```swift
 NavigationStack {
-    VStack { /* content */ }
-        .navigationTitle("UFree")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Sign Out") { /* action */ }
-            }
-        }
-}
+     VStack { /* content */ }
+         .navigationTitle("UFree")
+         .navigationSubtitle("See when friends are available")
+         .navigationBarTitleDisplayMode(.large)
+         .toolbar {
+             ToolbarItem(placement: .navigationBarTrailing) {
+                 Button("Sign Out") { /* action */ }
+             }
+         }
+ }
 ```
 
 **Dependency Passing:**

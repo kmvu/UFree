@@ -30,7 +30,7 @@ public struct MyScheduleView: View {
                             statusBannerSection
 
                             // My Week Carousel
-                            myWeekCarouselSection
+                            myWeekCarouselSection   
 
                             // Who's free on... Filter
                             whosFreOnFilterSection
@@ -39,11 +39,9 @@ public struct MyScheduleView: View {
                     }
                 }
             }
-            .navigationBarTitleDisplayMode(.large)
+            .navigationTitle("UFree")
+            .navigationSubtitle("See when friends are available")
             .toolbar {
-                ToolbarItemGroup(placement: .principal) {
-                    NavigationTitleView()
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button(role: .destructive, action: {
@@ -215,21 +213,6 @@ public struct MyScheduleView: View {
             return .pink
         case .eveningOnly:
             return .orange
-        }
-    }
-}
-
-// MARK: - Navigation Title View
-
-struct NavigationTitleView: View {
-    var body: some View {
-        VStack(alignment: .center, spacing: 2) {
-            Text("UFree")
-                .font(.title)
-                .fontWeight(.bold)
-            Text("See when friends are available")
-                .font(.subheadline)
-                .foregroundColor(.gray)
         }
     }
 }
