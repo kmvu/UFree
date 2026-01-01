@@ -13,7 +13,7 @@ public struct DayAvailability: Identifiable, Codable {
     public var status: AvailabilityStatus
     public var note: String?
 
-    public init(id: UUID = UUID(), date: Date, status: AvailabilityStatus = .unknown, note: String? = nil) {
+    public init(id: UUID = UUID(), date: Date, status: AvailabilityStatus = .busy, note: String? = nil) {
         self.id = id
         self.date = date
         self.status = status

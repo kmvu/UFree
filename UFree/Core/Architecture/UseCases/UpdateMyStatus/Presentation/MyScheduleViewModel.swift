@@ -26,7 +26,7 @@ public final class MyScheduleViewModel: ObservableObject {
     }
     
     private func setupInitialWeek() {
-        // Generate next 7 days starting from today with 'unknown' status
+        // Generate next 7 days starting from today with 'busy' status
         let calendar = Calendar.current
         let today = Date()
         
@@ -34,7 +34,7 @@ public final class MyScheduleViewModel: ObservableObject {
             guard let date = calendar.date(byAdding: .day, value: index, to: today) else {
                 return nil
             }
-            return DayAvailability(date: date, status: .unknown)
+            return DayAvailability(date: date, status: .busy)
         }
     }
     
@@ -87,10 +87,11 @@ public final class MyScheduleViewModel: ObservableObject {
     
     private func cycleStatus(_ current: AvailabilityStatus) -> AvailabilityStatus {
         switch current {
-        case .unknown: return .free
-        case .free: return .busy
-        case .busy: return .eveningOnly
-        case .eveningOnly: return .free
+        case .busy: return .free
+        case .free: return .morningOnly
+        case .morningOnly: return .afternoonOnly
+        case .afternoonOnly: return .eveningOnly
+        case .eveningOnly: return .busy
         }
     }
 }

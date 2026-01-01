@@ -16,7 +16,7 @@ public actor MockAvailabilityRepository: AvailabilityRepository {
         self.mySchedule = (0..<7).map { i in
             DayAvailability(
                 date: Calendar.current.date(byAdding: .day, value: i, to: Date())!,
-                status: .unknown
+                status: .busy
             )
         }
     }

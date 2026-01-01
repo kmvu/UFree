@@ -9,95 +9,295 @@ import SwiftUI
 
 public struct MyScheduleView: View {
     @StateObject private var viewModel: MyScheduleViewModel
-    let rootViewModel: RootViewModel
-    
-    public init(viewModel: MyScheduleViewModel, rootViewModel: RootViewModel) {
+    @State private var selectedDay: Date?
+
+    public init(viewModel: MyScheduleViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
-        self.rootViewModel = rootViewModel
     }
-    
+
     public var body: some View {
-        List(viewModel.weeklySchedule) { day in
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(day.date.formatted(.dateTime.weekday(.wide)))
-                        .font(.headline)
-                    Text(day.date.formatted(.dateTime.month().day()))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    viewModel.toggleStatus(for: day)
-                }) {
-                    Text(day.status.displayName)
-                        .font(.body)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(colorFor(day.status))
-                        .cornerRadius(8)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.vertical, 4)
-        }
-        .navigationTitle("My Week")
-        .navigationSubtitle("Manage your availability")
-        .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Menu {
-                    Button(role: .destructive, action: {
-                        rootViewModel.signOut()
-                    }) {
-                        Label("Sign Out", systemImage: "power")
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Header
+                headerSection
+
+                // Main Content
+                if viewModel.weeklySchedule.isEmpty {
+                    emptyStateSection
+                } else {
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            // Status Banner
+                            statusBannerSection
+
+                            // My Week Carousel
+                            myWeekCarouselSection
+
+                            // Who's free on... Filter
+                            whosFreOnFilterSection
+                        }
+                        .padding()
+                        .padding(.top, 12)
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 18))
                 }
             }
-        }
-        .task {
-            await viewModel.loadSchedule()
-        }
-        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-            Button("OK") {
-                viewModel.errorMessage = nil
+            .navigationTitle("UFree")
+            .task {
+                await viewModel.loadSchedule()
             }
-        } message: {
-            if let error = viewModel.errorMessage {
-                Text(error)
+            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+                Button("OK") {
+                    viewModel.errorMessage = nil
+                }
+            } message: {
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                }
             }
         }
     }
-    
+
+    // MARK: - Sections
+
+    private var headerSection: some View {
+        HStack {
+            Text("UFree")
+                .font(.title2)
+                .fontWeight(.bold)
+
+            Spacer()
+
+            Button(action: {
+                Task {
+                    await viewModel.loadSchedule()
+                }
+            }) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.body)
+                    .foregroundColor(.primary)
+            }
+        }
+        .padding()
+        .background(Color(.systemBackground))
+    }
+
+    private var statusBannerSection: some View {
+        ZStack {
+            // Background Layer with Gradient
+            RoundedRectangle(cornerRadius: 24)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(hex: "8180f9"), Color(hex: "6e6df0")],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(height: 120)
+
+            // Content Layer
+            HStack(alignment: .center, spacing: 16) {
+                Image(systemName: "moon")
+                    .font(.system(size: 28))
+                    .foregroundColor(.white)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Check My Schedule")
+                        .font(.title2)
+                        .bold()
+                        .foregroundColor(.white)
+
+                    Text("Tap to change your live status")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+        }
+        .padding(.horizontal)
+    }
+
+    private var myWeekCarouselSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("My Week")
+                .font(.headline)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(viewModel.weeklySchedule) { day in
+                        DayStatusCard(
+                            day: day,
+                            color: colorFor(day.status),
+                            onTap: {
+                                viewModel.toggleStatus(for: day)
+                            }
+                        )
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+
+    private var whosFreOnFilterSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Who's free on...")
+                .font(.headline)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(viewModel.weeklySchedule) { day in
+                        Button(action: {
+                            selectedDay = selectedDay == day.date ? nil : day.date
+                        }) {
+                            VStack(spacing: 4) {
+                                Text(day.date.formatted(.dateTime.weekday(.abbreviated)))
+                                    .font(.caption)
+                                Text(day.date.formatted(.dateTime.day()))
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                            }
+                            .frame(height: 50)
+                            .frame(maxWidth: .infinity)
+                            .padding(.horizontal, 8)
+                            .background(selectedDay == day.date ? Color.purple.opacity(0.2) : Color(.systemGray6))
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(
+                                        selectedDay == day.date ? Color.purple : Color.clear,
+                                        lineWidth: 2
+                                    )
+                            )
+                        }
+                        .foregroundColor(.primary)
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+
+    private var emptyStateSection: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "person.crop.circle.badge.plus")
+                .font(.system(size: 64))
+                .foregroundColor(.gray)
+
+            VStack(spacing: 8) {
+                Text("No Friends Yet")
+                    .font(.headline)
+                Text("Invite friends to see their availability")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Button(action: {}) {
+                Text("Find Friends")
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(12)
+                    .background(Color.purple)
+                    .cornerRadius(8)
+            }
+            .padding()
+
+            Spacer()
+        }
+        .padding()
+    }
+
     private func colorFor(_ status: AvailabilityStatus) -> Color {
         switch status {
         case .free:
             return .green
         case .busy:
-            return .red
+            return .gray
+        case .morningOnly:
+            return .yellow
+        case .afternoonOnly:
+            return .pink
         case .eveningOnly:
             return .orange
-        case .unknown:
-            return .gray
+        }
+    }
+}
+
+// MARK: - DayStatusCard Component
+
+struct DayStatusCard: View {
+    let day: DayAvailability
+    let color: Color
+    let onTap: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            // Day Name
+            Text(day.date.formatted(.dateTime.weekday(.abbreviated)))
+                .font(.subheadline)
+                .foregroundColor(.gray)
+
+            // Day Number
+            Text(day.date.formatted(.dateTime.day()))
+                .font(.headline)
+
+            // Icon Container
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(color.opacity(0.2))
+                    .frame(width: 60, height: 60)
+
+                Image(systemName: iconFor(day.status))
+                    .foregroundColor(color)
+                    .font(.title)
+                    .transition(.scale.combined(with: .opacity))
+            }
+
+            // Status Text
+            Text(day.status.displayName)
+                .font(.subheadline)
+                .fontWeight(.bold)
+                .foregroundColor(color)
+                .transition(.opacity)
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(color.opacity(0.3), lineWidth: 1)
+        )
+        .id(day.id)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0.2), value: day.status)
+        .onTapGesture(perform: onTap)
+    }
+
+    private func iconFor(_ status: AvailabilityStatus) -> String {
+        switch status {
+        case .free:
+            return "checkmark.circle.fill"
+        case .busy:
+            return "xmark.circle.fill"
+        case .morningOnly:
+            return "sunrise.fill"
+        case .afternoonOnly:
+            return "sun.max.fill"
+        case .eveningOnly:
+            return "moon.stars.fill"
         }
     }
 }
 
 #Preview {
-    NavigationView {
-        MyScheduleView(
-            viewModel: MyScheduleViewModel(
-                updateUseCase: UpdateMyStatusUseCase(repository: MockAvailabilityRepository()),
-                repository: MockAvailabilityRepository()
-            ),
-            rootViewModel: RootViewModel(authRepository: MockAuthRepository())
+    MyScheduleView(
+        viewModel: MyScheduleViewModel(
+            updateUseCase: UpdateMyStatusUseCase(repository: MockAvailabilityRepository()),
+            repository: MockAvailabilityRepository()
         )
-    }
+    )
 }
-

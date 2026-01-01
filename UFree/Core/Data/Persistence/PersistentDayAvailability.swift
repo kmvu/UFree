@@ -29,7 +29,7 @@ final class PersistentDayAvailability {
         DayAvailability(
             id: id,
             date: date,
-            status: AvailabilityStatus(rawValue: statusValue) ?? .unknown,
+            status: AvailabilityStatus(rawValue: statusValue) ?? .busy,
             note: note
         )
     }
