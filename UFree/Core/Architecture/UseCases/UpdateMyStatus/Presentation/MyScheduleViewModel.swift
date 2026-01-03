@@ -92,6 +92,7 @@ public final class MyScheduleViewModel: ObservableObject {
         case .morningOnly: return .afternoonOnly
         case .afternoonOnly: return .eveningOnly
         case .eveningOnly: return .busy
+        case .unknown: return .busy  // Unknown defaults to busy when cycling
         }
     }
 }

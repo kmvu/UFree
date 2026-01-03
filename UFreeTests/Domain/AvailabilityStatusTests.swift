@@ -10,9 +10,9 @@ import XCTest
 
 final class AvailabilityStatusTests: XCTestCase {
     
-    func test_allCases_hasFiveCases() {
+    func test_allCases_hasSixCases() {
         let allCases = AvailabilityStatus.allCases
-        XCTAssertEqual(allCases.count, 5)
+        XCTAssertEqual(allCases.count, 6) // busy, free, morningOnly, afternoonOnly, eveningOnly, unknown
     }
     
     func test_rawValues_matchExpectedIntValues() {
@@ -21,6 +21,7 @@ final class AvailabilityStatusTests: XCTestCase {
         XCTAssertEqual(AvailabilityStatus.morningOnly.rawValue, 2)
         XCTAssertEqual(AvailabilityStatus.afternoonOnly.rawValue, 3)
         XCTAssertEqual(AvailabilityStatus.eveningOnly.rawValue, 4)
+        XCTAssertEqual(AvailabilityStatus.unknown.rawValue, 5)
     }
     
     func test_displayName_returnsCorrectStrings() {
@@ -29,10 +30,11 @@ final class AvailabilityStatusTests: XCTestCase {
         XCTAssertEqual(AvailabilityStatus.morningOnly.displayName, "Morning")
         XCTAssertEqual(AvailabilityStatus.afternoonOnly.displayName, "Afternoon")
         XCTAssertEqual(AvailabilityStatus.eveningOnly.displayName, "Evening")
+        XCTAssertEqual(AvailabilityStatus.unknown.displayName, "Unknown")
     }
     
     func test_codable_encodesAndDecodesCorrectly() throws {
-        let statuses: [AvailabilityStatus] = [.busy, .free, .morningOnly, .afternoonOnly, .eveningOnly]
+        let statuses: [AvailabilityStatus] = [.busy, .free, .morningOnly, .afternoonOnly, .eveningOnly, .unknown]
         
         for status in statuses {
             let encoded = try JSONEncoder().encode(status)
@@ -47,6 +49,7 @@ final class AvailabilityStatusTests: XCTestCase {
         XCTAssertEqual(AvailabilityStatus(rawValue: 2), .morningOnly)
         XCTAssertEqual(AvailabilityStatus(rawValue: 3), .afternoonOnly)
         XCTAssertEqual(AvailabilityStatus(rawValue: 4), .eveningOnly)
+        XCTAssertEqual(AvailabilityStatus(rawValue: 5), .unknown)
         XCTAssertNil(AvailabilityStatus(rawValue: 99))
     }
 }

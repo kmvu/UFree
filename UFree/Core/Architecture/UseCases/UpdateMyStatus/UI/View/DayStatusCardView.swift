@@ -67,6 +67,8 @@ struct DayStatusCardView: View {
             return "sun.max.fill"
         case .eveningOnly:
             return "moon.stars.fill"
+        case .unknown:
+            return "questionmark.circle.fill"
         }
     }
 }

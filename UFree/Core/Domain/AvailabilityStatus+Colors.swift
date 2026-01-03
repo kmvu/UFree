@@ -21,6 +21,8 @@ extension AvailabilityStatus {
             return .orange
         case .eveningOnly:
             return .purple
+        case .unknown:
+            return Color(red: 0.7, green: 0.7, blue: 0.7) // Light gray for unknown
         }
     }
 }

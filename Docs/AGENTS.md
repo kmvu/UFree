@@ -7,6 +7,12 @@
 - For code/logic changes: Run tests only after checking with user first
 - Always ask before test execution: "Should I run tests to validate?"
 
+**Test-Driven Development (TDD) - REQUIRED for all new features:**
+- Write tests FIRST based on requirements and expected behavior
+- Then implement code to satisfy the tests
+- Benefits: Catches edge cases early, ensures better code design, validates requirements upfront, significantly reduces debugging and iteration time
+- This approach has proven to save substantial time compared to writing tests after implementation
+
 ## Build & Test Commands
 
 **Run all unit tests (fast feedback) — RECOMMENDED:**
