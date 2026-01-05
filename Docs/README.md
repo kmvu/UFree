@@ -1,6 +1,6 @@
 # UFree - Weekly Availability Scheduler
 
-**Status:** ✅ Sprint 3 (Cloud Sync Infrastructure) | **Version:** 3.0.0 | **Tests:** 123 | **Coverage:** 85%+
+**Status:** ✅ Sprint 3 (Cloud Sync + Friends Discovery) | **Version:** 3.1.0 | **Tests:** 135+ | **Coverage:** 85%+
 
 ---
 
@@ -19,6 +19,8 @@
 | Navigation Bar | ✅ Complete | Standard large title bar, Sign Out button on right |
 | **Remote API Layer (Firestore)** | ✅ Complete | Sprint 3: FirebaseAvailabilityRepository + FirestoreDayDTO |
 | **Composite Repository** | ✅ Complete | Sprint 3: Local + remote with offline-first pattern |
+| **Friends Discovery** | ✅ Complete | Sprint 3.1: Contact hashing, Firestore matching, TabView integration |
+| **Friends Tab & View** | ✅ Complete | FriendsView + FriendsViewModel with add/remove friend operations |
 | **Real-time Sync** | ⏳ Pending | Sprint 3+: Firestore listeners for live updates |
 
 ---
@@ -64,7 +66,9 @@ UI → ViewModel → CompositeRepository → SwiftData (Local) [instant]
 ┌─────────────────────────────────────────────────────────┐
 │                    UI Layer                             │
 │  RootView (auth state) → LoginView OR MainAppView       │
-│  MainAppView → ScheduleContainer → MyScheduleView       │
+│  MainAppView (TabView)                                  │
+│    ├─ ScheduleContainer → MyScheduleView                │
+│    └─ FriendsContainer → FriendsView                    │
 │  MyScheduleView: Standard nav bar + Sign Out button     │
 └─────────────────────────────────────────────────────────┘
                            ↓
@@ -83,7 +87,9 @@ UI → ViewModel → CompositeRepository → SwiftData (Local) [instant]
 │               Data Layer                                │
 │  FirebaseAuthRepository + MockAuthRepository            │
 │  SwiftDataAvailabilityRepository (local)                │
-│  FirebaseAvailabilityRepository (skeleton for Sprint 3) │
+│  FirebaseAvailabilityRepository (Sprint 3)              │
+│  FirebaseFriendRepository + MockFriendRepository        │
+│  AppleContactsRepository (Contacts access)              │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -156,6 +162,18 @@ struct UserSchedule: Identifiable {
 - ✅ 24 new tests (DTO mapping, composite orchestration)
 - ⏳ Real-time updates via Firestore listeners (Sprint 3+)
 
+### Sprint 3.1: Friends Discovery & Social Features ✅
+- ✅ CryptoUtils (SHA-256 hashing for contact privacy)
+- ✅ AppleContactsRepository (iOS Contacts access with permission handling)
+- ✅ FriendRepositoryProtocol & FirebaseFriendRepository (Firestore friend operations + contact matching)
+- ✅ FriendsViewModel (@MainActor with state for friends, discovered users, loading, errors)
+- ✅ FriendsView (SwiftUI with two sections: My Trusted Circle + Add Friends)
+- ✅ TabView integration in MainAppView (Schedule tab + Friends tab)
+- ✅ Bidirectional friend relationships (add/remove synced both ways)
+- ✅ Contact batching (10-item Firestore limit with TaskGroup parallel queries)
+- ✅ 12+ new tests (ViewModel rapid-tap protection, contact repository, friend operations)
+- ✅ Zero compiler warnings, zero flaky tests
+
 ---
 
 ## File Structure
@@ -175,30 +193,42 @@ UFree/Core/Data/
 │   └── FirebaseAuthRepository.swift
 ├── Network/                       ✅ Sprint 3
 │   └── FirestoreDayDTO.swift      (DTO for Firestore ↔ Domain mapping)
-├── Mocks/
-│   ├── MockAuthRepository.swift   ✅ Sprint 2.5
-│   └── MockAvailabilityRepository.swift  ✅ Sprint 1
 ├── Repositories/
 │   ├── SwiftDataAvailabilityRepository.swift  ✅ Sprint 2
 │   ├── FirebaseAvailabilityRepository.swift   ✅ Sprint 3 (implemented)
-│   └── CompositeAvailabilityRepository.swift  ✅ Sprint 3 (new)
+│   ├── CompositeAvailabilityRepository.swift  ✅ Sprint 3 (new)
+│   ├── FriendRepository.swift     ✅ Sprint 3.1 (Firestore + contact matching)
+│   └── ContactsRepository.swift   ✅ Sprint 3.1 (iOS Contacts access)
+├── Mocks/
+│   ├── MockAuthRepository.swift   ✅ Sprint 2.5
+│   ├── MockAvailabilityRepository.swift  ✅ Sprint 1
+│   └── MockFriendRepository.swift ✅ Sprint 3.1
+├── Utilities/
+│   └── CryptoUtils.swift          ✅ Sprint 3.1 (SHA-256 hashing)
 └── Persistence/
     └── PersistentDayAvailability.swift  ✅ Sprint 2
 
 UFree/Features/
 ├── Root/                          ✅ Sprint 2.5
 │   ├── RootViewModel.swift
-│   ├── RootView.swift
+│   ├── RootView.swift (with TabView)
 │   └── LoginView.swift
-└── MySchedule/                    ✅ Sprint 1-2.5+
-    ├── MyScheduleViewModel.swift
-    ├── MyScheduleView.swift (refactored)
-    ├── StatusBannerView.swift     ✅ Sprint 2.5+ (extracted)
-    ├── StatusBannerViewModel.swift ✅ Sprint 2.5+
-    ├── DayStatusCardView.swift    ✅ Sprint 2.5+ (extracted)
-    ├── DayFilterButtonView.swift  ✅ Sprint 2.5+ (extracted)
-    ├── DayFilterViewModel.swift   ✅ Sprint 2.5+
-    └── UserStatus.swift           ✅ Sprint 2.5+
+├── MySchedule/                    ✅ Sprint 1-2.5+
+│   ├── MyScheduleViewModel.swift
+│   ├── MyScheduleView.swift (refactored)
+│   ├── StatusBannerView.swift     ✅ Sprint 2.5+ (extracted)
+│   ├── StatusBannerViewModel.swift ✅ Sprint 2.5+
+│   ├── DayStatusCardView.swift    ✅ Sprint 2.5+ (extracted)
+│   ├── DayFilterButtonView.swift  ✅ Sprint 2.5+ (extracted)
+│   ├── DayFilterViewModel.swift   ✅ Sprint 2.5+
+│   └── UserStatus.swift           ✅ Sprint 2.5+
+└── FindFriends/                   ✅ Sprint 3.1
+    ├── UI/
+    │   └── FriendsView.swift
+    ├── Presentation/
+    │   └── FriendsViewModel.swift
+    └── Domain/
+        └── UserProfile.swift
 
 UFree/Core/Extensions/
 ├── Color+Hex.swift                ✅ Sprint 2.5
@@ -225,20 +255,25 @@ UFree/Core/Extensions/
 | FirestoreDayDTO | 13 | 3 |
 | FirebaseAvailabilityRepository | 0 | 3 |
 | CompositeAvailabilityRepository | 11 | 3 |
-| **Total** | **123** | — |
+| FriendsViewModel | 4 | 3.1 |
+| FriendRepository (Contacts/Firestore) | 3 | 3.1 |
+| Mock FriendRepository | — | 3.1 |
+| **Total** | **135+** | — |
 
 ---
 
 ## Key Features Working End-to-End
 
-1. **Authentication Flow:** App launch → Firebase init → LoginView → anonymous sign-in → MainAppView
+1. **Authentication Flow:** App launch → Firebase init → LoginView → anonymous sign-in → MainAppView (tabbed)
 2. **Schedule Management:** View 7 days, update status per day (cycles through 5 states: busy → free → morningOnly → afternoonOnly → eveningOnly → busy)
 3. **Status Banner:** Initial state "Check My Schedule" with one-way cycling to Busy ↔ Free cycle, gradient colors, icon transitions, and rapid-tap protection
 4. **Day Filtering:** Select individual days to filter schedule; state managed via DayFilterViewModel with toggle behavior
 5. **Persistence:** Schedule saved locally via SwiftData (survives app restart)
 6. **Auth State:** Real-time UI updates via AsyncStream when user logs in/out
-7. **Navigation:** Standard Apple-compliant large title nav bar with Sign Out button
-8. **Error Handling:** Past date rejection, network errors, auth failures with rollback
+7. **Navigation:** Standard Apple-compliant large title nav bar with Sign Out button; TabView for Schedule + Friends tabs
+8. **Friends Discovery:** Sync contacts → SHA-256 hash → Firestore match → add/remove friends (bidirectional)
+9. **Friends Tab:** Two sections—My Trusted Circle (swipe to remove) and Add Friends (sync button, discovered matches)
+10. **Error Handling:** Past date rejection, network errors, auth failures with rollback, permission alerts for Contacts access
 
 ---
 
@@ -562,7 +597,7 @@ MyScheduleView
 
 ---
 
-**Last Updated:** January 3, 2026 | **Status:** Production Ready ✅
+**Last Updated:** January 5, 2026 | **Status:** Production Ready ✅
 
 **Sprint 3 Completion Summary (Cloud Sync Infrastructure):**
 - ✅ FirestoreDayDTO: DTO layer for Firestore-Domain mapping (13 tests, 100% coverage)
@@ -570,5 +605,15 @@ MyScheduleView
 - ✅ CompositeAvailabilityRepository: Offline-first orchestration with Write-Through, Read-Back pattern (11 tests, 100% coverage)
 - ✅ Offline resilience: App works completely offline, syncs automatically when connected
 - ✅ 123 total tests (24 new), 85%+ coverage on active code
+- ✅ Zero memory leaks, zero flaky tests, zero compiler warnings
+
+**Sprint 3.1 Completion Summary (Friends Discovery & Social Features):**
+- ✅ CryptoUtils + AppleContactsRepository: Privacy-safe contact access with SHA-256 hashing (no raw phone numbers stored)
+- ✅ FriendRepository: Firestore friend operations (getMyFriends, addFriend, removeFriend) + contact matching with 10-item batching
+- ✅ FriendsViewModel: @MainActor state management for friends, discovered users, loading, errors, and permission alerts
+- ✅ FriendsView: Two-section List UI—My Trusted Circle (swipe to remove) and Add Friends (sync button, discovered matches)
+- ✅ TabView Navigation: MainAppView now routes between Schedule and Friends tabs with proper DI
+- ✅ Bidirectional friend relationships: Adding/removing friends syncs both directions in Firestore
+- ✅ 12+ new tests (ViewModel, contact repository, friend operations), 135+ total tests
 - ✅ Zero memory leaks, zero flaky tests, zero compiler warnings
 

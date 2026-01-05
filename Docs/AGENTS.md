@@ -20,7 +20,7 @@
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | \
   grep -E '(PASS|FAIL|Test Session|passed|failed|warning)'
-# ~35 seconds total, includes full build + 106 tests
+# ~35 seconds total, includes full build + 135+ tests
 ```
 
 **Alternative (cleaner output):**
@@ -63,17 +63,17 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 ## Architecture & Structure
 
 **Clean Architecture Layers:**
-- **Domain:** User, AvailabilityStatus, DayAvailability, UserSchedule, AuthRepository (protocol), AvailabilityRepository (protocol), UpdateMyStatusUseCase
-- **Data:** FirebaseAuthRepository, MockAuthRepository, SwiftDataAvailabilityRepository, MockAvailabilityRepository, PersistentDayAvailability, FirebaseAvailabilityRepository (skeleton)
-- **Presentation:** RootViewModel (auth), MyScheduleViewModel (schedule)
-- **UI:** RootView (auth routing), LoginView, MyScheduleView
+- **Domain:** User, AvailabilityStatus, DayAvailability, UserSchedule, UserProfile, AuthRepository (protocol), AvailabilityRepository (protocol), FriendRepositoryProtocol, UpdateMyStatusUseCase
+- **Data:** FirebaseAuthRepository, MockAuthRepository, SwiftDataAvailabilityRepository, MockAvailabilityRepository, PersistentDayAvailability, FirebaseAvailabilityRepository, CompositeAvailabilityRepository, FirebaseFriendRepository, MockFriendRepository, AppleContactsRepository, CryptoUtils
+- **Presentation:** RootViewModel (auth), MyScheduleViewModel (schedule), FriendsViewModel (friends)
+- **UI:** RootView (auth + tabs), LoginView, MyScheduleView, FriendsView
 
 **Key Subprojects:**
 - UFree: Main app bundle
-- UFreeTests: Unit tests (106 tests covering auth, domain, data, use cases, view models, UI components)
+- UFreeTests: Unit tests (135+ tests covering auth, domain, data, use cases, view models, UI components, friends feature)
 - UFreeUITests: UI integration tests
 
-**Persistence:** SwiftData local-only (Sprint 2.5). Firebase auth ready. Firestore integration pending (Sprint 3).
+**Persistence:** SwiftData local (Sprint 2.5) + Firestore remote (Sprint 3) with CompositeRepository pattern. Firebase auth ready. Friends sync via Firestore (Sprint 3.1).
 
 ## Code Style & Conventions
 
@@ -236,6 +236,46 @@ NavigationStack {
 - Single responsibility per file: easier to test, maintain, and extend
 
 ## Sprint 3 Context: Cloud Sync & Resilience
+
+**Architecture: Offline-First with Composite Repository**
+
+The app uses a resilience chain for availability sync:
+1. UI requests data → Composite Repository
+2. Composite returns Local Data (SwiftData) immediately
+3. Composite triggers Remote Fetch (Firebase) in background
+4. On success: Remote data syncs into Local Storage
+5. UI observes Local Data and auto-updates
+
+Benefits: Never blocks UI, works completely offline, background syncing transparent, clean architecture preserved.
+
+## Sprint 3.1 Context: Friends Discovery & Social Features
+
+**Friends Discovery Flow:**
+1. User taps "Sync Contacts to Find Friends" in Friends Tab
+2. App requests Contacts permission via system dialog
+3. AppleContactsRepository fetches all phone numbers → SHA-256 hashes them (privacy-safe)
+4. FirebaseFriendRepository queries Firestore for matching users (10-item batches via TaskGroup)
+5. Discovered users displayed in "Add Friends" section
+6. User taps "Add" → FriendsViewModel adds friend (optimistic UI update + Firestore write)
+7. Friend appears in "My Trusted Circle" section
+8. Swipe to remove → removes bidirectionally from both users' friendIds arrays
+
+**Architecture: Privacy-First Contact Matching**
+- Raw phone numbers never stored anywhere (only SHA-256 hashes)
+- Contacts syncing completely on-device
+- Only hashes sent to Firestore for matching
+- Firestore security rules: authenticated users can only write their own data
+- Friends read is enabled for all authenticated users (future: availability lookups)
+
+**Firestore Friends Schema:**
+```
+users/{auth_uid}
+  ├── displayName: String
+  ├── hashedPhoneNumber: String (for contact matching)
+  └── friendIds: [String]  (array of user IDs)
+```
+
+## Sprint 3 Context: Cloud Sync & Resilience (Original)
 
 **Architecture: Offline-First with Composite Repository**
 
