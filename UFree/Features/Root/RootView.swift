@@ -45,11 +45,18 @@ struct MainAppView: View {
     let user: User
     
     var body: some View {
-        ZStack {
-            VStack(spacing: 0) {
-                // Main schedule view
-                ScheduleContainer(container: container, rootViewModel: rootViewModel)
-            }
+        TabView {
+            // MARK: - Schedule Tab
+            ScheduleContainer(container: container, rootViewModel: rootViewModel)
+                .tabItem {
+                    Label("Schedule", systemImage: "calendar")
+                }
+            
+            // MARK: - Friends Tab
+            FriendsContainer(container: container)
+                .tabItem {
+                    Label("Friends", systemImage: "person.2")
+                }
         }
     }
 }
@@ -72,6 +79,21 @@ struct ScheduleContainer: View {
         
         // Pass ViewModel to the View
         return MyScheduleView(viewModel: viewModel, rootViewModel: rootViewModel)
+    }
+}
+
+// MARK: - Friends Container (Dependency Injection)
+
+struct FriendsContainer: View {
+    let container: ModelContainer
+    
+    var body: some View {
+        // Create repositories
+        let contactsRepo = AppleContactsRepository()
+        let friendRepo = FirebaseFriendRepository(contactsRepo: contactsRepo)
+        
+        // Pass repository to the view
+        return FriendsView(friendRepository: friendRepo)
     }
 }
 
