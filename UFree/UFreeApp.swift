@@ -47,7 +47,12 @@ struct UFreeApp: App {
         }
         
         // Initialize auth repository
-        // Use Firebase in production, Mock in tests/previews
+        // Configure Firebase if not already done
+        if FirebaseApp.app() == nil {
+            FirebaseApp.configure()
+        }
+        
+        // Use Firebase if successfully configured
         if FirebaseApp.app() != nil {
             authRepository = FirebaseAuthRepository()
         } else {

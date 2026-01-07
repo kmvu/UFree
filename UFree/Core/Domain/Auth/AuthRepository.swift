@@ -21,4 +21,8 @@ public protocol AuthRepository {
     
     /// Signs the user out.
     func signOut() async throws
+    
+    /// Updates the current user's display name.
+    /// - Parameter name: The new display name to set.
+    func updateDisplayName(_ name: String) async throws
 }

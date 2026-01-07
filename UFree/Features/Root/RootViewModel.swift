@@ -10,6 +10,14 @@ import Combine
 
 @MainActor
 public final class RootViewModel: ObservableObject {
+    // MARK: - Auth State
+    enum AuthPhase {
+        case loading           // Firebase checking for existing session
+        case unauthenticated   // No user found, show login
+        case authenticated     // User logged in, show main app
+    }
+    
+    @Published var authPhase: AuthPhase = .loading
     @Published var currentUser: User? = nil
     @Published var isSigningIn = false
     @Published var errorMessage: String? = nil
@@ -22,13 +30,20 @@ public final class RootViewModel: ObservableObject {
         setupAuthStateListener()
     }
     
-    // MARK: - Auth State
+    // MARK: - Auth State Setup
     
     private func setupAuthStateListener() {
         authStateTask = Task {
             for await user in authRepository.authState {
                 self.currentUser = user
                 self.isSigningIn = false
+                
+                // Update authPhase based on whether user exists
+                if user != nil {
+                    self.authPhase = .authenticated
+                } else {
+                    self.authPhase = .unauthenticated
+                }
             }
         }
     }

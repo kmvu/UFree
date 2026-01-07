@@ -21,18 +21,36 @@ struct RootView: View {
     }
     
     var body: some View {
-        if let user = rootViewModel.currentUser {
-            // User is authenticated, show the main app
-            MainAppView(
-                container: container,
-                authRepository: authRepository,
-                rootViewModel: rootViewModel,
-                user: user
-            )
-        } else {
-            // User is not authenticated, show login
-            LoginView(viewModel: rootViewModel)
+        Group {
+            switch rootViewModel.authPhase {
+            case .loading:
+                SplashView()
+                    .transition(.opacity)
+            
+            case .unauthenticated:
+                LoginView(viewModel: LoginViewModel(authRepository: authRepository))
+                    .transition(.opacity)
+            
+            case .authenticated:
+                // Wait for displayName to be available before showing main app
+                if let user = rootViewModel.currentUser, 
+                   let displayName = user.displayName, !displayName.isEmpty {
+                    MainAppView(
+                        container: container,
+                        authRepository: authRepository,
+                        rootViewModel: rootViewModel,
+                        user: user
+                    )
+                    .transition(.opacity)
+                } else {
+                    // Still waiting for displayName to load
+                    SplashView()
+                        .transition(.opacity)
+                }
+            }
         }
+        .animation(.easeOut(duration: 0.3), value: rootViewModel.authPhase)
+        .animation(.easeOut(duration: 0.3), value: rootViewModel.currentUser?.displayName)
     }
 }
 
@@ -74,8 +92,12 @@ struct ScheduleContainer: View {
     @ObservedObject var rootViewModel: RootViewModel
     
     var body: some View {
-        // Create the persistent repository
-        let repository = SwiftDataAvailabilityRepository(container: container)
+        // Create the persistent repository and remote repository
+        let localRepository = SwiftDataAvailabilityRepository(container: container)
+        let remoteRepository = FirebaseAvailabilityRepository()
+        
+        // Orchestrate with offline-first composite pattern
+        let repository = CompositeAvailabilityRepository(local: localRepository, remote: remoteRepository)
         
         // Inject Repository into the Use Case
         let useCase = UpdateMyStatusUseCase(repository: repository)

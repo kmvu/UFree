@@ -58,9 +58,12 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
             do {
                 let remoteSchedule = try await remote.getMySchedule()
 
-                // Sync remote days back into local storage to keep them aligned
+                // Sync remote days back into local storage, but only if they have a known status
+                // (Avoid overwriting local data with "unknown" gap-filler values)
                 for day in remoteSchedule.weeklyStatus {
-                    try await local.updateMySchedule(for: day)
+                    if day.status != .unknown {
+                        try await local.updateMySchedule(for: day)
+                    }
                 }
                 print("🔄 Local storage refreshed from Cloud")
             } catch {

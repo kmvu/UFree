@@ -12,7 +12,7 @@ public actor MockAuthRepository: AuthRepository {
     private let authStateStream: AsyncStream<User?>
     private let authStateContinuation: AsyncStream<User?>.Continuation
     
-    nonisolated public init(user: User? = nil) {
+    public init(user: User? = nil) {
         self.user = user
         
         // Set up the AsyncStream for auth state changes
@@ -23,9 +23,9 @@ public actor MockAuthRepository: AuthRepository {
         self.authStateStream = stream
         self.authStateContinuation = continuation
         
-        // Emit initial state
+        // Emit initial state (nonisolated, so safe to use continuation)
         if let user = user {
-            self.authStateContinuation.yield(user)
+            continuation.yield(user)
         }
     }
     
@@ -40,7 +40,7 @@ public actor MockAuthRepository: AuthRepository {
     }
     
     public func signInAnonymously() async throws -> User {
-        let newUser = User(id: UUID().uuidString, isAnonymous: true)
+        let newUser = createUser(id: UUID().uuidString, isAnonymous: true, displayName: nil)
         self.user = newUser
         self.authStateContinuation.yield(newUser)
         return newUser
@@ -49,5 +49,23 @@ public actor MockAuthRepository: AuthRepository {
     public func signOut() async throws {
         self.user = nil
         self.authStateContinuation.yield(nil)
+    }
+    
+    public func updateDisplayName(_ name: String) async throws {
+        guard let currentUser = user else {
+            throw NSError(
+                domain: "MockAuthRepository",
+                code: 401,
+                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]
+            )
+        }
+        
+        let updatedUser = createUser(id: currentUser.id, isAnonymous: currentUser.isAnonymous, displayName: name)
+        self.user = updatedUser
+        self.authStateContinuation.yield(updatedUser)
+    }
+    
+    private func createUser(id: String, isAnonymous: Bool, displayName: String?) -> User {
+        User(id: id, isAnonymous: isAnonymous, displayName: displayName)
     }
 }

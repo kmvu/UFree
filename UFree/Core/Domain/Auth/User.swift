@@ -10,10 +10,11 @@ import Foundation
 public struct User: Identifiable, Equatable, Codable {
     public let id: String
     public let isAnonymous: Bool
-    // Future-proofing: We can add 'email' or 'displayName' here later
+    public let displayName: String?
     
-    public init(id: String, isAnonymous: Bool) {
+    public init(id: String, isAnonymous: Bool, displayName: String? = nil) {
         self.id = id
         self.isAnonymous = isAnonymous
+        self.displayName = displayName
     }
 }

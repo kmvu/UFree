@@ -16,8 +16,18 @@ class FirebaseAvailabilityRepository: AvailabilityRepository {
     // MARK: - Write (Update Status)
 
     func updateMySchedule(for day: DayAvailability) async throws {
-        // 1. Authenticate
-        guard let uid = auth.currentUser?.uid else {
+        // 1. Authenticate (with retry for timing issues)
+        var uid: String?
+        for _ in 0..<3 {
+            uid = auth.currentUser?.uid
+            if uid != nil {
+                break
+            }
+            // Small delay for auth state to propagate
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+        }
+        
+        guard let uid = uid else {
             throw NSError(
                 domain: "UFree",
                 code: 401,
@@ -42,7 +52,18 @@ class FirebaseAvailabilityRepository: AvailabilityRepository {
     // MARK: - Read (Get My Schedule)
 
     func getMySchedule() async throws -> UserSchedule {
-        guard let currentUser = auth.currentUser else {
+        // Authenticate (with retry for timing issues)
+        var currentUser = auth.currentUser
+        for _ in 0..<3 {
+            if currentUser != nil {
+                break
+            }
+            // Small delay for auth state to propagate
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            currentUser = auth.currentUser
+        }
+        
+        guard let currentUser = currentUser else {
             throw NSError(
                 domain: "UFree",
                 code: 401,

@@ -11,6 +11,7 @@ public struct MyScheduleView: View {
     @StateObject private var viewModel: MyScheduleViewModel
     @ObservedObject var rootViewModel: RootViewModel
     @StateObject private var dayFilterViewModel = DayFilterViewModel()
+    @State private var isLoaded = false
 
     public init(viewModel: MyScheduleViewModel, rootViewModel: RootViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -26,22 +27,28 @@ public struct MyScheduleView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 0) {
-                            // Status Banner (padded)
+                            // Status Banner (padded) - fades in first (delay 0.1s)
                             StatusBannerView()
                                 .padding()
+                                .opacity(isLoaded ? 1 : 0)
+                                .offset(y: isLoaded ? 0 : 10)
 
-                            // My Week Carousel (full width, no padding)
+                            // My Week Carousel - fades in second (delay 0.2s)
                             myWeekCarouselSection
                                 .padding(.vertical, 24)
+                                .opacity(isLoaded ? 1 : 0)
+                                .offset(y: isLoaded ? 0 : 10)
 
-                            // Who's free on... Filter (full width, no padding)
+                            // Who's free on... Filter - fades in last (delay 0.3s)
                             whosFreOnFilterSection
                                 .padding(.vertical, 24)
+                                .opacity(isLoaded ? 1 : 0)
+                                .offset(y: isLoaded ? 0 : 10)
                         }
                     }
                 }
             }
-            .navigationTitle("UFree")
+            .navigationTitle(navigationTitle)
             .navigationSubtitle("See when friends are available")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -59,6 +66,11 @@ public struct MyScheduleView: View {
             }
             .task {
                 await viewModel.loadSchedule()
+                
+                // Trigger staggered animations after content loads
+                withAnimation(.easeOut(duration: 0.4).delay(0.1)) {
+                    isLoaded = true
+                }
             }
             .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
                 Button("OK") {
@@ -70,6 +82,15 @@ public struct MyScheduleView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Computed Properties
+
+    private var navigationTitle: String {
+        if let name = rootViewModel.currentUser?.displayName, !name.isEmpty {
+            return "Hello, \(name)"
+        }
+        return "Hello"
     }
 
     // MARK: - Sections

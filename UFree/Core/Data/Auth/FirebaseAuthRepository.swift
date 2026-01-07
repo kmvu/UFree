@@ -65,6 +65,24 @@ public final class FirebaseAuthRepository: AuthRepository {
         authStateContinuation.yield(nil)
     }
     
+    public func updateDisplayName(_ name: String) async throws {
+        guard let firebaseUser = auth.currentUser else {
+            throw NSError(
+                domain: "FirebaseAuthRepository",
+                code: 401,
+                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]
+            )
+        }
+        
+        let request = firebaseUser.createProfileChangeRequest()
+        request.displayName = name
+        try await request.commitChanges()
+        
+        // Emit the updated user via the stream
+        let updatedUser = mapFirebaseUserToUser(firebaseUser)
+        authStateContinuation.yield(updatedUser)
+    }
+    
     // MARK: - Private
     
     private func setupAuthStateListener() {
@@ -77,6 +95,6 @@ public final class FirebaseAuthRepository: AuthRepository {
     }
     
     private func mapFirebaseUserToUser(_ firebaseUser: FirebaseAuth.User) -> User {
-        User(id: firebaseUser.uid, isAnonymous: firebaseUser.isAnonymous)
+        User(id: firebaseUser.uid, isAnonymous: firebaseUser.isAnonymous, displayName: firebaseUser.displayName)
     }
 }
