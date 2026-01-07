@@ -116,14 +116,14 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         // Arrange - no friends in local
         var friendsFromLocal = [UserSchedule]()
         do {
-            friendsFromLocal = try await localRepository!.getFriendsSchedules()
+            friendsFromLocal = try await localRepository!.getSchedules(for: [])
         } catch {
             friendsFromLocal = []
         }
         XCTAssertEqual(friendsFromLocal.count, 0)
         
         // Act
-        let friends = try await composite.getFriendsSchedules()
+        let friends = try await composite.getSchedules(for: [])
         
         // Assert: Should delegate to remote
         XCTAssertEqual(friends.count, 0) // Mock returns empty
@@ -136,7 +136,7 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         
         // Act & Assert
         do {
-            _ = try await composite.getFriendsSchedules()
+            _ = try await composite.getSchedules(for: [])
             XCTFail("Should throw when remote fails")
         } catch {
             XCTAssertTrue(error is MockError)
@@ -200,12 +200,12 @@ private actor ThrowingMockAvailabilityRepository: AvailabilityRepository {
     func getMySchedule() async throws -> UserSchedule {
         throw MockError.operationFailed
     }
-    
+
     func updateMySchedule(for day: DayAvailability) async throws {
         throw MockError.operationFailed
     }
-    
-    nonisolated func getFriendsSchedules() async throws -> [UserSchedule] {
+
+    nonisolated func getSchedules(for userIds: [String]) async throws -> [UserSchedule] {
         throw MockError.operationFailed
     }
 }

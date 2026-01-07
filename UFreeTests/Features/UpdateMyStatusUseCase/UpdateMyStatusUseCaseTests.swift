@@ -96,7 +96,7 @@ final class UpdateMyStatusUseCaseTests: XCTestCase {
         private(set) var updatedDay: DayAvailability?
         var shouldThrowError = false
         
-        func getFriendsSchedules() async throws -> [UserSchedule] {
+        func getSchedules(for userIds: [String]) async throws -> [UserSchedule] {
             return []
         }
         

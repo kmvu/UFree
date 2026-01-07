@@ -9,6 +9,7 @@ import Foundation
 
 public actor MockAvailabilityRepository: AvailabilityRepository {
     private var mySchedule: [DayAvailability]
+    private var friendsSchedules: [String: [DayAvailability]]
 
     public init() {
         // Pre-populate with some data for the next 7 days
@@ -18,10 +19,17 @@ public actor MockAvailabilityRepository: AvailabilityRepository {
                 status: .busy
             )
         }
+        self.friendsSchedules = [:]
     }
 
-    public nonisolated func getFriendsSchedules() async throws -> [UserSchedule] {
-        return []
+    public func getSchedules(for userIds: [String]) async throws -> [UserSchedule] {
+        var result: [UserSchedule] = []
+        for userId in userIds {
+            if let days = friendsSchedules[userId] {
+                result.append(UserSchedule(id: userId, name: "Friend", avatarURL: nil, weeklyStatus: days))
+            }
+        }
+        return result
     }
 
     public func getMySchedule() async throws -> UserSchedule {
@@ -34,6 +42,18 @@ public actor MockAvailabilityRepository: AvailabilityRepository {
             mySchedule[index] = day
             print("✅ Mock DB Updated: \(day.date.formatted()) is now \(day.status.displayName)")
         }
+    }
+
+    // MARK: - Testing Helpers
+
+    /// Add mock friend schedule for testing
+    public func addFriendSchedule(_ userSchedule: UserSchedule) {
+        friendsSchedules[userSchedule.id] = userSchedule.weeklyStatus
+    }
+
+    /// Clear all mock data
+    public func clearMockData() {
+        friendsSchedules.removeAll()
     }
 }
 

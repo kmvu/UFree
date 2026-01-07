@@ -159,7 +159,7 @@ final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
     
     @MainActor
     func test_getFriendsSchedules_returnsEmptyArray() async throws {
-        let schedules = try await sut.getFriendsSchedules()
+        let schedules = try await sut.getSchedules(for: [])
         XCTAssertEqual(schedules.count, 0)
     }
     

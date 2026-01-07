@@ -71,10 +71,10 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         return localSchedule
     }
 
-    // MARK: - Friends (Remote-First)
+    // MARK: - Friends Schedules (Remote-First)
 
-    func getFriendsSchedules() async throws -> [UserSchedule] {
-        // Friends are always remote-first
-        return try await remote.getFriendsSchedules()
+    func getSchedules(for userIds: [String]) async throws -> [UserSchedule] {
+        // Friends' schedules are always remote-first
+        return try await remote.getSchedules(for: userIds)
     }
 }

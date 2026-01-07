@@ -76,11 +76,11 @@ public final class SwiftDataAvailabilityRepository: AvailabilityRepository {
         }
     }
 
-    /// Fetch friends' schedules (Sprint 3 scope)
-    /// - Returns: Empty array (not implemented in Sprint 2)
+    /// Fetch friends' schedules (not applicable for local storage)
+    /// - Returns: Empty array (friends' schedules come from Firebase)
     @MainActor
-    public func getFriendsSchedules() async throws -> [UserSchedule] {
-        return []
+    public func getSchedules(for userIds: [String]) async throws -> [UserSchedule] {
+        return [] // Local storage only has current user's schedule
     }
     
     // MARK: - Private Helpers

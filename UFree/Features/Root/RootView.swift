@@ -52,10 +52,16 @@ struct MainAppView: View {
                     Label("Schedule", systemImage: "calendar")
                 }
             
-            // MARK: - Friends Tab
+            // MARK: - Friends Feed Tab
+            FriendsScheduleContainer(container: container)
+                .tabItem {
+                    Label("Feed", systemImage: "person.2.wave.vertical")
+                }
+            
+            // MARK: - Add Friends Tab
             FriendsContainer(container: container)
                 .tabItem {
-                    Label("Friends", systemImage: "person.2")
+                    Label("Add Friends", systemImage: "person.badge.plus")
                 }
         }
     }
@@ -79,6 +85,25 @@ struct ScheduleContainer: View {
         
         // Pass ViewModel to the View
         return MyScheduleView(viewModel: viewModel, rootViewModel: rootViewModel)
+    }
+}
+
+// MARK: - Friends Schedule Container (Dependency Injection)
+
+struct FriendsScheduleContainer: View {
+    let container: ModelContainer
+    
+    var body: some View {
+        // Create repositories
+        let availabilityRepo = CompositeAvailabilityRepository(
+            local: SwiftDataAvailabilityRepository(container: container),
+            remote: FirebaseAvailabilityRepository()
+        )
+        let contactsRepo = AppleContactsRepository()
+        let friendRepo = FirebaseFriendRepository(contactsRepo: contactsRepo)
+        
+        // Pass repositories to the view
+        return FriendsScheduleView(friendRepository: friendRepo, availabilityRepository: availabilityRepo)
     }
 }
 

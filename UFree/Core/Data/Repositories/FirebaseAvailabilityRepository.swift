@@ -110,9 +110,88 @@ class FirebaseAvailabilityRepository: AvailabilityRepository {
         return result
     }
 
-    // MARK: - Placeholder (Future Sprint)
+    // MARK: - Friends' Schedules (Parallel Fetching)
 
-    func getFriendsSchedules() async throws -> [UserSchedule] {
-        return [] // We will implement this after the "Connect Friends" feature
+    func getSchedules(for userIds: [String]) async throws -> [UserSchedule] {
+        guard !userIds.isEmpty else { return [] }
+
+        // Firestore 'in' queries are limited to 10 items.
+        // If you have >10 friends, we must chunk the requests.
+        let chunks = userIds.chunked(into: 10)
+        var allSchedules: [UserSchedule] = []
+
+        // Use a TaskGroup to fetch all batches in parallel
+        try await withThrowingTaskGroup(of: [UserSchedule].self) { group in
+            for chunk in chunks {
+                group.addTask {
+                    return try await self.fetchBatchSchedules(for: chunk)
+                }
+            }
+
+            for try await batchSchedules in group {
+                allSchedules.append(contentsOf: batchSchedules)
+            }
+        }
+
+        return allSchedules
+    }
+
+    // MARK: - Private Helper for Batch Fetching
+
+    private func fetchBatchSchedules(for userIds: [String]) async throws -> [UserSchedule] {
+        guard !userIds.isEmpty else { return [] }
+
+        let today = Date()
+        let sevenDaysFromNow = Calendar.current.date(byAdding: .day, value: 7, to: today)!
+
+        var batchResult: [UserSchedule] = []
+
+        // Fetch each friend's availability in parallel
+        try await withThrowingTaskGroup(of: UserSchedule?.self) { group in
+            for userId in userIds {
+                group.addTask {
+                    return try await self.fetchUserSchedule(for: userId, from: today, to: sevenDaysFromNow)
+                }
+            }
+
+            for try await schedule in group {
+                if let schedule = schedule {
+                    batchResult.append(schedule)
+                }
+            }
+        }
+
+        return batchResult
+    }
+
+    private func fetchUserSchedule(for userId: String, from startDate: Date, to endDate: Date) async throws -> UserSchedule? {
+        let startString = DateFormatter.yyyyMMdd.string(from: startDate)
+        let endString = DateFormatter.yyyyMMdd.string(from: endDate)
+
+        let snapshot = try await db.collection("users")
+            .document(userId)
+            .collection("availability")
+            .whereField(FieldPath.documentID(), isGreaterThanOrEqualTo: startString)
+            .whereField(FieldPath.documentID(), isLessThan: endString)
+            .getDocuments()
+
+        var days: [DayAvailability] = []
+
+        for doc in snapshot.documents {
+            if let dto = try? doc.data(as: FirestoreDayDTO.self),
+               let date = DateFormatter.yyyyMMdd.date(from: dto.dateString) {
+                days.append(dto.toDomain(originalDate: date))
+            }
+        }
+
+        // If no availability data found, return nil (not found) rather than empty schedule
+        guard !days.isEmpty else { return nil }
+
+        return UserSchedule(
+            id: userId,
+            name: "Friend", // Note: Would need to fetch UserProfile separately if display name needed
+            avatarURL: nil,
+            weeklyStatus: days
+        )
     }
 }

@@ -76,8 +76,8 @@ final class MockAvailabilityRepositoryTests: XCTestCase {
     
     // MARK: - Get Friends Schedules
     
-    func test_getFriendsSchedules_returnsEmptyArray() async throws {
-        let schedules = try await repository.getFriendsSchedules()
+    func test_getSchedules_emptyList_returnsEmpty() async throws {
+        let schedules = try await repository.getSchedules(for: [])
         
         XCTAssertEqual(schedules.count, 0)
     }
