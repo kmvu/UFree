@@ -13,7 +13,10 @@ struct DayFilterButtonView: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
+        Button(action: {
+            HapticManager.selection()
+            onTap()
+        }) {
             VStack(spacing: 4) {
                 Text(day.date.formatted(.dateTime.weekday(.abbreviated)))
                     .font(.caption)

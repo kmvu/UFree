@@ -19,67 +19,65 @@ public struct MyScheduleView: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Main Content
-                if viewModel.weeklySchedule.isEmpty {
-                    emptyStateSection
-                } else {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            // Status Banner (padded) - fades in first (delay 0.1s)
-                            StatusBannerView()
-                                .padding()
-                                .opacity(isLoaded ? 1 : 0)
-                                .offset(y: isLoaded ? 0 : 10)
+        VStack(spacing: 0) {
+            // Main Content
+            if viewModel.weeklySchedule.isEmpty {
+                emptyStateSection
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Status Banner (padded) - fades in first (delay 0.1s)
+                        StatusBannerView()
+                            .padding()
+                            .opacity(isLoaded ? 1 : 0)
+                            .offset(y: isLoaded ? 0 : 10)
 
-                            // My Week Carousel - fades in second (delay 0.2s)
-                            myWeekCarouselSection
-                                .padding(.vertical, 24)
-                                .opacity(isLoaded ? 1 : 0)
-                                .offset(y: isLoaded ? 0 : 10)
+                        // My Week Carousel - fades in second (delay 0.2s)
+                        myWeekCarouselSection
+                            .padding(.vertical, 24)
+                            .opacity(isLoaded ? 1 : 0)
+                            .offset(y: isLoaded ? 0 : 10)
 
-                            // Who's free on... Filter - fades in last (delay 0.3s)
-                            whosFreOnFilterSection
-                                .padding(.vertical, 24)
-                                .opacity(isLoaded ? 1 : 0)
-                                .offset(y: isLoaded ? 0 : 10)
-                        }
+                        // Who's free on... Filter - fades in last (delay 0.3s)
+                        whosFreOnFilterSection
+                            .padding(.vertical, 24)
+                            .opacity(isLoaded ? 1 : 0)
+                            .offset(y: isLoaded ? 0 : 10)
                     }
                 }
             }
-            .navigationTitle(navigationTitle)
-            .navigationSubtitle("See when friends are available")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button(role: .destructive, action: {
-                            rootViewModel.signOut()
-                        }) {
-                            Label("Sign Out", systemImage: "arrow.left.square")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.body)
+        }
+        .navigationTitle(navigationTitle)
+        .navigationSubtitle("See when friends are available")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button(role: .destructive, action: {
+                        rootViewModel.signOut()
+                    }) {
+                        Label("Sign Out", systemImage: "arrow.left.square")
                     }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.body)
                 }
             }
-            .task {
-                await viewModel.loadSchedule()
-                
-                // Trigger staggered animations after content loads
-                withAnimation(.easeOut(duration: 0.4).delay(0.1)) {
-                    isLoaded = true
-                }
+        }
+        .task {
+            await viewModel.loadSchedule()
+
+            // Trigger staggered animations after content loads
+            withAnimation(.easeOut(duration: 0.4).delay(0.1)) {
+                isLoaded = true
             }
-            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-                Button("OK") {
-                    viewModel.errorMessage = nil
-                }
-            } message: {
-                if let error = viewModel.errorMessage {
-                    Text(error)
-                }
+        }
+        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+            Button("OK") {
+                viewModel.errorMessage = nil
+            }
+        } message: {
+            if let error = viewModel.errorMessage {
+                Text(error)
             }
         }
     }

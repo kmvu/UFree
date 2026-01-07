@@ -8,12 +8,12 @@
 import Foundation
 import CryptoKit
 
-struct CryptoUtils {
+public struct CryptoUtils {
     
     /// Converts a phone number into a privacy-safe SHA-256 hash.
     /// - Parameter phoneNumber: The raw phone number string (e.g., "(555) 123-4567")
     /// - Returns: A SHA-256 hash string, or nil if the number is invalid.
-    static func hashPhoneNumber(_ phoneNumber: String) -> String? {
+    public static func hashPhoneNumber(_ phoneNumber: String) -> String? {
         // 1. Normalize: Remove all non-numeric characters (except '+')
         // We want "+15551234567" to match "555-123-4567" if possible,
         // but for MVP consistency, we often strip everything to pure digits.

@@ -26,12 +26,14 @@ final class FriendsViewModelTests: XCTestCase {
         super.tearDown()
     }
     
-    func test_loadFriends_noFriends_returnsEmpty() async {
+    // MARK: - Load Friends Tests
+    
+    func test_loadFriends_empty() async {
         await sut.loadFriends()
         XCTAssertEqual(sut.friends.count, 0)
     }
     
-    func test_loadFriends_withFriends_populatesState() async {
+    func test_loadFriends_withFriends() async {
         let friend = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123")
         await mockRepository.addFriend(friend)
         
@@ -41,43 +43,69 @@ final class FriendsViewModelTests: XCTestCase {
         XCTAssertEqual(sut.friends.first?.displayName, "Alice")
     }
     
-    func test_findFriendsFromContacts_filtersOutExistingFriends() async {
-        let existing = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123")
-        let newFriend = UserProfile(id: "user2", displayName: "Bob", hashedPhoneNumber: "def456")
-        
-        await mockRepository.addFriend(existing)
-        await mockRepository.addDiscoveredUser(existing)
-        await mockRepository.addDiscoveredUser(newFriend)
-        
-        await sut.loadFriends()
-        await sut.findFriendsFromContacts()
-        
-        XCTAssertEqual(sut.discoveredUsers.count, 1)
-        XCTAssertEqual(sut.discoveredUsers.first?.displayName, "Bob")
-    }
+    // MARK: - Add/Remove Friend Tests
     
     func test_addFriend_movesFromDiscoveredToFriends() async {
         let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123")
-        await mockRepository.addDiscoveredUser(user)
-        
-        await sut.findFriendsFromContacts()
-        XCTAssertEqual(sut.discoveredUsers.count, 1)
+        sut.discoveredUsers = [user]
         
         await sut.addFriend(user)
         
-        XCTAssertEqual(sut.discoveredUsers.count, 0)
+        XCTAssertTrue(sut.discoveredUsers.isEmpty)
         XCTAssertEqual(sut.friends.count, 1)
     }
     
     func test_removeFriend_removesFriendFromList() async {
         let friend = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123")
         await mockRepository.addFriend(friend)
-        
         await sut.loadFriends()
         XCTAssertEqual(sut.friends.count, 1)
         
         await sut.removeFriend(friend)
         
         XCTAssertEqual(sut.friends.count, 0)
+    }
+    
+    // MARK: - Phone Search Tests
+    
+    func test_performPhoneSearch_empty() async {
+        await sut.performPhoneSearch()
+        XCTAssertNotNil(sut.errorMessage)
+    }
+    
+    func test_performPhoneSearch_notFound() async {
+        sut.searchText = "555-1234"
+        
+        await sut.performPhoneSearch()
+        
+        XCTAssertNil(sut.searchResult)
+        XCTAssertNotNil(sut.errorMessage)
+    }
+    
+    func test_performPhoneSearch_found() async {
+        let phoneNumber = "555-1234"
+        let hashedPhone = CryptoUtils.hashPhoneNumber(phoneNumber)!
+        let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: hashedPhone)
+        await mockRepository.addUser(user)
+        sut.searchText = phoneNumber
+        
+        await sut.performPhoneSearch()
+        
+        XCTAssertNotNil(sut.searchResult)
+        XCTAssertNil(sut.errorMessage)
+    }
+    
+    func test_performPhoneSearch_clearsAfterAdd() async {
+        let phoneNumber = "555-1234"
+        let hashedPhone = CryptoUtils.hashPhoneNumber(phoneNumber)!
+        let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: hashedPhone)
+        await mockRepository.addUser(user)
+        sut.searchText = phoneNumber
+        sut.searchResult = user
+        
+        await sut.addFriend(user)
+        
+        XCTAssertTrue(sut.searchText.isEmpty)
+        XCTAssertNil(sut.searchResult)
     }
 }

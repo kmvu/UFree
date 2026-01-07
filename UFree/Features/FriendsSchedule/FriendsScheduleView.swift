@@ -8,59 +8,49 @@
 import SwiftUI
 
 public struct FriendsScheduleView: View {
-    @StateObject private var viewModel: FriendsScheduleViewModel
+    @ObservedObject var viewModel: FriendsScheduleViewModel
 
     // Display next 5 days
-    private let daysToShow: [Date] = {
+    private var daysToShow: [Date] {
         let today = Date()
         return (0..<5).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: today) }
-    }()
+    }
 
-    public init(friendRepository: FriendRepositoryProtocol, availabilityRepository: AvailabilityRepository) {
-        _viewModel = StateObject(
-            wrappedValue: FriendsScheduleViewModel(
-                friendRepository: friendRepository,
-                availabilityRepository: availabilityRepository
-            )
-        )
+    public init(viewModel: FriendsScheduleViewModel) {
+        self.viewModel = viewModel
     }
 
     public var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .padding()
-                    } else if viewModel.friendSchedules.isEmpty {
-                        ContentUnavailableView(
-                            "No Friends Yet",
-                            systemImage: "person.2.slash",
-                            description: Text("Add friends to see who's available")
-                        )
-                    } else {
-                        ForEach(viewModel.friendSchedules) { friendDisplay in
-                            FriendScheduleRow(display: friendDisplay, days: daysToShow)
-                        }
+        ScrollView {
+            VStack(spacing: 16) {
+                // Show loading state only on first load
+                if viewModel.isLoading && viewModel.friendSchedules.isEmpty {
+                    ProgressView()
+                        .padding()
+                } else if viewModel.friendSchedules.isEmpty {
+                    ContentUnavailableView(
+                        "No Friends Yet",
+                        systemImage: "person.2.slash",
+                        description: Text("Add friends to see who's available")
+                    )
+                } else {
+                    // List is always in the hierarchy when not loading
+                    ForEach(viewModel.friendSchedules) { friendDisplay in
+                        FriendScheduleRow(display: friendDisplay, days: daysToShow)
                     }
                 }
-                .padding()
             }
-            .navigationTitle("Who's Free?")
-            .navigationBarTitleDisplayMode(.large)
-            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-                Button("OK") { viewModel.errorMessage = nil }
-            } message: {
-                if let error = viewModel.errorMessage {
-                    Text(error)
-                }
+            .padding()
+        }
+        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+            Button("OK") { viewModel.errorMessage = nil }
+        } message: {
+            if let error = viewModel.errorMessage {
+                Text(error)
             }
-            .task {
-                await viewModel.loadFriendsSchedules()
-            }
-            .refreshable {
-                await viewModel.loadFriendsSchedules()
-            }
+        }
+        .refreshable {
+            await viewModel.loadFriendsSchedules()
         }
     }
 }
@@ -111,7 +101,7 @@ private struct FriendScheduleRow: View {
 private struct FriendStatusPill: View {
      let date: Date
      let status: AvailabilityStatus
-     
+
      init(date: Date, status: AvailabilityStatus) {
          self.date = date
          self.status = status
@@ -163,9 +153,7 @@ private struct FriendStatusPill: View {
     )
 
     let mockAvailabilityRepo = MockAvailabilityRepository()
+    let viewModel = FriendsScheduleViewModel(friendRepository: mockFriendRepo, availabilityRepository: mockAvailabilityRepo)
 
-    return FriendsScheduleView(
-        friendRepository: mockFriendRepo,
-        availabilityRepository: mockAvailabilityRepo
-    )
+    return FriendsScheduleView(viewModel: viewModel)
 }

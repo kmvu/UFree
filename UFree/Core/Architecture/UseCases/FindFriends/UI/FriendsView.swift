@@ -9,14 +9,98 @@ import SwiftUI
 
 public struct FriendsView: View {
     @StateObject private var viewModel: FriendsViewModel
-    
+
     public init(friendRepository: FriendRepositoryProtocol) {
         _viewModel = StateObject(wrappedValue: FriendsViewModel(friendRepository: friendRepository))
     }
-    
+
     public var body: some View {
         NavigationStack {
             List {
+                // MARK: - Search by Phone Number
+                Section("Find by Phone Number") {
+                    HStack(spacing: 8) {
+                        TextField("Enter phone number", text: $viewModel.searchText)
+                            .keyboardType(.phonePad)
+                            .disabled(viewModel.isSearching)
+                        
+                        Button(action: {
+                            HapticManager.medium()
+                            Task { await viewModel.performPhoneSearch() }
+                        }) {
+                            if viewModel.isSearching {
+                                ProgressView().frame(width: 20, height: 20)
+                            } else {
+                                Image(systemName: "magnifyingglass")
+                            }
+                        }
+                        .disabled(viewModel.searchText.isEmpty || viewModel.isSearching)
+                    }
+                    .padding(.vertical, 4)
+                    
+                    // Show result if found
+                    if let result = viewModel.searchResult {
+                        HStack(spacing: 12) {
+                            Circle().fill(Color.green.opacity(0.2)).frame(width: 40, height: 40)
+                                .overlay { Text(String(result.displayName.prefix(1))).font(.headline).foregroundColor(.green) }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(result.displayName).font(.headline)
+                                Text("Found by phone").font(.caption).foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button("Add") {
+                                HapticManager.success()
+                                Task { await viewModel.addFriend(result) }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+                
+                // MARK: - Incoming Requests
+                if !viewModel.incomingRequests.isEmpty {
+                    Section("Friend Requests") {
+                        ForEach(viewModel.incomingRequests) { request in
+                            HStack(spacing: 12) {
+                                Circle().fill(Color.green.opacity(0.2)).frame(width: 40, height: 40)
+                                    .overlay { Text(String(request.fromName.prefix(1))).font(.headline).foregroundColor(.green) }
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(request.fromName).font(.headline)
+                                    Text("wants to be friends").font(.caption).foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                HStack(spacing: 8) {
+                                    Button("Accept") {
+                                        HapticManager.success()
+                                        Task { await viewModel.acceptRequest(request) }
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.green)
+                                    .controlSize(.small)
+                                    
+                                    Button(role: .destructive) {
+                                        HapticManager.warning()
+                                        Task { await viewModel.declineRequest(request) }
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
+                
                 if !viewModel.friends.isEmpty {
                     Section("My Trusted Circle") {
                         ForEach(viewModel.friends) { friend in
@@ -29,7 +113,7 @@ public struct FriendsView: View {
                         }
                     }
                 }
-                
+
                 Section {
                     if viewModel.discoveredUsers.isEmpty {
                         Button(action: {
@@ -53,7 +137,13 @@ public struct FriendsView: View {
             }
             .navigationTitle("Friends")
             .overlay { if viewModel.isLoading { ProgressView() } }
-            .task { await viewModel.loadFriends() }
+            .task {
+                viewModel.listenToRequests()
+                await viewModel.loadFriends()
+            }
+            .onDisappear {
+                viewModel.stopListening()
+            }
             .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
                 Button("OK") { viewModel.errorMessage = nil }
             } message: {
@@ -71,7 +161,7 @@ public struct FriendsView: View {
             }
         }
     }
-    
+
     private func friendRow(for user: UserProfile, isDiscovered: Bool) -> some View {
         HStack(spacing: 12) {
             Circle().fill(Color.blue.opacity(0.2)).frame(width: 40, height: 40)
@@ -91,12 +181,22 @@ public struct FriendsView: View {
 }
 
 #Preview {
+    let incomingRequest = FriendRequest(
+        id: "req1",
+        fromId: "user4",
+        fromName: "Diana",
+        toId: "currentUser",
+        status: .pending,
+        timestamp: Date()
+    )
+    
     let mockRepo = MockFriendRepository(
         discoveredUsers: [
             UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123"),
             UserProfile(id: "user2", displayName: "Bob", hashedPhoneNumber: "def456")
         ],
-        myFriends: [UserProfile(id: "user3", displayName: "Charlie", hashedPhoneNumber: "ghi789")]
+        myFriends: [UserProfile(id: "user3", displayName: "Charlie", hashedPhoneNumber: "ghi789")],
+        incomingRequests: [incomingRequest]
     )
     FriendsView(friendRepository: mockRepo)
 }

@@ -11,23 +11,38 @@ import FirebaseAuth
 
 // MARK: - Protocol
 public protocol FriendRepositoryProtocol {
-     /// Syncs local contacts, hashes them, and finds matching users in Firestore.
+    /// Syncs local contacts, hashes them, and finds matching users in Firestore.
     func findFriendsFromContacts() async throws -> [UserProfile]
     
     /// Gets the user's list of friends.
     func getMyFriends() async throws -> [UserProfile]
     
-    /// Adds a friend by user ID.
+    /// Finds a single user by their phone number (privacy-safe via hash lookup).
+    func findUserByPhoneNumber(_ phoneNumber: String) async throws -> UserProfile?
+    
+    /// Adds a friend by user ID (direct add, for backward compatibility).
     func addFriend(userId: String) async throws
     
     /// Removes a friend by user ID.
     func removeFriend(userId: String) async throws
+    
+    /// Sends a friend request (handshake model).
+    func sendFriendRequest(to user: UserProfile) async throws
+    
+    /// Observes incoming friend requests in real-time.
+    func observeIncomingRequests() -> AsyncStream<[FriendRequest]>
+    
+    /// Accepts a friend request (atomic batch write).
+    func acceptFriendRequest(_ request: FriendRequest) async throws
+    
+    /// Declines a friend request.
+    func declineFriendRequest(_ request: FriendRequest) async throws
 }
 
 // MARK: - Implementation
 final class FirebaseFriendRepository: FriendRepositoryProtocol {
      
-     private let db = Firestore.firestore()
+    private let db = Firestore.firestore()
     private let contactsRepo: ContactsRepositoryProtocol
     
     init(contactsRepo: ContactsRepositoryProtocol) {
@@ -65,6 +80,32 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         }
         
         return friends
+    }
+    
+    func findUserByPhoneNumber(_ phoneNumber: String) async throws -> UserProfile? {
+        guard let currentUserId = Auth.auth().currentUser?.uid else {
+            return nil
+        }
+        
+        // Hash the phone number (privacy-safe)
+        guard let hashedNumber = CryptoUtils.hashPhoneNumber(phoneNumber) else {
+            throw NSError(domain: "FriendRepository", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid phone number"])
+        }
+        
+        // Query Firestore for user with matching hash
+        let snapshot = try await db.collection("users")
+            .whereField("hashedPhoneNumber", isEqualTo: hashedNumber)
+            .getDocuments()
+        
+        // Find first match that isn't the current user
+        for doc in snapshot.documents {
+            if let user = try? doc.data(as: UserProfile.self),
+               user.id != currentUserId {
+                return user
+            }
+        }
+        
+        return nil
     }
     
     func addFriend(userId: String) async throws {
@@ -127,6 +168,78 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         }
         
         return matchedUsers
+    }
+    
+    func sendFriendRequest(to user: UserProfile) async throws {
+        guard let currentUid = Auth.auth().currentUser?.uid,
+              let currentName = Auth.auth().currentUser?.displayName,
+              let toId = user.id else { return }
+        
+        let request = FriendRequest(
+            id: nil,
+            fromId: currentUid,
+            fromName: currentName,
+            toId: toId,
+            status: .pending,
+            timestamp: Date()
+        )
+        
+        try db.collection("friendRequests").addDocument(from: request)
+    }
+    
+    func observeIncomingRequests() -> AsyncStream<[FriendRequest]> {
+        AsyncStream { continuation in
+            guard let uid = Auth.auth().currentUser?.uid else {
+                continuation.finish()
+                return
+            }
+            
+            let listener = db.collection("friendRequests")
+                .whereField("toId", isEqualTo: uid)
+                .whereField("status", isEqualTo: FriendRequest.RequestStatus.pending.rawValue)
+                .addSnapshotListener { snapshot, error in
+                    if let _ = error {
+                        continuation.finish()
+                        return
+                    }
+                    
+                    let requests = snapshot?.documents.compactMap { doc -> FriendRequest? in
+                        try? doc.data(as: FriendRequest.self)
+                    } ?? []
+                    continuation.yield(requests)
+                }
+            
+            continuation.onTermination = { _ in listener.remove() }
+        }
+    }
+    
+    func acceptFriendRequest(_ request: FriendRequest) async throws {
+        guard let requestId = request.id else { return }
+        
+        let batch = db.batch()
+        
+        let requestRef = db.collection("friendRequests").document(requestId)
+        let myRef = db.collection("users").document(request.toId)
+        let theirRef = db.collection("users").document(request.fromId)
+        
+        // 1. Mark request as accepted
+        batch.updateData(["status": FriendRequest.RequestStatus.accepted.rawValue], forDocument: requestRef)
+        
+        // 2. Add to my friend list
+        batch.updateData(["friendIds": FieldValue.arrayUnion([request.fromId])], forDocument: myRef)
+        
+        // 3. Add to their friend list
+        batch.updateData(["friendIds": FieldValue.arrayUnion([request.toId])], forDocument: theirRef)
+        
+        try await batch.commit()
+    }
+    
+    func declineFriendRequest(_ request: FriendRequest) async throws {
+        guard let requestId = request.id else { return }
+        
+        try await db.collection("friendRequests").document(requestId).updateData([
+            "status": FriendRequest.RequestStatus.declined.rawValue
+        ])
     }
     
     // MARK: - Private Helpers

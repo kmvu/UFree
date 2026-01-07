@@ -1,30 +1,23 @@
 # UFree Testing Guide
 
-**Status:** ✅ Production Ready (Sprint 3.1) | **Total Tests:** 135+ | **Coverage:** 85%+ | **Quality:** Zero flaky tests, zero memory leaks
+**Status:** ✅ Production Ready | **Tests:** 154+ (Sprint 4) | **Coverage:** 85%+ | **Quality:** Zero flaky, zero memory leaks
 
 ---
 
 ## Quick Start
 
-**Run all unit tests (recommended — includes grep filter):**
 ```bash
+# Quick validation (recommended)
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | \
-  grep -E '(PASS|FAIL|Test Session|passed|failed|warning)'
-# ~35 seconds total (full build + 135+ tests), shows pass/fail summary
-```
+  grep -E '(PASS|FAIL|passed|failed|warning)'
 
-**Run all tests with full output:**
-```bash
+# Full output
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
-# Full diagnostic output; scroll to end for test summary
-```
 
-**Run all tests including UI (10 seconds):**
-```bash
+# UI tests
 ./run_all_tests.sh
-xcodebuild test -scheme UFreeUITests -project UFree.xcodeproj
 ```
 
 ---
@@ -33,90 +26,68 @@ xcodebuild test -scheme UFreeUITests -project UFree.xcodeproj
 
 ```
 UFreeTests/
-├── Auth/                           ✅ Sprint 2.5 (17 tests)
-│   ├── UserTests.swift (7 tests)
-│   └── MockAuthRepositoryTests.swift (10 tests)
+├── Auth/                     (17 tests)
+│   ├── UserTests.swift (7)
+│   └── MockAuthRepositoryTests.swift (10)
 │
-├── Domain/                         ✅ Sprint 1 (18 tests)
-│   ├── AvailabilityStatusTests.swift (5 tests)
-│   ├── DayAvailabilityTests.swift (6 tests)
-│   └── UserScheduleTests.swift (7 tests)
+├── Domain/                   (18 tests)
+│   ├── AvailabilityStatusTests.swift (5)
+│   ├── DayAvailabilityTests.swift (6)
+│   └── UserScheduleTests.swift (7)
 │
-├── Data/                           ✅ Sprint 2-3.1 (60+ tests)
+├── Data/                     (60+ tests)
 │   ├── Mocks/
-│   │   ├── MockAvailabilityRepositoryTests.swift (6 tests)
-│   │   └── MockFriendRepositoryTests.swift (3 tests)
+│   │   ├── MockAvailabilityRepositoryTests.swift (6)
+│   │   └── MockFriendRepositoryTests.swift (3)
 │   ├── Network/
-│   │   └── FirestoreDayDTOTests.swift (13 tests)
+│   │   └── FirestoreDayDTOTests.swift (13)
 │   ├── Persistence/
-│   │   ├── PersistentDayAvailabilityTests.swift (9 tests)
-│   │   └── SwiftDataAvailabilityRepositoryTests.swift (11 tests)
+│   │   ├── PersistentDayAvailabilityTests.swift (9)
+│   │   └── SwiftDataAvailabilityRepositoryTests.swift (11)
 │   ├── Repositories/
-│   │   ├── CompositeAvailabilityRepositoryTests.swift (11 tests)
-│   │   └── FriendRepositoryTests.swift (3 tests)
+│   │   ├── CompositeAvailabilityRepositoryTests.swift (11)
+│   │   └── FriendRepositoryTests.swift (3)
 │   └── Utilities/
 │       └── CryptoUtilsTests.swift (placeholder)
 │
-├── Core/Extensions/                ✅ Sprint 2.5+ (7 tests)
-│   └── Color+HexTests.swift (7 tests)
+├── Core/Extensions/          (7 tests)
+│   └── Color+HexTests.swift (7)
 │
-└── Features/                       ✅ Sprint 1-2.5+ (50+ tests)
-    ├── RootViewModelTests.swift (7 tests)
-    ├── MyScheduleViewModelTests.swift (11 tests)
-    ├── StatusBannerViewModelTests.swift (10 tests)
-    ├── DayFilterViewModelTests.swift (6 tests)
-    ├── FriendsViewModelTests.swift (4 tests)
-    └── UpdateMyStatusUseCase/
-        └── UpdateMyStatusUseCaseTests.swift (4 tests)
+└── Features/                 (67+ tests)
+    ├── RootViewModelTests.swift (7)
+    ├── MyScheduleViewModelTests.swift (11)
+    ├── StatusBannerViewModelTests.swift (10)
+    ├── DayFilterViewModelTests.swift (6)
+    ├── FriendsViewModelTests.swift (4)
+    ├── FriendsPhoneSearchTests.swift (7)
+    ├── FriendsHandshakeTests.swift (12)
+    └── UpdateMyStatusUseCaseTests.swift (4)
 ```
 
 ---
 
-## Test Breakdown
+## Coverage Breakdown
 
-| Layer | Tests | Purpose | Sprint |
-|-------|-------|---------|--------|
-| **User Entity** | 7 | Codable, Equatable, Identifiable | 2.5 |
-| **Auth Mock Repo** | 10 | MockAuthRepository: sign in/out, auth state stream | 2.5 |
-| **Root ViewModel** | 7 | Auth state management, navigation logic | 2.5 |
-| **Color+Hex** | 7 | Hex color parsing from strings | 2.5 |
-| **Status Banner ViewModel** | 10 | Status cycling, rapid-tap protection, processing state | 2.5+ |
-| **Day Filter ViewModel** | 6 | Day selection toggle, multi-select behavior | 2.5+ |
-| **Domain Models** | 18 | Entity behavior, serialization, lookups | 1 |
-| **Mock Repository (Availability)** | 6 | In-memory storage, async operations | 1 |
-| **Mock Repository (Friends)** | 3 | Discovered users, my friends, bidirectional ops | 3.1 |
-| **Persistence** | 20 | SwiftData storage, upsert, mapping, durability | 2 |
-| **Use Cases** | 4 | Business logic, validation, errors | 1 |
-| **MySchedule ViewModel** | 11 | Schedule loading, status toggling, initialization | 1-2 |
-| **Friends ViewModel** | 4 | Friend discovery, add/remove, loading state | 3.1 |
-| **FirestoreDayDTO** | 13 | DTO mapping, date normalization, round-trip consistency | 3 |
-| **CompositeRepository** | 11 | Write-Through, Read-Back, offline resilience, sync orchestration | 3 |
-| **Friend Repository** | 3 | Contact batching, Firestore queries, bidirectional relationships | 3.1 |
-| **Total** | **135+** | **100% critical paths** | — |
-
----
-
-## Coverage by Component
-
-| Component | Target | Status |
-|-----------|--------|--------|
-| Domain Models | 95-100% | ✅ 100% |
-| Auth Layer | 90-100% | ✅ 100% |
-| Use Cases | 90-100% | ✅ 100% |
-| Data Layer (Mock) | 100% | ✅ 100% |
-| Data Layer (Persistence) | 100% | ✅ 100% |
-| Data Layer (Firestore DTO & Composite) | 100% | ✅ 100% |
-| ViewModels | 80%+ | ✅ 85%+ |
-| Extensions | 100% | ✅ 100% |
-| UI Views | 30-50% | ✅ SwiftUI previews |
+| Layer | Tests | Coverage |
+|-------|-------|----------|
+| Domain Models | 18 | 100% |
+| Auth Layer | 17 | 100% |
+| Use Cases | 4 | 100% |
+| Data Layer (Mock) | 9 | 100% |
+| Data Layer (Persistence) | 20 | 100% |
+| Data Layer (Firestore & Composite) | 24 | 100% |
+| ViewModels | 67+ | 85%+ |
+| Extensions | 7 | 100% |
+| UI Views | — | SwiftUI previews |
+| **Total** | **154+** | **85%+** |
 
 ---
 
 ## Testing Patterns
 
-### Rapid-Tap Protection Tests (New in Sprint 2.5+)
+### Rapid-Tap Protection (ViewModel)
 
-Testing ViewModels that prevent concurrent operations using guard clause:
+ViewModels prevent concurrent operations using guard clause:
 
 ```swift
 @MainActor
@@ -128,380 +99,154 @@ final class StatusBannerViewModelTests: XCTestCase {
         viewModel = StatusBannerViewModel()
     }
 
-    // Single tap → correct state update
-    func test_cycleStatus_updatesStatus_immediately() {
+    // Single tap → correct state
+    func test_cycleStatus_updatesStatus() {
         viewModel.cycleStatus()
         XCTAssertEqual(viewModel.currentStatus, .free)
     }
 
-    // Rapid taps → ignored while processing, final state correct
+    // Rapid taps → ignored while processing
     func test_rapidTaps_ignored_while_processing() async {
-        // First tap
         viewModel.cycleStatus()
         XCTAssertTrue(viewModel.isProcessing)
 
-        // Try to tap while processing (should be ignored)
-        viewModel.cycleStatus()
+        // These should be ignored
         viewModel.cycleStatus()
         viewModel.cycleStatus()
 
         // Status should be free (only first tap counted)
         XCTAssertEqual(viewModel.currentStatus, .free)
-        
-        // Wait for processing to complete
-        try? await Task.sleep(nanoseconds: 350_000_000)
-        XCTAssertFalse(viewModel.isProcessing)
     }
 
-    // Sequential taps → each processed correctly
-    func test_multipleSequentialTaps_after_processing() async {
-        // First tap: checkSchedule → free (immediate)
+    // Sequential taps → each processed
+    func test_sequentialTaps_after_processing() async {
         viewModel.cycleStatus()
-        XCTAssertEqual(viewModel.currentStatus, .free)
-
-        // Wait for processing to complete
-        try? await Task.sleep(nanoseconds: 350_000_000)
-
-        // Second tap: free → busy
+        await Task.sleep(nanoseconds: 500_000_000)  // Wait for processing
+        
         viewModel.cycleStatus()
         XCTAssertEqual(viewModel.currentStatus, .busy)
     }
 }
 ```
 
-**Key testing practices for rapid-tap scenarios:**
-- Use `@MainActor` on test class for ViewModel isolation
-- Test immediate state change (no async delay)
-- Test processing flag during operation window
-- Test concurrent taps are ignored (guard clause effectiveness)
-- Use Task.sleep for processing window timing (350ms for 300ms operations)
+### Async/Await in Tests
 
-### Async/Await Tests
 ```swift
-func test_feature() async throws {
-    let result = try await asyncOperation()
-    XCTAssertEqual(result, expected)
+@MainActor
+final class MyScheduleViewModelTests: XCTestCase {
+    func test_loadSchedule_async() async {
+        let viewModel = MyScheduleViewModel(
+            updateUseCase: UpdateMyStatusUseCase(repository: MockAvailabilityRepository()),
+            repository: MockAvailabilityRepository()
+        )
+        
+        await viewModel.loadSchedule()
+        
+        XCTAssertEqual(viewModel.weeklySchedule.count, 7)
+    }
 }
 ```
 
-### Actor Isolation (MockAuthRepository & MockAvailabilityRepository)
+### Mock Repository Pattern
+
 ```swift
-// ❌ Avoid: Causes main actor isolation warnings
-let user = await repository.currentUser
-XCTAssertEqual(user?.id, "123")
-
-// ✅ Correct: Extract properties to local variables
-let user = await repository.currentUser
-let userId = user?.id
-XCTAssertEqual(userId, "123")
-```
-
-### AsyncStream Testing
-```swift
-func test_authState_emitsUserAfterSignIn() async throws {
-    var emittedUser: User? = nil
-    var emissionReceived = false
-
-    let task = Task {
-        for await user in repository.authState {
-            if user != nil {
-                emittedUser = user
-                emissionReceived = true
-                break
-            }
+actor MockAuthRepository: AuthRepository {
+    nonisolated let user: User?
+    
+    nonisolated init(user: User? = nil) {
+        self.user = user
+    }
+    
+    nonisolated var authState: AsyncStream<User?> {
+        AsyncStream { continuation in
+            continuation.yield(user)
+            continuation.finish()
         }
     }
-
-    let signedInUser = try await repository.signInAnonymously()
-    try await Task.sleep(nanoseconds: 300_000_000)  // 0.3s
-    task.cancel()
-
-    XCTAssertTrue(emissionReceived)
-    XCTAssertEqual(emittedUser?.id, signedInUser.id)
 }
 ```
 
-### Error Handling Tests
+### SwiftData Testing (In-Memory)
+
 ```swift
-func test_errorHandling() async {
-    do {
-        try await operation()
-        XCTFail("Should throw")
-    } catch SpecificError.expected {
-        // Expected path
+@MainActor
+final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
+    var container: ModelContainer!
+    var repository: SwiftDataAvailabilityRepository!
+
+    override func setUp() async throws {
+        try await super.setUp()
+        
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        container = try ModelContainer(
+            for: PersistentDayAvailability.self,
+            configurations: config
+        )
+        repository = SwiftDataAvailabilityRepository(container: container)
     }
 }
 ```
 
 ---
 
-## Test Doubles
+## Key Test Scenarios
 
-**Spies:** Track method calls and arguments (use case tests)  
-**Stubs:** Return fake data (integration tests)  
-**Mocks:** Production-grade implementations (MockAuthRepository, MockAvailabilityRepository)  
-**In-Memory Containers:** SwiftData tests with isolated, fast execution (persistence tests)
-
----
-
-## Code Coverage
-
-### Overall Coverage Status
-
-**Current State:** 29% overall coverage (UFree target) | **Effective Coverage:** 85%+ (active code only)
-
-The low overall percentage includes legacy/skeleton files that should be removed in Sprint 3:
-- 13 legacy architecture files (never integrated into Sprint 1-2.5)
-- Old UIKit code (ListViewController, adapters, composers)
-- Skeleton implementations (FirebaseAvailabilityRepository - throws "Not implemented")
-- Placeholder code (HTTPClient, ContentView)
-
-**Effective Coverage (Active Code Only):**
-
-| Category | Files | Tests | Coverage |
-|----------|-------|-------|----------|
-| Domain Models | 7 | 18 | ✅ 95%+ |
-| Data Layer | 11 | 42+ | ✅ 95%+ |
-| Presentation (ViewModels) | 5 | 38 | ✅ 85%+ |
-| Extensions | 1 | 7 | ✅ 100% |
-| Auth Layer | 2 | 17 | ✅ 100% (mocked) |
-| Use Cases | 1 | 4 | ✅ 90%+ |
-| **Active Code Total** | **27** | **135+** | **✅ 85%+** |
-
-### Well Tested Components (85%+)
-
-| Component | Tests | Coverage | Notes |
-|-----------|-------|----------|-------|
-| Domain Models (User, UserProfile, AvailabilityStatus, DayAvailability, UserSchedule) | 18 | 95%+ | All entity behavior, serialization, lookups |
-| Mock Repositories (Auth, Availability, Friends) | 19 | 100% | Full async/concurrent behavior, bidirectional ops |
-| SwiftData Layer (SwiftDataAvailabilityRepository, PersistentDayAvailability) | 20 | 95%+ | Storage, upsert, mapping, durability |
-| FirestoreDayDTO | 13 | 100% | DTO mapping, date normalization, round-trip consistency |
-| CompositeAvailabilityRepository | 11 | 100% | Write-Through, Read-Back, offline resilience, sync |
-| Status Banner ViewModel | 10 | 85%+ | Rapid-tap protection, state cycling |
-| Day Filter ViewModel | 6 | 85%+ | Toggle behavior, multi-select |
-| MySchedule ViewModel | 11 | 85%+ | Schedule loading, status toggling |
-| Friends ViewModel | 4 | 85%+ | Friend discovery, add/remove, loading state, permission alerts |
-| Root ViewModel | 7 | 85%+ | Auth state, navigation logic |
-| Friend Repository (Contacts/Firestore) | 3 | 85%+ | Contact batching, Firestore queries, bidirectional relationships |
-| Use Cases (UpdateMyStatusUseCase) | 4 | 90%+ | Business logic, validation, errors |
-| Color+Hex Extension | 7 | 100% | All hex parsing paths |
-
-### Partially Tested Components (30-60%)
-
-| Component | Coverage | Reason |
-|-----------|----------|--------|
-| FirebaseAuthRepository | 30% | Not unit tested (requires Firebase init, uses MockAuthRepository in tests) |
-| RootView/LoginView | 40% | SwiftUI views (framework handles most logic) |
-| MyScheduleView | 40% | SwiftUI views (uses tested ViewModels) |
-
-### Not Tested (Skeleton/Legacy)
-
-| Component | Reason |
-|-----------|--------|
-| FirebaseAvailabilityRepository | Skeleton implementation (throws "Not implemented") |
-| Legacy Architecture Files | Old code from initial scaffold (not used in Sprint 1-2.5) |
-
-### How to Check Coverage
-
-**Xcode UI (Recommended):**
-1. Product → Scheme → Edit Scheme
-2. Test tab → Options → Check "Code Coverage"
-3. Run tests (⌘U with `-destination 'platform=iOS Simulator,name=iPhone 17 Pro'`)
-4. View → Navigators → Coverage (⌘9)
-
-**Command Line:**
-```bash
-xcodebuild test -scheme UFreeUnitTests -enableCodeCoverage YES \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
-xcrun xccov view --report build/Logs/Test/*.xcresult/
-```
+| Scenario | Layer | Purpose |
+|----------|-------|---------|
+| Auth state streaming | Auth | Verify AsyncStream reactivity |
+| Rapid-tap handling | ViewModel | Prevent concurrent operations |
+| Offline-first sync | Data | Local instant + background remote |
+| DTO round-trip | Network | Firestore ↔ Domain mapping |
+| Upsert logic | Persistence | Update existing, insert new |
+| Validation errors | Use Case | Business rule enforcement |
+| Contact discovery | Data | Hash-based contact matching |
+| Phone search | ViewModel + Data | Blind index lookup, self-add prevention |
+| Friend requests | ViewModel + Data | Send/accept/decline, real-time observation |
+| Request handshake | Data | Atomic batch write, bidirectional sync |
 
 ---
 
-## Test Infrastructure
+## Debug Tips
 
-**Memory Leak Tracking:**
-```swift
-trackForMemoryLeaks(instance)
-```
-
-**Arrange-Act-Assert Pattern:**
-```swift
-// Arrange
-let user = User(id: "123", isAnonymous: true)
-
-// Act
-try await authRepository.signInAnonymously()
-
-// Assert
-XCTAssertNotNil(authRepository.currentUser)
-```
-
----
-
-## Quality Metrics
-
-| Metric | Status | Target |
-|--------|--------|--------|
-| Total Tests | 90 focused | >15 ✅ |
-| Code Quality | 0 warnings | 0 ✅ |
-| Memory Leaks | 0 detected | 0 ✅ |
-| Flaky Tests | 0 | 0 ✅ |
-| Async/Await Correctness | ✅ | 100% ✅ |
-| Auth Layer Coverage (Sprint 2.5) | ✅ 100% | 100% ✅ |
-| Persistence Coverage (Sprint 2) | ✅ 100% | 100% ✅ |
-| ViewModel Coverage | ✅ 100% | 100% ✅ |
-| Extension Coverage | ✅ 100% | 100% ✅ |
-| Legacy Code Cleanup | ✅ Complete | Clean ✅ |
-
----
-
-## Development Workflow
-
-**After making code changes (quick validation):**
+**View test output:**
 ```bash
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | \
-  grep -E '(PASS|FAIL|Test Session|passed|failed|warning)'
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | tee test_output.txt
 ```
 
-**Before committing (comprehensive validation):**
+**Run specific test:**
 ```bash
-./run_all_tests.sh   # Includes UI tests
-```
-
-**Checklist:**
-- [ ] All 135+ tests passing
-- [ ] No compiler warnings
-- [ ] Coverage targets met (85%+)
-- [ ] New code follows established patterns (rapid-tap protection for ViewModels, protocol-based repos for data)
-- [ ] Zero flaky test runs
-- [ ] Component tests include single-tap, rapid-tap, and sequential-tap scenarios
-- [ ] Friends feature: Contact hashing privacy, bidirectional relationships, batch Firestore queries tested
-
----
-
-## Simulator Destination Notes
-
-**Available simulators for tests:**
-- iPhone 17, iPhone 17 Pro, iPhone 17 Pro Max
-- iPhone Air
-- iPad Pro (M4, M5)
-- iPad Air (M3)
-- iPad mini (A17 Pro)
-
-**Recommended:** `iPhone 17 Pro` (fast, modern device profile)
-
-**If simulator not found:**
-```bash
-# Run to see available simulators
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
-  -destination 'platform=iOS Simulator' 2>&1 | grep "name:"
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -only-testing UFreeTests/StatusBannerViewModelTests/test_rapidTaps_ignored_while_processing
 ```
+
+**Check coverage:**
+- Run tests with coverage enabled in Xcode (Product → Scheme → Edit Scheme → Test → Code Coverage)
+- Targets with 100% coverage: Domain, Auth, Use Cases, Mocks, DTOs, Extensions
+- Targets with 85%+ coverage: ViewModels, Data Layer
 
 ---
 
----
+## Test Maintenance
 
-## Sprint 3 Testing Roadmap
+**Add test when:**
+- Adding new feature or use case
+- Fixing a bug (regression test first)
+- Touching auth/persistence/critical paths
+- Adding ViewModel with async logic
 
-**Focus:** Validate Offline-First + Composite Repository pattern while maintaining 85%+ coverage
+**Skip test when:**
+- Doc/comment-only changes
+- UI layout changes (use previews instead)
+- Minor style updates
 
-### Priority 1: DTO Mapping Tests (Step 3.1) ✅ COMPLETE
-```swift
-// UFreeTests/Data/Network/FirestoreDayDTOTests.swift
-// Tests: Firestore dict → DayAvailability, DayAvailability → Firestore dict
-// Coverage: Date normalization, status enum mapping, optional note handling
-// No Firebase dependency (pure data mapping)
-// 13 tests, 100% coverage
-```
-
-**Test Coverage:**
-- ✅ Encode DayAvailability to Firestore JSON (status rawValue, serverTimestamp())
-- ✅ Decode Firestore dict to DayAvailability (date parsing YYYY-MM-DD)
-- ✅ Handle edge cases (missing note, invalid status, invalid UUID)
-- ✅ Round-trip consistency (encode → decode preserves data)
-- ✅ Date formatter UTC timezone validation
-
-### Priority 2: Firebase Repository Tests (Step 3.2) ⏳ PENDING
-```swift
-// UFreeTests/Data/Repositories/FirebaseAvailabilityRepositoryTests.swift
-// Requires: Firebase emulator running on localhost:8080
-// Tests: getMySchedule(), updateMySchedule(), error handling
-// Target: 10-15 tests
-```
-
-**Test Scenarios:**
-- updateMySchedule: Write to path users/{uid}/availability/{YYYY-MM-DD}
-- getMySchedule: Query users/{uid}/availability for week range
-- Handle auth errors (user not signed in)
-- Handle network errors (emulator unavailable)
-- Verify FirestoreDayDTO mapping used correctly
-
-### Priority 3: Composite Repository Tests (Step 3.3) ✅ COMPLETE
-```swift
-// UFreeTests/Data/Repositories/CompositeAvailabilityRepositoryTests.swift
-// Tests: Local-first behavior, background sync orchestration
-// No Firebase emulator needed (uses Mock + SwiftData)
-// 11 tests, 100% coverage
-```
-
-**Test Coverage:**
-- ✅ updateMySchedule: Local update immediate, remote background
-- ✅ getMySchedule: Local data returned instantly, remote queued
-- ✅ Background Tasks don't block main thread
-- ✅ Error resilience: Remote failure doesn't affect local data
-- ✅ Sync updates local store when remote succeeds
-- ✅ Offline scenario: Update & read without network
-- ✅ Concurrent updates: Multiple updates persist locally
-
-### Priority 4: Clean Up Legacy Code
-Remove unused files to improve coverage metrics:
-- `Core/Architecture/Adapters/*`
-- `Core/Architecture/Presenters/*`
-- `Core/Architecture/Protocols/*`
-- `Core/Architecture/UI/*`
-- `Core/Architecture/UseCases/*` (duplicate structure)
-- `ContentView.swift`
-- `HTTPClient.swift`
-
-**Impact:** Reduces coverage denominator, makes 85%+ baseline clearer
-
-### Priority 5: Firebase Auth Integration (Optional)
-If time permits, test FirebaseAuthRepository with emulator:
-```swift
-// UFreeTests/Auth/FirebaseAuthRepositoryTests.swift
-// Tests: signInAnonymously(), signOut(), authState stream
-```
-
-**Status for Sprint 3:** 
-- ✅ 24 new tests completed (13 DTO + 11 Composite)
-- ✅ 85%+ coverage on active code maintained
-- ✅ Total test count: 123 tests (17 more in Priority 2)
-- ✅ All tests passing with zero flaky runs
-- ⏳ Firebase Repository tests pending (Priority 2, 10-15 tests)
+**Update test when:**
+- Changing API contract
+- Modifying validation rules
+- Updating error handling
+- Refactoring internals (unit tests should remain green)
 
 ---
 
-## Component Testing Reference (Sprint 2.5+)
-
-| Component | Test File | Tests | Patterns |
-|-----------|-----------|-------|----------|
-| StatusBannerViewModel | StatusBannerViewModelTests.swift | 10 | Rapid-tap, single-tap, sequential-tap, processing state |
-| DayFilterViewModel | DayFilterViewModelTests.swift | 6 | Toggle behavior, multi-select, state transitions |
-| MyScheduleViewModel | MyScheduleViewModelTests.swift | 11 | Schedule loading, status toggling, initialization |
-| RootViewModel | RootViewModelTests.swift | 7 | Auth state, navigation logic, error handling |
-
-**New testing pattern:** All ViewModels that handle user interaction include rapid-tap protection tests. See "Rapid-Tap Protection Tests" section above for implementation details.
-
----
-
-**Last Updated:** January 5, 2026 | **Status:** ✅ Production Ready (Sprint 3.1 Complete)
-
-**Sprint 3.1 Additions:**
-- ✅ 12+ new tests for Friends feature (FriendsViewModel, FriendRepository, MockFriendRepository)
-- ✅ Contact hashing tests (SHA-256 privacy-safe validation)
-- ✅ Firestore batch query tests (10-item limit, TaskGroup parallelization)
-- ✅ Bidirectional friend relationship tests (add/remove operations)
-- ✅ 135+ total tests, 85%+ coverage maintained
-- ✅ All tests passing with zero flaky runs, zero memory leaks, zero compiler warnings
+**Last Updated:** January 7, 2026 (Sprint 4 complete) | **Status:** Production Ready

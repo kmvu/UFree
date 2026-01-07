@@ -11,7 +11,10 @@ struct StatusBannerView: View {
     @StateObject private var viewModel = StatusBannerViewModel()
 
     var body: some View {
-        Button(action: viewModel.cycleStatus) {
+        Button(action: {
+            HapticManager.medium()
+            viewModel.cycleStatus()
+        }) {
             HStack(spacing: 16) {
                 Image(systemName: viewModel.currentStatus.iconName)
                     .font(.system(size: 26))

@@ -52,7 +52,10 @@ struct DayStatusCardView: View {
         )
         .id(day.id)
         .animation(.spring(response: 0.4, dampingFraction: 0.7, blendDuration: 0.2), value: day.status)
-        .onTapGesture(perform: onTap)
+        .onTapGesture {
+            HapticManager.light()
+            onTap()
+        }
     }
 
     private func iconFor(_ status: AvailabilityStatus) -> String {

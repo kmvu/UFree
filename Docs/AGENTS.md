@@ -2,95 +2,71 @@
 
 ## Testing Protocol
 
-**IMPORTANT: Only run tests when explicitly requested or when code logic changes. Do NOT run tests for documentation-only updates.**
-- For Docs, README, or comments changes: Skip testing unless user asks
-- For code/logic changes: Run tests only after checking with user first
-- Always ask before test execution: "Should I run tests to validate?"
+**Skip tests for docs/comments changes. Run tests ONLY if code logic changes.**
+- Docs/README/comments updates: No tests needed
+- Code/logic changes: Ask user first: "Should I run tests to validate?"
 
-**Test-Driven Development (TDD) - REQUIRED for all new features:**
-- Write tests FIRST based on requirements and expected behavior
-- Then implement code to satisfy the tests
-- Benefits: Catches edge cases early, ensures better code design, validates requirements upfront, significantly reduces debugging and iteration time
-- This approach has proven to save substantial time compared to writing tests after implementation
+**Test-Driven Development (TDD):** Write tests FIRST, then implement code.
 
-## Build & Test Commands
+## Test Commands
 
-**Run all unit tests (fast feedback) — RECOMMENDED:**
 ```bash
+# Quick validation (recommended)
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | \
-  grep -E '(PASS|FAIL|Test Session|passed|failed|warning)'
-# ~35 seconds total, includes full build + 135+ tests
-```
+  grep -E '(PASS|FAIL|passed|failed|warning)'
 
-**Alternative (cleaner output):**
-```bash
+# Full output
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
-# Full output; scroll to end for test summary
-```
 
-**Run single test:**
-```bash
+# Single suite
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   -only-testing UFreeTests/MockAuthRepositoryTests
 ```
 
-**Run UI tests (comprehensive):**
-```bash
-./run_all_tests.sh           # ~10 seconds
-```
-
 ## Build Troubleshooting
 
-**Issue: `xcodebuild build -scheme UFree` fails with provisioning profile error**
-- Do NOT use `-scheme UFree` for validation; use `-scheme UFreeUnitTests` instead
-- Avoid `xcodebuild build` entirely; go straight to `xcodebuild test` with a simulator destination
-- Always specify `-destination 'platform=iOS Simulator,name=iPhone 17 Pro'` to avoid device-selection errors
+| Issue | Solution |
+|-------|----------|
+| Provisioning profile error | Use `-scheme UFreeUnitTests`, not `-scheme UFree` |
+| No simulator specified error | Always include `-destination 'platform=iOS Simulator,name=iPhone 17 Pro'` |
+| Device selection fails | Use `-destination 'platform=iOS Simulator,name=iPhone 17 Pro'` |
 
-**Issue: Tests fail because no simulator specified**
-- Error: "Tests must be run on a concrete device"
-- Solution: Always include `-destination 'platform=iOS Simulator,name=iPhone 17 Pro'`
-- Available simulators: iPhone 17, iPhone 17 Pro, iPhone 17 Pro Max, iPhone Air, iPad Pro (M4/M5), iPad Air (M3), iPad mini (A17 Pro)
+**Validation workflow:** 1) Make changes → 2) Run tests with grep → 3) Look for "passed" → 4) Done
 
-**Fastest validation workflow:**
-1. Make code changes
-2. Run test command above with grep filter
-3. Look for "passed" in output; if all tests passed, code is good
-4. Scroll full output for details if needed
+---
 
-## Architecture & Structure
+## Architecture & Layers
 
-**Clean Architecture Layers:**
-- **Domain:** User, AvailabilityStatus, DayAvailability, UserSchedule, UserProfile, AuthRepository (protocol), AvailabilityRepository (protocol), FriendRepositoryProtocol, UpdateMyStatusUseCase
-- **Data:** FirebaseAuthRepository, MockAuthRepository, SwiftDataAvailabilityRepository, MockAvailabilityRepository, PersistentDayAvailability, FirebaseAvailabilityRepository, CompositeAvailabilityRepository, FirebaseFriendRepository, MockFriendRepository, AppleContactsRepository, CryptoUtils
-- **Presentation:** RootViewModel (auth), MyScheduleViewModel (schedule), FriendsViewModel (friends)
-- **UI:** RootView (auth + tabs), LoginView, MyScheduleView, FriendsView
+| Layer | Key Components |
+|-------|---|
+| **Domain** | User, AvailabilityStatus, DayAvailability, UserSchedule, UserProfile, Protocols (AuthRepository, AvailabilityRepository, FriendRepositoryProtocol), UpdateMyStatusUseCase |
+| **Data** | FirebaseAuthRepository, MockAuthRepository, SwiftDataAvailabilityRepository, FirebaseAvailabilityRepository, CompositeAvailabilityRepository, FirebaseFriendRepository, AppleContactsRepository, CryptoUtils |
+| **Presentation** | RootViewModel (auth), MyScheduleViewModel, FriendsScheduleViewModel, FriendsViewModel, StatusBannerViewModel, DayFilterViewModel |
+| **UI** | RootView (auth + tabs), LoginView, MyScheduleView, FriendsView, FriendsScheduleView, Components |
 
-**Key Subprojects:**
-- UFree: Main app bundle
-- UFreeTests: Unit tests (135+ tests covering auth, domain, data, use cases, view models, UI components, friends feature)
-- UFreeUITests: UI integration tests
+**Projects:** UFree (app), UFreeTests (154+ unit tests), UFreeUITests (integration tests)
 
-**Persistence:** SwiftData local (Sprint 2.5) + Firestore remote (Sprint 3) with CompositeRepository pattern. Firebase auth ready. Friends sync via Firestore (Sprint 3.1).
+---
 
 ## Code Style & Conventions
 
-**Swift/iOS Standards:**
-- SwiftUI for UI (avoid UIKit)
-- Combine `@Published` for reactive state in ViewModels (required for `@StateObject` compatibility)
-- Async/await for concurrency in data layer (not Combine Publishers)
-- @MainActor on UI/presentation components (RootViewModel, MyScheduleViewModel, StatusBannerViewModel, DayFilterViewModel, auth repositories)
+**Swift Standards:**
+- SwiftUI only (no UIKit)
+- `@Published` for ViewModel state (required for `@StateObject`)
+- Async/await for concurrency (not Combine Publishers)
+- `@MainActor` on UI/Presentation components and auth repos
 - Dependency injection via init parameters
-- Protocol-based repositories for testability (AuthRepository, AvailabilityRepository)
-- Actor for test doubles that need concurrent access (MockAuthRepository, MockAvailabilityRepository)
+- Protocol-based repos for testability
+- Actor for mocks requiring concurrent access (MockAuthRepository, MockAvailabilityRepository)
 
-**Naming:** CamelCase types/classes, camelCase properties/functions. Use descriptive names reflecting domain (e.g., AuthRepository, User, not Auth, CurrentUser).
+**Naming:** CamelCase types, camelCase properties/functions. Descriptive names (e.g., `AuthRepository`, not `Auth`)
 
-**Testing:** Arrange-Act-Assert pattern. Name tests as `test_[method]_[expectedBehavior]()`. Use MockAuthRepository (actor for thread safety), MockAvailabilityRepository (actor for thread safety), and in-memory SwiftData containers. For ViewModels, include rapid-tap protection tests (single tap, rapid taps, sequential taps).
+**Testing:** Arrange-Act-Assert pattern. Test names: `test_[method]_[expectedBehavior]()`. Include rapid-tap protection tests (single tap, rapid taps, sequential taps).
 
-**Auth State Streaming:** Use AsyncStream for reactive UI updates instead of Combine. Example:
+**AsyncStream Pattern (Auth State):**
 ```swift
 var authState: AsyncStream<User?> { get }
 
@@ -102,238 +78,84 @@ Task {
 }
 ```
 
-**Actor Isolation Patterns:**
-1. Make initializers `nonisolated` if they don't access actor state:
-```swift
-nonisolated public init(user: User? = nil) {
-    self.user = user
-}
-```
+**Actor Isolation:**
+1. `nonisolated` initializers if they don't access actor state
+2. `nonisolated` properties if they don't need isolation (e.g., AsyncStream)
+3. Extract properties to local variables before assertions in tests
 
-2. Make properties `nonisolated` if they don't need isolation (e.g., AsyncStream):
-```swift
-nonisolated public var authState: AsyncStream<User?> {
-    authStateStream
-}
-```
+**Error Handling:** Typed errors (e.g., `UpdateMyStatusUseCaseError.cannotUpdatePastDate`). Propagate repo errors; catch and rollback in ViewModel.
 
-3. In tests, extract properties to local variables before assertions:
-```swift
-// ❌ Causes warnings
-let user = await repository.currentUser
-XCTAssertEqual(user?.id, "123")
-
-// ✅ Correct pattern
-let user = await repository.currentUser
-let userId = user?.id
-XCTAssertEqual(userId, "123")
-```
-
-**Error Handling:** Use typed errors (UpdateMyStatusUseCaseError.cannotUpdatePastDate). Propagate repository errors; catch and rollback in ViewModel. Auth errors propagate to RootViewModel as `errorMessage: String?` for display.
-
-**Imports:** Group into Foundation, SwiftUI, SwiftData, FirebaseAuth, FirebaseFirestore (when needed), then local modules. Follow clean architecture boundaries.
-
-## Tappable Component Pattern
-
-**For ALL interactive/tappable UI components (buttons, cards, etc.):**
-1. **Extract state management to a ViewModel** (one ViewModel per component type)
-   - ViewModel handles all state: processing flags, data updates
-   - Prevents rapid-tap issues and logic duplication
-   - Marked with `@MainActor` for thread safety
-   - Conforms to `ObservableObject` with `@Published` properties
-   
-2. **Implement rapid-tap protection** using guard clause:
-   ```swift
-   func handleTap() {
-       guard !isProcessing else { return }  // Prevent concurrent taps
-       isProcessing = true
-       // ... async operation ...
-   }
-   ```
-
-3. **Extract component views to separate files** for reusability:
-   - Each component in its own file (e.g., `{Component}View.swift`)
-   - Include preview for design iteration without app launch
-   - Parent view stays lean, orchestrating component layout only
-
-4. **Add unit tests** covering rapid-tap scenarios:
-   - Test single tap → correct state update
-   - Test rapid taps → ignored while processing, final state is correct
-   - Test sequential taps → each processed correctly
-
-**Pattern Examples:**
-- `StatusBannerView.swift` + `StatusBannerViewModel` - Manages status cycling (3 states) with 0.3s processing phase and rapid-tap protection
-- `DayFilterButtonView.swift` + `DayFilterViewModel` - Day selection with toggle behavior
-- `DayStatusCardView.swift` - Reusable status card (stateless, receives color and onTap callback)
-- Unit tests: `StatusBannerViewModelTests` (10 tests), `DayFilterViewModelTests` (6 tests)
-
-**Files to create for a new component:**
-- `{Component}ViewModel.swift` - Only if component has state/logic. Marked with `@MainActor`, conforms to `ObservableObject`, use `@Published` for state
-- `{Component}View.swift` - Component UI, use `@StateObject` to instantiate ViewModel (if applicable)
-- `{Component}ViewModelTests.swift` - Unit tests for ViewModel including rapid-tap scenarios (if applicable)
-- Parent view - Use extracted components, reduce to layout orchestration only
-
-**Shared Utilities:**
-- `AvailabilityStatus+Colors.swift` - Domain-level color mapping extension (reusable across UI layer)
-- `ButtonStyles.swift` - Centralized button styles like `NoInteractionButtonStyle`
+**Imports:** Foundation, SwiftUI, SwiftData, FirebaseAuth, FirebaseFirestore (if needed), then local modules.
 
 ---
 
-## Navigation & UI Patterns
+## Tappable Component Pattern
 
-**Apple Guidelines First:**
-- Always prefer native SwiftUI modifiers (`.navigationTitle()`, `.navigationSubtitle()`, `.navigationBarTitleDisplayMode()`, etc.)
-- These modifiers couple UI elements automatically and handle platform-specific behavior
-- Only customize or create workarounds if native implementation is impossible
-- This convention ensures consistency, reduces maintenance, and respects Apple's design patterns
+**All interactive UI components follow this pattern:**
 
-**Navigation Bar (Standard Apple-Compliant):**
-- Use `.navigationTitle("Title")` for main title
-- Use `.navigationSubtitle("Subtitle")` for subtitle (couples automatically with title)
-- Use `.navigationBarTitleDisplayMode(.large)` for large title style
-- Add buttons via `.toolbar(placement: .navigationBarTrailing)` for right-side buttons
-- Do NOT use custom header sections or toolbar `.principal` placement for titles/subtitles
-- Example:
+1. **ViewModel** (@MainActor, @Published state, rapid-tap protection via `guard !isProcessing`)
+2. **View** (separate file with @StateObject for ViewModel)
+3. **Tests** (single tap, rapid taps, sequential taps)
+
+**Example:** `StatusBannerView` + `StatusBannerViewModel` (status cycling, 0.3s processing, rapid-tap protection)
+
+**Files to create:**
+- `{Component}ViewModel.swift` - State management (@MainActor, @Published)
+- `{Component}View.swift` - UI with @StateObject or stateless
+- `{Component}ViewModelTests.swift` - Rapid-tap scenarios (if stateful)
+- Parent view - Layout orchestration only
+
+**Shared Utilities:**
+- `AvailabilityStatus+Colors.swift` - Domain-level color extension (`.displayColor`)
+- `ButtonStyles.swift` - NoInteractionButtonStyle (removes default highlight)
+- `HapticManager.swift` - Unified feedback API
+
+---
+
+## Navigation & UI
+
+**Apple-Compliant:**
+- Use `.navigationTitle()`, `.navigationSubtitle()`, `.navigationBarTitleDisplayMode()`
+- Add buttons via `.toolbar(placement: .navigationBarTrailing)`
+- Do NOT use custom header sections or `.principal` placement for titles
+- Single NavigationStack at MainAppView level (no nesting)
+
+**Example:**
 ```swift
 NavigationStack {
-     VStack { /* content */ }
-         .navigationTitle("UFree")
-         .navigationSubtitle("See when friends are available")
-         .navigationBarTitleDisplayMode(.large)
-         .toolbar {
-             ToolbarItem(placement: .navigationBarTrailing) {
-                 Button("Sign Out") { /* action */ }
-             }
-         }
- }
+    VStack { /* content */ }
+        .navigationTitle("UFree")
+        .navigationSubtitle("See when friends are available")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Sign Out") { /* action */ }
+            }
+        }
+}
 ```
 
-**Dependency Passing:**
-- Pass `rootViewModel` down through container views when auth actions (sign out) needed
-- In `ScheduleContainer`, receive both container and rootViewModel, pass to MyScheduleView
-- MyScheduleView takes `viewModel` (for schedule) and `rootViewModel` (for auth actions)
+---
 
-## Sprint 2.5+ Context (UI Enhancements & Refactoring)
+## Sprint 4 Additions
 
-**UI Enhancements:**
-- `UserStatus` enum with three states: checkSchedule, busy, free
-- `StatusBannerViewModel` for managing status cycling with rapid-tap protection
-- `DayFilterViewModel` for managing day selection state
-- Multi-stage animation: processing phase with border overlay → state transition with text slide + gradient color change
-- Established tappable component pattern for all interactive UI elements
-- 16 new tests (StatusBannerViewModelTests: 10, DayFilterViewModelTests: 6)
-- Day status card colors updated: Afternoon Only (pink → orange), Evening Only (orange → purple)
-- Day names and numbers now inherit status color instead of grey
+**Phone Search Pattern:** findUserByPhoneNumber() in repository protocol. Clean input → Hash via CryptoUtils → Firestore query on hashedPhoneNumber. FriendsViewModel state: searchText, searchResult, isSearching. Rapid-tap protection via isSearching guard. Clears search after adding. Prevents self-add via Auth user ID check.
 
-**Code Architecture Refactoring:**
-- Extracted `StatusBannerView.swift` - Standalone component with independent preview
-- Extracted `DayStatusCardView.swift` - Reusable day status card component
-- Extracted `DayFilterButtonView.swift` - New reusable day filter button component
-- Extracted `ButtonStyles.swift` - Centralized button style utilities
-- Created `AvailabilityStatus+Colors.swift` - Domain-level color extension (eliminates code duplication)
-- Refactored `MyScheduleView.swift` - Reduced from 323 → 139 lines, now orchestrates layout only
-- All components have previews for design iteration without launching app
-- Single responsibility per file: easier to test, maintain, and extend
+**Blind Index Pattern:** Privacy-safe search using hashed phone numbers. Raw numbers never exposed to Firestore.
 
-## Sprint 3 Context: Cloud Sync & Resilience
+**Two-Way Handshake:** FriendRequest domain model (id, fromId/Name, toId, RequestStatus enum, timestamp). sendFriendRequest() creates pending request. acceptFriendRequest() atomic batch write (mark accepted + bidirectional friendIds add). declineFriendRequest() marks declined. observeIncomingRequests() AsyncStream for real-time listener. Privacy-first: schedule visibility only after both parties consent.
 
-**Architecture: Offline-First with Composite Repository**
+**View Lifecycle Management:** FriendsViewModel.listenToRequests() starts real-time listener. .task { listenToRequests() } begins on view appear. .onDisappear { stopListening() } stops listener (saves battery/data). Real-time animation with .spring() when requests arrive. Listener cleanup on task cancellation.
 
-The app uses a resilience chain for availability sync:
-1. UI requests data → Composite Repository
-2. Composite returns Local Data (SwiftData) immediately
-3. Composite triggers Remote Fetch (Firebase) in background
-4. On success: Remote data syncs into Local Storage
-5. UI observes Local Data and auto-updates
+---
 
-Benefits: Never blocks UI, works completely offline, background syncing transparent, clean architecture preserved.
+## Sprint 3.2 Additions
 
-## Sprint 3.1 Context: Friends Discovery & Social Features
+**NavigationStack:** Single parent at MainAppView level (TabView parent), no nesting
+**HapticManager:** Unified feedback API - light(), medium(), heavy(), success(), warning(), selection()
+**Firebase:** Disabled swizzling (`Info.plist`), manual config in AppDelegate with safety checks
+**ViewModel Lifecycle:** Created at RootView level, persist across tab switches
 
-**Friends Discovery Flow:**
-1. User taps "Sync Contacts to Find Friends" in Friends Tab
-2. App requests Contacts permission via system dialog
-3. AppleContactsRepository fetches all phone numbers → SHA-256 hashes them (privacy-safe)
-4. FirebaseFriendRepository queries Firestore for matching users (10-item batches via TaskGroup)
-5. Discovered users displayed in "Add Friends" section
-6. User taps "Add" → FriendsViewModel adds friend (optimistic UI update + Firestore write)
-7. Friend appears in "My Trusted Circle" section
-8. Swipe to remove → removes bidirectionally from both users' friendIds arrays
+---
 
-**Architecture: Privacy-First Contact Matching**
-- Raw phone numbers never stored anywhere (only SHA-256 hashes)
-- Contacts syncing completely on-device
-- Only hashes sent to Firestore for matching
-- Firestore security rules: authenticated users can only write their own data
-- Friends read is enabled for all authenticated users (future: availability lookups)
-
-**Firestore Friends Schema:**
-```
-users/{auth_uid}
-  ├── displayName: String
-  ├── hashedPhoneNumber: String (for contact matching)
-  └── friendIds: [String]  (array of user IDs)
-```
-
-## Sprint 3 Context: Cloud Sync & Resilience (Original)
-
-**Architecture: Offline-First with Composite Repository**
-
-The app will use a resilience chain instead of replacing local storage:
-1. UI requests data → Composite Repository
-2. Composite returns Local Data (SwiftData) immediately
-3. Composite triggers Remote Fetch (Firebase) in background
-4. On success: Remote data syncs into Local Storage
-5. UI observes Local Data and auto-updates
-
-Benefits:
-- Never blocks UI with network calls
-- Works completely offline (local data always available)
-- Background syncing doesn't interrupt user experience
-- Clean Architecture preserved (Firebase never in Domain layer)
-
-**Data Layer Structure (3 Steps):**
-
-Step 3.1: FirestoreDayDTO.swift
-- Maps Firestore documents ↔ Domain DayAvailability
-- No Firebase imports in Domain layer
-- Encoder: DayAvailability → Firestore JSON
-- Decoder: Firestore JSON → DayAvailability
-- Handles date normalization (YYYY-MM-DD format)
-
-Step 3.2: FirebaseAvailabilityRepository.swift (Implement skeleton)
-- updateMySchedule(day:) - Write to Firestore at users/{uid}/availability/{YYYY-MM-DD}
-- getMySchedule() - Query Firebase for current week
-- Uses FirestoreDayDTO for mapping
-- Handles authentication and error cases
-
-Step 3.3: CompositeAvailabilityRepository.swift (New orchestrator)
-- Implements AvailabilityRepository protocol
-- Delegates to local for immediate response
-- Triggers remote sync in background Task
-- updateMySchedule: Optimistic local update + async remote write
-- getMySchedule: Return local + background refresh
-- Error resilience: Network failures don't block UI
-
-**Firestore Schema (NoSQL):**
-
-```
-users/{auth_uid}
-  ├── displayName: String
-  ├── lastUpdated: Timestamp
-  └── availability/{YYYY-MM-DD}
-      ├── status: Int (0=Busy, 1=Free, 2=MorningOnly, 3=AfternoonOnly, 4=EveningOnly)
-      ├── note: String?
-      └── updatedAt: Timestamp
-```
-
-**Security Rules:** Copy/paste into Firebase Console
-- Only owner can write their own data
-- All authenticated users can read (for friend features later)
-- Enforced at Firestore level (no backend needed)
-
-**Testing Strategy for Sprint 3:**
-- Unit tests: FirestoreDayDTO mapping with mock Firestore data
-- Integration tests: FirebaseAvailabilityRepository with Firebase emulator
-- Composite tests: Verify local-first, background sync behavior
-- Maintain 85%+ coverage on active code
+**Last Updated:** January 7, 2026 (Sprint 4 complete) | **Status:** Production Ready
