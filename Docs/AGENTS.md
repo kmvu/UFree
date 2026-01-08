@@ -437,6 +437,34 @@ Before every push to Git:
 
 ---
 
+## Continuous Delivery (CI/CD) via GitHub Actions ✅
+
+**Workflow:** Push to main → GitHub Actions runs tests → Uploads to TestFlight automatically
+
+**Setup File:** `.github/workflows/testflight.yml` (already in repo)
+
+**One-Time Setup (15 minutes):**
+1. Create App Store Connect API Key (see GITHUB_ACTIONS_SETUP.md)
+2. Add 6 GitHub Secrets (FASTLANE_USER, MATCH_PASSWORD, ASC_KEY_ID, etc.)
+3. Push to main
+4. Watch GitHub Actions tab (build takes ~10-12 minutes)
+
+**Benefits:**
+- ✅ No manual `fastlane beta` needed
+- ✅ Tests run automatically (fail fast)
+- ✅ TestFlight uploads automated
+- ✅ Testers notified automatically
+- ✅ Free tier: 3,000 minutes/month on macOS (15+ builds)
+
+**Common Customizations:**
+- Deploy only on tags (not every push)
+- Run tests on every PR
+- Slack notifications on build completion
+
+See `Docs/GITHUB_ACTIONS_SETUP.md` for complete setup guide and troubleshooting.
+
+---
+
 **Last Updated:** January 8, 2026 | **Status:** Production Ready ✅
 
 **References:**
@@ -445,3 +473,4 @@ Before every push to Git:
 - `fastlane/Docs/FASTLANE_SETUP.md` - Build automation guide
 - `fastlane/Docs/FIREBASE_SETUP.md` - Crashlytics + Analytics integration
 - `fastlane/Docs/MATCH_GUIDE.md` - Certificate management deep dive
+- `Docs/GITHUB_ACTIONS_SETUP.md` - Continuous delivery setup guide

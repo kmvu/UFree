@@ -22,6 +22,8 @@ public struct FriendsView: View {
                     HStack(spacing: 8) {
                         TextField("Enter phone number", text: $viewModel.searchText)
                             .keyboardType(.phonePad)
+                            .submitLabel(.search)
+                            .onSubmit { Task { await viewModel.performPhoneSearch() } }
                             .disabled(viewModel.isSearching)
                         
                         Button(action: {

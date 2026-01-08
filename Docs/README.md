@@ -345,6 +345,7 @@ Task {
 - **fastlane/Docs/FASTLANE_SETUP.md** - Build automation setup guide
 - **fastlane/Docs/FIREBASE_SETUP.md** - Crashlytics + Analytics integration
 - **fastlane/Docs/MATCH_GUIDE.md** - Certificate management deep dive
+- **Docs/GITHUB_ACTIONS_SETUP.md** - Continuous delivery (push to main → auto-deploy to TestFlight)
 
 ---
 
