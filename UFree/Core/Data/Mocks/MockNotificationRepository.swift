@@ -9,6 +9,7 @@ import Foundation
 
 public class MockNotificationRepository: NotificationRepository {
     public var mockNotifications: [AppNotification]
+    public var userIdsToFailFor: Set<String> = []  // Test hook: cause sendNudge to fail for these user IDs
     
     public init(notifications: [AppNotification] = []) {
         self.mockNotifications = notifications
@@ -28,6 +29,11 @@ public class MockNotificationRepository: NotificationRepository {
     }
     
     public func sendNudge(to userId: String) async throws {
+        // Test hook: fail if user ID is in failure set
+        if userIdsToFailFor.contains(userId) {
+            throw NSError(domain: "MockError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Simulated nudge failure"])
+        }
+        
         let nudge = AppNotification(
             recipientId: userId,
             senderId: "current_user",

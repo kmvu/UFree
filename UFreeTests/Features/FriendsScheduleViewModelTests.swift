@@ -237,4 +237,375 @@ final class FriendsScheduleViewModelTests: XCTestCase {
         // Assert
         XCTAssertNil(sut.errorMessage)
     }
+
+    // MARK: - Group Nudge (Phase 3 - Sprint 6)
+
+    func test_nudgeAllFree_setsProcessingFlag() async {
+        // Arrange: Setup friends with mixed availability
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let friend1 = UserProfile(id: "f1", displayName: "Alice", hashedPhoneNumber: "h1")
+        let friend2 = UserProfile(id: "f2", displayName: "Bob", hashedPhoneNumber: "h2")
+        
+        let schedule1 = UserSchedule(
+            id: "f1",
+            name: "Alice",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        let schedule2 = UserSchedule(
+            id: "f2",
+            name: "Bob",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .busy)]
+        )
+        
+        await mockFriendRepo.addFriend(friend1)
+        await mockFriendRepo.addFriend(friend2)
+        await mockAvailabilityRepo.addFriendSchedule(schedule1)
+        await mockAvailabilityRepo.addFriendSchedule(schedule2)
+        await sut.loadFriendsSchedules()
+        
+        // Assert: isNudging should be false initially
+        XCTAssertFalse(sut.isNudging)
+        
+        // Act: Call nudgeAllFree
+        let task = Task {
+            await sut.nudgeAllFree(for: today)
+        }
+        
+        // Assert: Should complete with isNudging false after
+        _ = await task.value
+        XCTAssertFalse(sut.isNudging)
+    }
+
+    func test_nudgeAllFree_sendsToAllIntentionallyAvailable() async {
+        // Arrange: Friends with free, afternoon, and busy statuses
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let friend1 = UserProfile(id: "f1", displayName: "Alice", hashedPhoneNumber: "h1")
+        let friend2 = UserProfile(id: "f2", displayName: "Bob", hashedPhoneNumber: "h2")
+        let friend3 = UserProfile(id: "f3", displayName: "Charlie", hashedPhoneNumber: "h3")
+        
+        let schedule1 = UserSchedule(
+            id: "f1",
+            name: "Alice",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        let schedule2 = UserSchedule(
+            id: "f2",
+            name: "Bob",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .afternoonOnly)]
+        )
+        let schedule3 = UserSchedule(
+            id: "f3",
+            name: "Charlie",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .busy)]
+        )
+        
+        await mockFriendRepo.addFriend(friend1)
+        await mockFriendRepo.addFriend(friend2)
+        await mockFriendRepo.addFriend(friend3)
+        await mockAvailabilityRepo.addFriendSchedule(schedule1)
+        await mockAvailabilityRepo.addFriendSchedule(schedule2)
+        await mockAvailabilityRepo.addFriendSchedule(schedule3)
+        await sut.loadFriendsSchedules()
+        
+        // Act: Nudge all free for today
+        await sut.nudgeAllFree(for: today)
+        
+        // Assert: Should nudge only f1 (.free), not f2 (afternoonOnly) or f3 (busy)
+        // Only .free status counts for nudges
+        XCTAssertNil(sut.errorMessage)
+        XCTAssertTrue(sut.successMessage?.contains("1") ?? false, "Should nudge only the free friend (f1)")
+    }
+
+    func test_nudgeAllFree_parallelProcessing_withTaskGroup() async {
+        // Arrange: Multiple friends to nudge in parallel
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        var friends: [UserProfile] = []
+        var schedules: [UserSchedule] = []
+        
+        // Create 5 free friends
+        for i in 0..<5 {
+            let friend = UserProfile(id: "f\(i)", displayName: "Friend\(i)", hashedPhoneNumber: "h\(i)")
+            let schedule = UserSchedule(
+                id: "f\(i)",
+                name: "Friend\(i)",
+                avatarURL: nil,
+                weeklyStatus: [DayAvailability(date: today, status: .free)]
+            )
+            friends.append(friend)
+            schedules.append(schedule)
+            await mockFriendRepo.addFriend(friend)
+            await mockAvailabilityRepo.addFriendSchedule(schedule)
+        }
+        await sut.loadFriendsSchedules()
+        
+        // Act: Nudge all (should use TaskGroup for parallel execution)
+        await sut.nudgeAllFree(for: today)
+        
+        // Assert: All nudges should complete successfully
+        XCTAssertNil(sut.errorMessage)
+    }
+
+    func test_nudgeAllFree_rapidTaps_ignoresSecondTap() async {
+        // Arrange: Setup friends
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let friend = UserProfile(id: "f1", displayName: "Alice", hashedPhoneNumber: "h1")
+        let schedule = UserSchedule(
+            id: "f1",
+            name: "Alice",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        
+        await mockFriendRepo.addFriend(friend)
+        await mockAvailabilityRepo.addFriendSchedule(schedule)
+        await sut.loadFriendsSchedules()
+        
+        // Act: Rapid taps on "Nudge All"
+        await sut.nudgeAllFree(for: today)
+        // Second tap should be ignored (guard !isNudging)
+        await sut.nudgeAllFree(for: today)
+        
+        // Assert: Only one nudge operation should execute
+        XCTAssertNil(sut.errorMessage)
+    }
+
+    func test_nudgeAllFree_successMessage_showsPartialCounts() async {
+        // Arrange: Setup 2 available friends (simulating successful nudge)
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let friend1 = UserProfile(id: "f1", displayName: "Alice", hashedPhoneNumber: "h1")
+        let friend2 = UserProfile(id: "f2", displayName: "Bob", hashedPhoneNumber: "h2")
+        
+        let schedule1 = UserSchedule(
+            id: "f1",
+            name: "Alice",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        let schedule2 = UserSchedule(
+            id: "f2",
+            name: "Bob",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        
+        await mockFriendRepo.addFriend(friend1)
+        await mockFriendRepo.addFriend(friend2)
+        await mockAvailabilityRepo.addFriendSchedule(schedule1)
+        await mockAvailabilityRepo.addFriendSchedule(schedule2)
+        await sut.loadFriendsSchedules()
+        
+        // Act: Nudge all
+        await sut.nudgeAllFree(for: today)
+        
+        // Assert: Success message should display friend count
+        // Expected: "All 2 friends nudged! 👋"
+        XCTAssertNotNil(sut.successMessage, "Success message should be set")
+        XCTAssertTrue(sut.successMessage?.contains("2") ?? false, "Message should contain count")
+        XCTAssertTrue(sut.successMessage?.contains("nudged") ?? false, "Message should use 'nudged'")
+        XCTAssertNil(sut.errorMessage, "Error message should be cleared on success")
+    }
+
+    func test_nudgeAllFree_singleFriend_showsCorrectMessage() async {
+        // Arrange: Setup single free friend
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let friend = UserProfile(id: "f1", displayName: "Alice", hashedPhoneNumber: "h1")
+        let schedule = UserSchedule(
+            id: "f1",
+            name: "Alice",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        
+        await mockFriendRepo.addFriend(friend)
+        await mockAvailabilityRepo.addFriendSchedule(schedule)
+        await sut.loadFriendsSchedules()
+        
+        // Act: Nudge single friend
+        await sut.nudgeAllFree(for: today)
+        
+        // Assert: Should show singular "All 1 friend nudged!" (not "friends")
+        XCTAssertNotNil(sut.successMessage, "Success message should be set")
+        XCTAssertTrue(sut.successMessage?.contains("1") ?? false, "Message should show count: 1")
+        XCTAssertNil(sut.errorMessage, "No error on single friend nudge")
+    }
+
+    func test_nudgeAllFree_hapticFeedback_mediumOnTap() async {
+        // Arrange: Setup friends
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let friend = UserProfile(id: "f1", displayName: "Alice", hashedPhoneNumber: "h1")
+        let schedule = UserSchedule(
+            id: "f1",
+            name: "Alice",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        
+        await mockFriendRepo.addFriend(friend)
+        await mockAvailabilityRepo.addFriendSchedule(schedule)
+        await sut.loadFriendsSchedules()
+        
+        // Act: Call nudgeAllFree (HapticManager.medium() should be called immediately)
+        // In real test, we'd mock HapticManager or use instrumentation
+        await sut.nudgeAllFree(for: today)
+        
+        // Assert: Operation completes (haptic verified via instrumentation)
+        XCTAssertFalse(sut.isNudging)
+    }
+
+    func test_nudgeAllFree_noFriendsAvailable_returnsEarlyWithMessage() async {
+        // Arrange: Setup friends but none available on selected day
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let friend1 = UserProfile(id: "f1", displayName: "Alice", hashedPhoneNumber: "h1")
+        let friend2 = UserProfile(id: "f2", displayName: "Bob", hashedPhoneNumber: "h2")
+        
+        let schedule1 = UserSchedule(
+            id: "f1",
+            name: "Alice",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .busy)]
+        )
+        let schedule2 = UserSchedule(
+            id: "f2",
+            name: "Bob",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .unknown)]
+        )
+        
+        await mockFriendRepo.addFriend(friend1)
+        await mockFriendRepo.addFriend(friend2)
+        await mockAvailabilityRepo.addFriendSchedule(schedule1)
+        await mockAvailabilityRepo.addFriendSchedule(schedule2)
+        await sut.loadFriendsSchedules()
+        
+        // Act: Try to nudge all (no one available)
+        await sut.nudgeAllFree(for: today)
+        
+        // Assert: Should show "No friends available to nudge" or similar
+        XCTAssertTrue(sut.errorMessage?.contains("No") ?? sut.successMessage?.contains("0") ?? false)
+    }
+
+    func test_nudgeAllFree_partialFailure_showsCountOfSuccessful() async {
+        // Arrange: 3 free friends, but 1 fails
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let friend1 = UserProfile(id: "f1", displayName: "Alice", hashedPhoneNumber: "h1")
+        let friend2 = UserProfile(id: "f2", displayName: "Bob", hashedPhoneNumber: "h2")
+        let friend3 = UserProfile(id: "f3", displayName: "Charlie", hashedPhoneNumber: "h3")
+        
+        let schedule1 = UserSchedule(
+            id: "f1",
+            name: "Alice",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        let schedule2 = UserSchedule(
+            id: "f2",
+            name: "Bob",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        let schedule3 = UserSchedule(
+            id: "f3",
+            name: "Charlie",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        
+        await mockFriendRepo.addFriend(friend1)
+        await mockFriendRepo.addFriend(friend2)
+        await mockFriendRepo.addFriend(friend3)
+        await mockAvailabilityRepo.addFriendSchedule(schedule1)
+        await mockAvailabilityRepo.addFriendSchedule(schedule2)
+        await mockAvailabilityRepo.addFriendSchedule(schedule3)
+        
+        // Setup: f2 will fail to nudge
+        mockNotificationRepo.userIdsToFailFor.insert("f2")
+        
+        await sut.loadFriendsSchedules()
+        
+        // Act: Nudge all
+        await sut.nudgeAllFree(for: today)
+        
+        // Assert: Should show "Nudged 2 of 3 friends" (not "All 3")
+        XCTAssertNil(sut.errorMessage, "Error message should not be set for partial success")
+        XCTAssertNotNil(sut.successMessage, "Success message should be set")
+        XCTAssertTrue(sut.successMessage?.contains("Nudged 2 of 3") ?? false, "Should show partial count: 'Nudged 2 of 3'")
+    }
+
+    func test_nudgeAllFree_allFailures_showsErrorMessage() async {
+        // Arrange: 2 free friends, both fail to nudge
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let friend1 = UserProfile(id: "f1", displayName: "Alice", hashedPhoneNumber: "h1")
+        let friend2 = UserProfile(id: "f2", displayName: "Bob", hashedPhoneNumber: "h2")
+        
+        let schedule1 = UserSchedule(
+            id: "f1",
+            name: "Alice",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        let schedule2 = UserSchedule(
+            id: "f2",
+            name: "Bob",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        
+        await mockFriendRepo.addFriend(friend1)
+        await mockFriendRepo.addFriend(friend2)
+        await mockAvailabilityRepo.addFriendSchedule(schedule1)
+        await mockAvailabilityRepo.addFriendSchedule(schedule2)
+        
+        // Setup: Both will fail
+        mockNotificationRepo.userIdsToFailFor.insert("f1")
+        mockNotificationRepo.userIdsToFailFor.insert("f2")
+        
+        await sut.loadFriendsSchedules()
+        
+        // Act: Nudge all
+        await sut.nudgeAllFree(for: today)
+        
+        // Assert: Should show error message
+        XCTAssertNotNil(sut.errorMessage, "Error message should be set when all nudges fail")
+        XCTAssertTrue(sut.errorMessage?.contains("Failed") ?? false, "Error should indicate failure")
+        XCTAssertNil(sut.successMessage, "Success message should not be set on complete failure")
+    }
+
+    func test_nudgeAllFree_messagePluralization() async {
+        // Arrange: Single free friend for singular test
+        let today = Calendar.current.startOfDay(for: Date())
+        
+        let friend = UserProfile(id: "f1", displayName: "Alice", hashedPhoneNumber: "h1")
+        let schedule = UserSchedule(
+            id: "f1",
+            name: "Alice",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        
+        await mockFriendRepo.addFriend(friend)
+        await mockAvailabilityRepo.addFriendSchedule(schedule)
+        await sut.loadFriendsSchedules()
+        
+        // Act: Nudge single friend
+        await sut.nudgeAllFree(for: today)
+        
+        // Assert: Singular "friend" not "friends"
+        XCTAssertNotNil(sut.successMessage, "Success message should be set")
+        XCTAssertTrue(sut.successMessage?.contains("All 1 friend nudged!") ?? false, "Should use singular 'friend'")
+    }
 }

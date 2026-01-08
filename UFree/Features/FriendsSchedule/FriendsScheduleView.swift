@@ -9,6 +9,7 @@ import SwiftUI
 
 public struct FriendsScheduleView: View {
     @ObservedObject var viewModel: FriendsScheduleViewModel
+    @State private var selectedDate: Date?
 
     // Display next 5 days
     private var daysToShow: [Date] {
@@ -23,6 +24,70 @@ public struct FriendsScheduleView: View {
     public var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // Day Selector with Heatmap (Phase 2 - Sprint 6)
+                if !viewModel.friendSchedules.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Who's free on...")
+                            .font(.headline)
+                            .padding(.horizontal)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(daysToShow, id: \.self) { date in
+                                    let freeCount = viewModel.freeFriendCount(for: date, friendsSchedules: viewModel.friendSchedules)
+                                    
+                                    DayFilterButtonView(
+                                        date: date,
+                                        isSelected: selectedDate.map { Calendar.current.isDate($0, inSameDayAs: date) } ?? false,
+                                        freeCount: freeCount,
+                                        action: {
+                                            selectedDate = date
+                                        }
+                                    )
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                }
+
+                // Nudge All Button (Phase 3 - Sprint 6)
+                if let selectedDate = selectedDate {
+                    let freeCount = viewModel.freeFriendCount(for: selectedDate, friendsSchedules: viewModel.friendSchedules)
+                    
+                    if freeCount > 0 {
+                        Button(action: {
+                            Task {
+                                await viewModel.nudgeAllFree(for: selectedDate)
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "hand.wave.fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Nudge all \(freeCount) friends")
+                                        .fontWeight(.bold)
+                                    
+                                    Text(selectedDate.formatted(.dateTime.weekday(.abbreviated)))
+                                        .font(.caption)
+                                        .opacity(0.8)
+                                }
+                                
+                                Spacer()
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(viewModel.isNudging ? Color.gray : Color.accentColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(15)
+                        }
+                        .disabled(viewModel.isNudging)
+                        .padding(.horizontal)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+
                 // Show loading state only on first load
                 if viewModel.isLoading && viewModel.friendSchedules.isEmpty {
                     ProgressView()
@@ -40,13 +105,20 @@ public struct FriendsScheduleView: View {
                     }
                 }
             }
-            .padding()
+            .padding(.vertical)
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {
             if let error = viewModel.errorMessage {
                 Text(error)
+            }
+        }
+        .alert("Success", isPresented: .constant(viewModel.successMessage != nil)) {
+            Button("OK") { viewModel.successMessage = nil }
+        } message: {
+            if let message = viewModel.successMessage {
+                Text(message)
             }
         }
         .refreshable {

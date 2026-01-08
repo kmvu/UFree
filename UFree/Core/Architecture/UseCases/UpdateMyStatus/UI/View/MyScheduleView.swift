@@ -128,9 +128,10 @@ public struct MyScheduleView: View {
                 HStack(spacing: 8) {
                     ForEach(viewModel.weeklySchedule) { day in
                         DayFilterButtonView(
-                            day: day,
+                            date: day.date,
                             isSelected: dayFilterViewModel.selectedDay == day.date,
-                            onTap: {
+                            freeCount: 0,  // MySchedule doesn't show friend counts
+                            action: {
                                 dayFilterViewModel.toggleDay(day.date)
                             }
                         )

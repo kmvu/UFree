@@ -14,6 +14,7 @@ public final class FriendsScheduleViewModel: ObservableObject {
     @Published public var isLoading = false
     @Published public var isNudging = false
     @Published public var errorMessage: String?
+    @Published public var successMessage: String?
 
     private let friendRepository: FriendRepositoryProtocol
     private let availabilityRepository: AvailabilityRepository
@@ -47,6 +48,16 @@ public final class FriendsScheduleViewModel: ObservableObject {
         self.notificationRepository = notificationRepository
     }
 
+    /// Counts how many friends are "Free" on a specific date (Phase 1 - Sprint 6 heatmap)
+    /// Only counts .free status (excludes afternoonOnly, eveningOnly, busy, unknown)
+    public func freeFriendCount(for date: Date, friendsSchedules: [FriendScheduleDisplay]) -> Int {
+        let normalizedDate = Calendar.current.startOfDay(for: date)
+        
+        return friendsSchedules.filter { display in
+            display.status(for: normalizedDate) == .free
+        }.count
+    }
+    
     public func loadFriendsSchedules() async {
         isLoading = true
         errorMessage = nil
@@ -104,6 +115,88 @@ public final class FriendsScheduleViewModel: ObservableObject {
             self.errorMessage = "Failed to send nudge: \(error.localizedDescription)"
             HapticManager.warning()
             print("❌ Error sending nudge to \(userId): \(error)")
+        }
+    }
+
+    /// Sends nudge notifications to all friends who are free on a specific day (Phase 3 - Sprint 6)
+    /// Uses parallel processing with TaskGroup for performance
+    public func nudgeAllFree(for date: Date) async {
+        // Rapid-tap protection: guard against concurrent group nudges
+        guard !isNudging else { return }
+
+        isNudging = true
+        errorMessage = nil
+        successMessage = nil
+        defer { isNudging = false }
+
+        // Normalize date
+        let normalizedDate = Calendar.current.startOfDay(for: date)
+
+        // Filter friends who are free on this date
+        let freeFriendIds = friendSchedules
+            .filter { display in
+                display.status(for: normalizedDate) == .free
+            }
+            .map { $0.id }
+
+        // Early exit if no friends are free
+        guard !freeFriendIds.isEmpty else {
+            self.errorMessage = "No friends available to nudge on this day"
+            HapticManager.warning()
+            return
+        }
+
+        // Haptic feedback: immediate medium feedback on tap
+        HapticManager.medium()
+
+        // Parallel processing: use TaskGroup to send nudges concurrently
+        do {
+            var successCount = 0
+
+            try await withThrowingTaskGroup(of: Bool.self) { group in
+                for friendId in freeFriendIds {
+                    group.addTask {
+                        do {
+                            try await self.notificationRepository.sendNudge(to: friendId)
+                            return true  // Success
+                        } catch {
+                            print("⚠️ Failed to nudge \(friendId): \(error)")
+                            return false  // Failure
+                        }
+                    }
+                }
+
+                // Wait for all tasks to complete and count successes
+                for try await success in group {
+                    if success {
+                        successCount += 1
+                    }
+                }
+            }
+
+            // Set success message with count
+            let totalCount = freeFriendIds.count
+            if successCount == totalCount {
+                // All succeeded
+                let friendWord = totalCount == 1 ? "friend" : "friends"
+                self.successMessage = "All \(totalCount) \(friendWord) nudged! 👋"
+                HapticManager.success()
+            } else if successCount > 0 {
+                // Partial success
+                self.successMessage = "Nudged \(successCount) of \(totalCount) friends"
+                HapticManager.warning()
+            } else {
+                // All failed
+                self.errorMessage = "Failed to nudge friends. Please try again."
+                HapticManager.warning()
+            }
+
+            print("✅ Group nudge complete: \(successCount) of \(freeFriendIds.count) succeeded")
+
+        } catch {
+            self.errorMessage = "Failed to send group nudges: \(error.localizedDescription)"
+            HapticManager.warning()
+            print("❌ Error in group nudge: \(error)")
         }
     }
 }
