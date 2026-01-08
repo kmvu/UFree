@@ -15,7 +15,7 @@ final class NotificationCenterViewTests: XCTestCase {
     
     func test_notificationRowMessage_friendRequest_formatsCorrectly() {
         // Arrange
-        let notification = TestNotificationBuilder.friendRequest(senderName: "Alice").build()
+        let notification = TestNotificationBuilder.friendRequest(senderName: "Alice")
         let row = NotificationRow(note: notification)
         
         // Act
@@ -27,7 +27,7 @@ final class NotificationCenterViewTests: XCTestCase {
     
     func test_notificationRowMessage_nudge_formatsCorrectly() {
         // Arrange
-        let notification = TestNotificationBuilder.nudge(senderName: "Bob").build()
+        let notification = TestNotificationBuilder.nudge(senderName: "Bob")
         let row = NotificationRow(note: notification)
         
         // Act
@@ -43,9 +43,7 @@ final class NotificationCenterViewTests: XCTestCase {
         
         // Act & Assert
         for sender in senders {
-            let notification = TestNotificationBuilder
-                .friendRequest(senderName: sender)
-                .build()
+            let notification = TestNotificationBuilder.friendRequest(senderName: sender)
             let row = NotificationRow(note: notification)
             
             NotificationTestAssertions.assertContainsSenderName(row.message, senderName: sender)

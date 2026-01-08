@@ -40,7 +40,7 @@ final class MockNotificationRepositoryTests: XCTestCase {
     
     func test_markAsRead_doesNotThrow() async throws {
         // Arrange
-        let notification = TestNotificationBuilder.friendRequest().build()
+        let notification = TestNotificationBuilder.friendRequest()
         
         // Act & Assert: no error
         try await sut.markAsRead(notification)

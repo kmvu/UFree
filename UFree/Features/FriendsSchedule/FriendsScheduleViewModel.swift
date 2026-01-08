@@ -12,10 +12,12 @@ import Combine
 public final class FriendsScheduleViewModel: ObservableObject {
     @Published public var friendSchedules: [FriendScheduleDisplay] = []
     @Published public var isLoading = false
+    @Published public var isNudging = false
     @Published public var errorMessage: String?
 
     private let friendRepository: FriendRepositoryProtocol
     private let availabilityRepository: AvailabilityRepository
+    private let notificationRepository: NotificationRepository
 
     /// Display model combining friend info with their schedule
     public struct FriendScheduleDisplay: Identifiable {
@@ -35,9 +37,14 @@ public final class FriendsScheduleViewModel: ObservableObject {
         }
     }
 
-    public init(friendRepository: FriendRepositoryProtocol, availabilityRepository: AvailabilityRepository) {
+    public init(
+        friendRepository: FriendRepositoryProtocol,
+        availabilityRepository: AvailabilityRepository,
+        notificationRepository: NotificationRepository
+    ) {
         self.friendRepository = friendRepository
         self.availabilityRepository = availabilityRepository
+        self.notificationRepository = notificationRepository
     }
 
     public func loadFriendsSchedules() async {
@@ -79,6 +86,24 @@ public final class FriendsScheduleViewModel: ObservableObject {
         } catch {
             self.errorMessage = "Failed to load friends' schedules: \(error.localizedDescription)"
             print("❌ Error loading friends schedules: \(error)")
+        }
+    }
+
+    public func sendNudge(to userId: String) async {
+        // Rapid-tap protection: guard against concurrent nudges
+        guard !isNudging else { return }
+
+        isNudging = true
+        errorMessage = nil
+        defer { isNudging = false }
+
+        do {
+            try await notificationRepository.sendNudge(to: userId)
+            HapticManager.success()
+        } catch {
+            self.errorMessage = "Failed to send nudge: \(error.localizedDescription)"
+            HapticManager.warning()
+            print("❌ Error sending nudge to \(userId): \(error)")
         }
     }
 }

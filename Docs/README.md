@@ -1,6 +1,6 @@
 # UFree - Weekly Availability Scheduler
 
-**Status:** ✅ Sprint 5 | **Version:** 5.0.0 | **Tests:** 160+ | **Coverage:** 85%+ | **Warnings:** 0
+**Status:** ✅ Sprint 5.1 | **Version:** 5.1.0 | **Tests:** 164+ | **Coverage:** 85%+ | **Warnings:** 0
 
 ---
 
@@ -18,7 +18,8 @@
 | Navigation | ✅ | TabView with single NavigationStack (no flicker) |
 | Haptic Feedback | ✅ | HapticManager integrated throughout |
 | Real-time Sync | ✅ | AsyncStream listeners (observeIncomingRequests) |
-| Notification Center | 🚀 | Real-time bell icon + badge, inbox view |
+| Notification Center | ✅ | Real-time bell icon + badge, inbox view |
+| Nudge Feature | ✅ | Wave button on friend cards, haptic feedback, rapid-tap protection |
 
 ---
 
@@ -86,7 +87,7 @@ UFree/Core/Extensions/
 
 ## Sprint Completion
 
-### Sprint 5: Notification Center 🚀
+### Sprint 5: Notification Center ✅
 
 **Real-Time Notification System**
 - AppNotification domain model with NotificationType enum (friendRequest, nudge, extensible)
@@ -102,13 +103,80 @@ UFree/Core/Extensions/
 - NotificationTestAssertions (Helper assertions): Centralized message assertions
 - Focused test organization: One class per responsibility (ViewModel, Repository, View)
 - DRY tests: Builders replace 5-line manual setup, helpers replace duplicated assertions
-- 6+ unit tests covering badge logic, async behavior, and message formatting
+- 10+ unit tests covering badge logic, async behavior, message formatting, and nudge action
 
 **Architecture Highlights**
 - **Abstractions**: Protocol repos reduce coupling, factory builders encapsulate test data
 - **Maintainability**: Single responsibility per class, helpers centralize logic
 - **Reusability**: Builders/assertions used by 3+ test files, ViewModel shared via environment
 - **Extensibility**: NotificationType enum easily extended, test helpers scale with new types
+
+### Sprint 5.1: Nudge Feature ✅
+
+**Live Nudging on FriendsScheduleView**
+- Wave button on each friend's card (orange icon, clear affordance)
+- Tap to send real-time nudge notification
+- `isNudging` flag for rapid-tap protection (guard clause pattern)
+- Haptic feedback: medium on tap, success on completion, warning on error
+- Button disabled/opaque while processing (visual feedback)
+- Error messages shown in existing alert UI
+- Dependency injection: NotificationRepository passed to FriendsScheduleViewModel
+
+**Testing & Quality**
+- 4 new nudge-specific tests in FriendsScheduleViewModelTests
+- Rapid-tap protection validated (single tap, rapid taps, sequential taps)
+- Error state cleanup verified
+- Total: 164+ unit tests (4 new for nudge feature)
+
+**Files Modified**
+- `FriendsScheduleViewModel.swift` - Added nudge logic with rapid-tap protection
+- `FriendsScheduleView.swift` - Added wave button to friend rows
+- `FriendsScheduleViewModelTests.swift` - Added 4 nudge-specific tests
+- `RootView.swift` - DI: Pass FirebaseNotificationRepository to FriendsScheduleViewModel
+
+---
+
+### Sprint 6: Discovery & Intentions (Planned 🔮)
+
+**Theme:** Transform "Who's free on..." from static filter to dynamic Availability Discovery Engine.
+
+**Core Intention:** "Before tapping a day, show: How many friends can I actually hang out with today?"
+
+**Phase 1: Availability Heatmap (Intentional Availability)**
+- Count ALL "generally available" states: `.free`, `.afternoonOnly`, `.eveningOnly`
+- Intent: Show user "who is a potential match" for that day
+- DayFilterViewModel observes friendSchedules, aggregates counts per day
+- @Published friendCountByDay: [Date: Int] with status color tinting
+- Reactive updates on schedule changes
+
+**Phase 2: Capsule UI Refactor**
+- Replace square DayFilterButtonView with vertical capsules
+- Active state: displayColor highlight (matching Status Banner)
+- Inactive state: .thinMaterial (light gray background)
+- Embed friend count badge with color tinting (green if majority `.free`, orange if partial)
+- Visual affordance: "3 free" or "2 free, 1 evening"
+
+**Phase 3: Contextual Group Nudge (Parallel Processing)**
+- "Nudge All" button appears when day selected + friends available
+- Tap to send nudge to ALL available users on that day
+- Implementation: `withThrowingTaskGroup` fires all `sendNudge(to:)` calls in parallel
+- Why: Firestore writes are independent. Parallel = speed of slowest single write (vs 0.5s * N sequential)
+- Haptic Strategy: `.medium()` on tap, `.success()` on completion, `.warning()` on partial failure
+- Error Handling: Show "Nudged 3 of 4 friends" with success count (never binary Success/Failure)
+- New @Published successMessage property for temporary toast notifications
+
+**Implementation Approach (TDD First):**
+1. Phase 1: Count aggregation tests → heatmap logic with color tinting
+2. Phase 2: Visual state tests → capsule UI with badges
+3. Phase 3: Batch nudge tests → TaskGroup parallel processing + error handling
+
+**Finalized Design Decisions:**
+- **Intentional Availability:** Count `.free` + partial states (matches user intent)
+- **Batch Processing:** Parallel TaskGroup (performance + app architecture consistency)
+- **Haptics:** Single medium + single success (premium feel, no "machine gun" spam)
+- **Error Handling:** Partial success counts + success/warning messages (graceful, user-aware)
+
+**Est. Effort:** 5-6 hours total (1-2 hrs per phase)
 
 ---
 
@@ -346,15 +414,18 @@ HapticManager.selection()  // Day filter selection
 7. **Friend Requests** - Send request, real-time incoming list, accept/decline (handshake)
 8. **Friends Sync** - Bidirectional add/remove, swipe-to-remove, privacy-protected
 9. **Friends Schedule** - View friend availability next 5 days
-10. **Error Handling** - Past date rejection, network resilience, permission alerts
-11. **Haptic Feedback** - Tactile feedback throughout UI
-12. **Navigation** - Smooth tabbed navigation, no flickering
+10. **Nudge Feature** - Tap wave button to send nudge, real-time notifications, rapid-tap protection
+11. **Error Handling** - Past date rejection, network resilience, permission alerts
+12. **Haptic Feedback** - Tactile feedback throughout UI
+13. **Navigation** - Smooth tabbed navigation, no flickering
 
 ---
 
-## Recent Changes (Sprint 5 In Progress)
+## Recent Changes (Sprint 5.1 Complete)
 
 **Notification Center** - Real-time bell icon in toolbar (next to Sign Out). AsyncStream listener for live updates. Unread badge count. Inbox view with read/unread states. Extensible notification types (friendRequest, nudge, future: scheduleChange, eventInvite).
+
+**Nudge Feature** - Wave button on FriendsScheduleView cards. Tap to send nudge notifications instantly. Rapid-tap protection via isNudging flag. Haptic feedback (medium on tap, success on completion, warning on error). Button disabled/opaque while processing.
 
 **Testing Abstractions** - TestNotificationBuilder (factory pattern) eliminates repetitive test data setup. NotificationTestAssertions (helper assertions) centralizes message formatting logic. Tests now ~40% shorter with better DRY principle adherence.
 
@@ -362,6 +433,6 @@ HapticManager.selection()  // Day filter selection
 
 ---
 
-**Last Updated:** January 8, 2026 (Sprint 5 in progress) | **Status:** Production Ready ✅
+**Last Updated:** January 8, 2026 (Sprint 5.1 Complete - Nudge Feature) | **Status:** Production Ready ✅
 
 **Path Update:** January 8, 2026 - Migrated to `Khang_business_projects/UFree` (underscores instead of spaces)

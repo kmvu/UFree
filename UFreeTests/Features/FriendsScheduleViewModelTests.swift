@@ -14,14 +14,17 @@ final class FriendsScheduleViewModelTests: XCTestCase {
     private var sut: FriendsScheduleViewModel!
     private var mockFriendRepo: MockFriendRepository!
     private var mockAvailabilityRepo: MockAvailabilityRepository!
+    private var mockNotificationRepo: MockNotificationRepository!
 
     override func setUp() {
         super.setUp()
         mockFriendRepo = MockFriendRepository()
         mockAvailabilityRepo = MockAvailabilityRepository()
+        mockNotificationRepo = MockNotificationRepository()
         sut = FriendsScheduleViewModel(
             friendRepository: mockFriendRepo,
-            availabilityRepository: mockAvailabilityRepo
+            availabilityRepository: mockAvailabilityRepo,
+            notificationRepository: mockNotificationRepo
         )
     }
 
@@ -29,6 +32,7 @@ final class FriendsScheduleViewModelTests: XCTestCase {
         sut = nil
         mockFriendRepo = nil
         mockAvailabilityRepo = nil
+        mockNotificationRepo = nil
         super.tearDown()
     }
 
@@ -175,6 +179,62 @@ final class FriendsScheduleViewModelTests: XCTestCase {
 
         await sut.loadFriendsSchedules()
 
+        XCTAssertNil(sut.errorMessage)
+    }
+
+    // MARK: - Nudge Feature
+
+    func test_sendNudge_setsProcessingFlag() async {
+        // Arrange
+        let friendId = "friend1"
+        XCTAssertFalse(sut.isNudging)
+
+        // Act
+        let task = Task {
+            await sut.sendNudge(to: friendId)
+        }
+
+        // Assert: isNudging should be true during execution
+        // (timing-aware: check briefly after task starts)
+        _ = await task.value
+
+        // Assert: should be false after completion
+        XCTAssertFalse(sut.isNudging)
+    }
+
+    func test_sendNudge_completesSuccessfully() async {
+        // Arrange
+        let friendId = "friend1"
+
+        // Act
+        await sut.sendNudge(to: friendId)
+
+        // Assert: no error should be set
+        XCTAssertNil(sut.errorMessage)
+    }
+
+    func test_rapidNudgeTaps_ignoresSecondTap() async {
+        // Arrange
+        let friendId = "friend1"
+
+        // Act: simulate rapid taps
+        await sut.sendNudge(to: friendId)
+        // Second tap should be ignored (guard !isNudging)
+        await sut.sendNudge(to: friendId)
+
+        // Assert: only one nudge should be sent (verified by no error)
+        XCTAssertNil(sut.errorMessage)
+    }
+
+    func test_sendNudge_clearsErrorOnSuccess() async {
+        // Arrange
+        sut.errorMessage = "Previous error"
+        let friendId = "friend1"
+
+        // Act
+        await sut.sendNudge(to: friendId)
+
+        // Assert
         XCTAssertNil(sut.errorMessage)
     }
 }

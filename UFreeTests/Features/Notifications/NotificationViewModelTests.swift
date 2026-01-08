@@ -38,9 +38,9 @@ final class NotificationViewModelTests: XCTestCase {
     func test_unreadCount_ignoresReadNotifications() {
         // Arrange: 3 notifications, 2 unread
         sut.notifications = [
-            TestNotificationBuilder.friendRequest(isRead: false).build(),
-            TestNotificationBuilder.nudge(isRead: true).build(),
-            TestNotificationBuilder.friendRequest(isRead: false).build()
+            TestNotificationBuilder.friendRequest(isRead: false),
+            TestNotificationBuilder.nudge(isRead: true),
+            TestNotificationBuilder.friendRequest(isRead: false)
         ]
         
         // Act & Assert
@@ -51,7 +51,7 @@ final class NotificationViewModelTests: XCTestCase {
     
     func test_markRead_updatesUIImmediately() {
         // Arrange
-        let notification = TestNotificationBuilder.friendRequest(isRead: false).build()
+        let notification = TestNotificationBuilder.friendRequest(isRead: false)
         sut.notifications = [notification]
         
         // Act

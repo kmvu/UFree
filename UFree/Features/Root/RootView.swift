@@ -34,7 +34,8 @@ struct RootView: View {
 
         _friendsScheduleViewModel = StateObject(wrappedValue: FriendsScheduleViewModel(
             friendRepository: friendRepo,
-            availabilityRepository: availabilityRepo
+            availabilityRepository: availabilityRepo,
+            notificationRepository: FirebaseNotificationRepository()
         ))
         _friendsViewModel = StateObject(wrappedValue: FriendsViewModel(friendRepository: friendRepo))
         _notificationViewModel = StateObject(wrappedValue: NotificationViewModel(

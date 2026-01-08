@@ -36,7 +36,7 @@ public struct FriendsScheduleView: View {
                 } else {
                     // List is always in the hierarchy when not loading
                     ForEach(viewModel.friendSchedules) { friendDisplay in
-                        FriendScheduleRow(display: friendDisplay, days: daysToShow)
+                        FriendScheduleRow(display: friendDisplay, days: daysToShow, viewModel: viewModel)
                     }
                 }
             }
@@ -60,10 +60,11 @@ public struct FriendsScheduleView: View {
 private struct FriendScheduleRow: View {
     let display: FriendsScheduleViewModel.FriendScheduleDisplay
     let days: [Date]
+    let viewModel: FriendsScheduleViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header: Avatar + Name
+            // Header: Avatar + Name + Nudge Button
             HStack(spacing: 12) {
                 Circle()
                     .fill(Color.blue.opacity(0.2))
@@ -78,6 +79,23 @@ private struct FriendScheduleRow: View {
                     .font(.headline)
 
                 Spacer()
+
+                // Nudge Button
+                Button(action: {
+                    HapticManager.medium()
+                    Task {
+                        await viewModel.sendNudge(to: display.id)
+                    }
+                }) {
+                    Image(systemName: "hand.wave.fill")
+                        .font(.body)
+                        .foregroundColor(.orange)
+                        .padding(8)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(8)
+                }
+                .disabled(viewModel.isNudging)
+                .opacity(viewModel.isNudging ? 0.5 : 1.0)
             }
 
             // Horizontal Schedule Pills
@@ -153,7 +171,12 @@ private struct FriendStatusPill: View {
     )
 
     let mockAvailabilityRepo = MockAvailabilityRepository()
-    let viewModel = FriendsScheduleViewModel(friendRepository: mockFriendRepo, availabilityRepository: mockAvailabilityRepo)
+    let mockNotificationRepo = MockNotificationRepository()
+    let viewModel = FriendsScheduleViewModel(
+        friendRepository: mockFriendRepo,
+        availabilityRepository: mockAvailabilityRepo,
+        notificationRepository: mockNotificationRepo
+    )
 
     return FriendsScheduleView(viewModel: viewModel)
 }

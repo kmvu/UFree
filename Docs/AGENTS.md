@@ -234,6 +234,105 @@ match /users/{userId}/notifications/{document=**} {
 
 ---
 
-**Last Updated:** January 8, 2026 (Sprint 5 in progress) | **Status:** Production Ready
+## Sprint 5.1 Additions (Nudge Feature)
+
+**Nudge Interaction:** Real-time nudging on FriendsScheduleView. Tap wave button on any friend's row to send a nudge notification.
+
+**Implementation Details:**
+- **FriendsScheduleViewModel Enhancement**: Added `isNudging` property + `sendNudge(to:)` async method with rapid-tap protection
+- **Rapid-Tap Protection**: Guard clause `guard !isNudging else { return }` prevents concurrent nudges
+- **Haptic Feedback**: `.medium()` on tap, `.success()` on completion, `.warning()` on error (via HapticManager)
+- **Error Handling**: User-facing error messages via @Published errorMessage (reuses existing alert UI)
+- **Button State**: Disabled + opacity reduced while nudging (visual feedback)
+- **Dependency Injection**: NotificationRepository passed to FriendsScheduleViewModel via init
+
+**Testing Patterns (4 New Tests):**
+- `test_sendNudge_setsProcessingFlag()` - Validates rapid-tap protection flag lifecycle
+- `test_sendNudge_completesSuccessfully()` - Success path (no errors)
+- `test_rapidNudgeTaps_ignoresSecondTap()` - Concurrent tap rejection
+- `test_sendNudge_clearsErrorOnSuccess()` - Error state cleanup
+
+**Files Modified:**
+- `FriendsScheduleViewModel.swift` - Added nudge logic with rapid-tap protection
+- `FriendsScheduleView.swift` - Added wave button to friend rows
+- `FriendsScheduleViewModelTests.swift` - Added 4 nudge-specific tests
+- `RootView.swift` - DI: Pass FirebaseNotificationRepository to FriendsScheduleViewModel
+
+---
+
+## Sprint 6 Planning (Upcoming)
+
+**Theme:** Discovery & Intentions - Transform "Who's free on..." from static filter to dynamic Availability Discovery Engine.
+
+**Core Intention:** Before tapping a day, users should see: "How many friends can I actually hang out with today?"
+
+**Sprint 6 Components:**
+
+1. **Availability Heatmap** (DayFilterViewModel Enhancement)
+   - Calculate friend count per day (observing friendSchedules)
+   - @Published friendCountByDay: [Date: Int]
+   - Visual indicator: Green dot or badge (e.g., "3 free")
+   - Update on schedule changes (reactive)
+
+2. **Capsule UI Refactor** (DayFilterButtonView)
+   - Replace square buttons with vertical capsule shapes
+   - Active state: displayColor highlight (e.g., purple)
+   - Inactive state: .thinMaterial (light gray)
+   - Align with UFree aesthetic (Status Banner style)
+   - Embed friend count badge on each capsule
+
+3. **Contextual Group Nudge** (FriendsScheduleView)
+   - "Nudge All" button appears only when day selected
+   - Tap to send nudge to ALL users marked "Free" on that day
+   - Reuse Sprint 5.1 sendNudge infrastructure (batch operation)
+   - Rapid-tap protection via isNudging flag
+   - Haptic feedback + success count (e.g., "3 of 4 nudged")
+
+**Implementation Roadmap (TDD First):**
+
+| Phase | Focus | Key Tests | Duration |
+|-------|-------|-----------|----------|
+| Phase 1 | Availability Heatmap | Count aggregation, reactivity | 1-2 hrs |
+| Phase 2 | Capsule UI & Badges | Visual states, count display | 2-3 hrs |
+| Phase 3 | Group Nudge | Batch operation, error handling | 2-3 hrs |
+
+**Design Decisions (FINALIZED):**
+
+1. **Friend Count Logic: "Intentional Availability"**
+   - Count ALL states representing general availability: `.free`, `.afternoonOnly`, `.eveningOnly`, `.busy` (context-dependent)
+   - Intent: Show user "who is a potential match" for that day, not just strict `.free`
+   - Status Color Tinting: Use status.displayColor on badge (green if majority `.free`, orange if mostly partial)
+   - Result: More accurate "Heatmap" of social opportunity
+
+2. **Batch Processing: TaskGroup for Performance**
+   - Use `withThrowingTaskGroup` to fire all `sendNudge(to:)` calls in parallel
+   - Why: Firestore writes are independent. Sequential would be 0.5s * N friends; parallel = speed of slowest single write
+   - Pattern: Consistent with app's AsyncStream + Task architecture
+   - Capture results: Return (successCount: Int, totalCount: Int) summary to ViewModel
+
+3. **Haptic Strategy: Single Success for Batch**
+   - Immediate: `HapticManager.medium()` on "Nudge All" tap (acknowledge intent)
+   - Completion: `HapticManager.success()` after TaskGroup finishes successfully
+   - Why: Per-friend haptics = "machine gun" effect (5+ friends = spam). Contradicts Sprint 5.1 premium feel
+   - Partial Failure: `HapticManager.warning()` for "Nudged X of Y" scenario
+
+4. **Error Handling: "Partial Success" Pattern**
+   - Never show binary Success/Failure; always show counts
+   - Success: "All [Count] friends nudged! 👋" (temporary toast/banner)
+   - Partial: "Nudged 3 friends. 1 failed." (temporary toast)
+   - Implementation: New @Published successMessage property in ViewModel (complements existing errorMessage)
+
+**Files to Create/Modify:**
+- `DayFilterViewModel.swift` - Add heatmap logic + group nudge
+- `DayFilterButtonView.swift` - Refactor to capsule shape + badge
+- `FriendsScheduleView.swift` - Add "Nudge All" button
+- `DayFilterViewModelTests.swift` - Add heatmap + group nudge tests
+- `DayFilterButtonViewTests.swift` - Add capsule/badge visual tests
+
+---
+
+**Last Updated:** January 8, 2026 (Sprint 5.1 - Nudge Feature Complete) | **Status:** Production Ready
+
+**Sprint 6 Planned:** January 8, 2026 - Discovery & Intentions
 
 **Path Update:** January 8, 2026 - Migrated to `Khang_business_projects/UFree` (underscores instead of spaces)

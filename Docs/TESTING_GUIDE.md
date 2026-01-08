@@ -1,6 +1,6 @@
 # UFree Testing Guide
 
-**Status:** ✅ Production Ready | **Tests:** 160+ (Sprint 5) | **Coverage:** 85%+ | **Quality:** Zero flaky, zero memory leaks
+**Status:** ✅ Production Ready | **Tests:** 164+ (Sprint 5.1) | **Coverage:** 85%+ | **Quality:** Zero flaky, zero memory leaks
 
 ---
 
@@ -53,16 +53,17 @@ UFreeTests/
 ├── Core/Extensions/          (7 tests)
 │   └── Color+HexTests.swift (7)
 │
-└── Features/                 (73+ tests)
+└── Features/                 (77+ tests)
     ├── RootViewModelTests.swift (7)
     ├── MyScheduleViewModelTests.swift (11)
     ├── StatusBannerViewModelTests.swift (10)
     ├── DayFilterViewModelTests.swift (6)
     ├── FriendsViewModelTests.swift (4)
+    ├── FriendsScheduleViewModelTests.swift (8)    ← +4 nudge tests
     ├── FriendsPhoneSearchTests.swift (7)
     ├── FriendsHandshakeTests.swift (12)
     ├── UpdateMyStatusUseCaseTests.swift (4)
-    └── Notifications/          (6 tests)
+    └── Notifications/          (10 tests)
         ├── NotificationViewModelTests.swift (3)
         ├── MockNotificationRepositoryTests.swift (3)
         ├── NotificationCenterViewTests.swift (3)
@@ -83,10 +84,10 @@ UFreeTests/
 | Data Layer (Mock) | 9 | 100% |
 | Data Layer (Persistence) | 20 | 100% |
 | Data Layer (Firestore & Composite) | 24 | 100% |
-| ViewModels | 67+ | 85%+ |
+| ViewModels | 71+ | 85%+ |
 | Extensions | 7 | 100% |
 | UI Views | — | SwiftUI previews |
-| **Total** | **154+** | **85%+** |
+| **Total** | **164+** | **85%+** |
 
 ---
 
@@ -286,6 +287,8 @@ final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
 | Notification badge | ViewModel | Unread count filtering (domain logic) |
 | Notification messages | View | Type-specific formatting |
 | Async stream listening | Repository | AsyncStream iteration without crash |
+| Nudge action | ViewModel | Rapid-tap protection, haptic feedback, error handling |
+| Nudge button UI | View | Wave button affordance, disabled state while processing |
 
 ---
 
@@ -362,6 +365,102 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 
 ---
 
-**Last Updated:** January 8, 2026 (Sprint 5 in progress) | **Status:** Production Ready
+## Sprint 6 Test Planning (Upcoming)
+
+**Theme:** Discovery & Intentions - Availability Heatmap + Capsule UI + Group Nudge
+
+### Phase 1: Availability Heatmap Tests (DayFilterViewModel)
+
+```swift
+// Intentional Availability: Count .free + partial states
+func test_friendCountByDay_includesAllAvailableStates() async
+// Verify: friendCountByDay includes .free, .afternoonOnly, .eveningOnly
+// Verify: friendCountByDay["2026-01-10"] == 4 (2 free + 1 afternoon + 1 evening)
+
+// Reactivity on schedule changes
+func test_friendCountByDay_updatesOnScheduleChange() async
+// Verify: count updates when friendSchedules change
+// Verify: reactive binding triggers UI update
+
+// Status color tinting
+func test_friendCountColor_green_whenMajorityFree() async
+// Verify: badge color = green when 3+ are .free out of 4
+
+func test_friendCountColor_orange_whenMostlyPartial() async
+// Verify: badge color = orange when majority are partial states
+
+// Edge cases
+func test_friendCountByDay_handlesMissingSchedules()
+// Verify: graceful handling of friends without schedule data
+
+func test_friendCountByDay_zeroFriends_emptyDay()
+// Verify: friendCountByDay[date] omitted if no friends available
+```
+
+### Phase 2: Capsule UI Visual Tests (DayFilterButtonView)
+
+```swift
+// State rendering
+func test_selectedDay_rendersWithDisplayColor()
+// Verify: active capsule uses brand purple/displayColor
+
+func test_unselectedDay_rendersWithThinMaterial()
+// Verify: inactive capsule uses light gray
+
+// Badge display
+func test_friendCountBadge_displaysCorrectly()
+// Verify: "3 free" badge shown on capsule
+
+func test_zeroFriendsDay_showsNoBadge()
+// Verify: no badge when friendCountByDay[date] == 0
+```
+
+### Phase 3: Group Nudge Tests (FriendsScheduleViewModel + DayFilterViewModel)
+
+```swift
+// Parallel batch operation via TaskGroup
+func test_nudgeAllFree_sendsNudgeToEachAvailableUser() async
+// Verify: all available users (.free + partial) for selected day receive nudge
+// Verify: uses withThrowingTaskGroup (parallel, not sequential)
+// Verify: completes in ~1 request time, not N * 0.5s sequential
+
+// Processing state & rapid-tap protection
+func test_nudgeAllFree_setsIsNudging_whileProcessing() async
+// Verify: isNudging flag = true at start, false at end
+// Verify: guard !isNudging prevents concurrent batch calls
+
+func test_nudgeAllFree_ignoresSecondTap_whileProcessing() async
+// Verify: second tap is rejected while isNudging = true
+
+// Haptic feedback strategy
+func test_nudgeAllFree_triggersHaptic_onTap() async
+// Verify: HapticManager.medium() fires immediately on button tap
+
+func test_nudgeAllFree_triggersHaptic_onSuccess() async
+// Verify: HapticManager.success() fires when all nudges sent
+
+func test_nudgeAllFree_triggersHaptic_onPartialFailure() async
+// Verify: HapticManager.warning() fires when some nudges fail
+
+// Partial success pattern
+func test_nudgeAllFree_showsSuccessMessage_allSucceed() async
+// Verify: successMessage = "All 4 friends nudged! 👋"
+
+func test_nudgeAllFree_showsPartialMessage_someFail() async
+// Verify: successMessage = "Nudged 3 friends. 1 failed."
+// Verify: captures (successCount, totalCount) from TaskGroup results
+
+func test_nudgeAllFree_showsErrorMessage_allFail() async
+// Verify: errorMessage = "Failed to nudge friends. Please try again."
+```
+
+**Est. New Tests:** 10-12 (3-4 per phase)
+**Total Test Count (Post-Sprint 6):** ~176+
+
+---
+
+**Last Updated:** January 8, 2026 (Sprint 5.1 Complete - Nudge Feature) | **Status:** Production Ready
+
+**Sprint 6 Planned:** January 8, 2026 - Discovery & Intentions (5-6 hrs, 10-12 new tests)
 
 **Path Update:** January 8, 2026 - Migrated to `Khang_business_projects/UFree` (underscores instead of spaces)
