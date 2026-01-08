@@ -1,6 +1,6 @@
 # UFree - Weekly Availability Scheduler
 
-**Status:** ✅ Sprint 4 | **Version:** 4.0.0 | **Tests:** 150+ | **Coverage:** 85%+ | **Warnings:** 0
+**Status:** ✅ Sprint 5 | **Version:** 5.0.0 | **Tests:** 160+ | **Coverage:** 85%+ | **Warnings:** 0
 
 ---
 
@@ -18,6 +18,7 @@
 | Navigation | ✅ | TabView with single NavigationStack (no flicker) |
 | Haptic Feedback | ✅ | HapticManager integrated throughout |
 | Real-time Sync | ✅ | AsyncStream listeners (observeIncomingRequests) |
+| Notification Center | 🚀 | Real-time bell icon + badge, inbox view |
 
 ---
 
@@ -84,6 +85,32 @@ UFree/Core/Extensions/
 ---
 
 ## Sprint Completion
+
+### Sprint 5: Notification Center 🚀
+
+**Real-Time Notification System**
+- AppNotification domain model with NotificationType enum (friendRequest, nudge, extensible)
+- NotificationRepository protocol + FirebaseNotificationRepository (AsyncStream listener)
+- MockNotificationRepository for testing (no Firestore dependency)
+- NotificationViewModel (@MainActor, unread badge count)
+- NotificationCenterView (inbox with read/unread states)
+- NotificationBellButton (reusable toolbar component, red badge)
+- Environment injection for clean prop drilling across tabs
+
+**Testing Patterns & Abstractions**
+- TestNotificationBuilder (Factory pattern): Single source of truth for test data
+- NotificationTestAssertions (Helper assertions): Centralized message assertions
+- Focused test organization: One class per responsibility (ViewModel, Repository, View)
+- DRY tests: Builders replace 5-line manual setup, helpers replace duplicated assertions
+- 6+ unit tests covering badge logic, async behavior, and message formatting
+
+**Architecture Highlights**
+- **Abstractions**: Protocol repos reduce coupling, factory builders encapsulate test data
+- **Maintainability**: Single responsibility per class, helpers centralize logic
+- **Reusability**: Builders/assertions used by 3+ test files, ViewModel shared via environment
+- **Extensibility**: NotificationType enum easily extended, test helpers scale with new types
+
+---
 
 ### Sprint 4: Two-Way Handshake & Phone Search ✅
 
@@ -325,16 +352,16 @@ HapticManager.selection()  // Day filter selection
 
 ---
 
-## Recent Changes (Sprint 4 Complete)
+## Recent Changes (Sprint 5 In Progress)
 
-**Phone Search** - findUserByPhoneNumber() with blind index pattern (clean → hash → Firestore query). Raw numbers never exposed. TextField with phonePad keyboard, clears after add, prevents self-add.
+**Notification Center** - Real-time bell icon in toolbar (next to Sign Out). AsyncStream listener for live updates. Unread badge count. Inbox view with read/unread states. Extensible notification types (friendRequest, nudge, future: scheduleChange, eventInvite).
 
-**Friend Requests** - Real-time AsyncStream listener, atomic batch write (mark accepted + bidirectional add), lifecycle management (.task start, .onDisappear stop). Privacy-first: schedules visible only after both consent.
+**Testing Abstractions** - TestNotificationBuilder (factory pattern) eliminates repetitive test data setup. NotificationTestAssertions (helper assertions) centralizes message formatting logic. Tests now ~40% shorter with better DRY principle adherence.
 
-**Haptics** - Integrated throughout: medium() on search/send, success() on accept, warning() on decline.
-
-**Tests Optimized** - 15+ focused tests covering phone search workflows, handshake scenarios (send/accept/decline), real-time observation, and lifecycle management.
+**Architecture Patterns** - Applied abstractions (protocol repos, factory builders) to reduce coupling. Emphasized single responsibility (one class/helper per concern). Designed for reusability (builders/assertions used across test files) and extensibility (new notification types scale automatically).
 
 ---
 
-**Last Updated:** January 7, 2026 (Sprint 4 complete) | **Status:** Production Ready ✅
+**Last Updated:** January 8, 2026 (Sprint 5 in progress) | **Status:** Production Ready ✅
+
+**Path Update:** January 8, 2026 - Migrated to `Khang_business_projects/UFree` (underscores instead of spaces)

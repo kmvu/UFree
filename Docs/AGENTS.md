@@ -2,19 +2,14 @@
 
 ## CRITICAL: Path Format
 
-**MUST USE UNESCAPED SPACES IN FILE PATHS**
-
-❌ WRONG:
-```
-/Users/KhangVu/Documents/Development/git_project/Khang\ Business\ Projects/UFree
-```
+**ALWAYS USE UNDERSCORES (NO SPACES)**
 
 ✅ CORRECT:
 ```
-/Users/KhangVu/Documents/Development/git_project/Khang Business Projects/UFree
+/Users/KhangVu/Documents/Development/git_project/Khang_business_projects/UFree
 ```
 
-Always use the absolute path with literal spaces, not escaped backslashes. This applies to all `create_file`, `Read`, `edit_file`, `Bash`, and other file operations.
+Use underscores instead of spaces to avoid escaping issues. This applies to all `create_file`, `Read`, `edit_file`, `Bash`, and other file operations.
 
 ---
 
@@ -103,6 +98,12 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 - Actor for mocks requiring concurrent access (MockAuthRepository, MockAvailabilityRepository)
 
 **Naming:** CamelCase types, camelCase properties/functions. Descriptive names (e.g., `AuthRepository`, not `Auth`)
+
+**Architecture Principles:**
+- **Abstractions**: Protocol-based repos + Factory patterns (TestNotificationBuilder) reduce coupling
+- **Maintainability**: Single Responsibility - each class/struct does one thing well
+- **Reusability**: Shared utilities (HapticManager, AvailabilityStatus+Colors) avoid duplication
+- **Extensibility**: Enum-based types (NotificationType) allow easy additions without breaking changes
 
 **Testing:** Arrange-Act-Assert pattern. Test names: `test_[method]_[expectedBehavior]()`. Include rapid-tap protection tests (single tap, rapid taps, sequential taps).
 
@@ -198,4 +199,41 @@ NavigationStack {
 
 ---
 
-**Last Updated:** January 7, 2026 (Sprint 4 complete) | **Status:** Production Ready
+---
+
+## Sprint 5 Additions (In Progress)
+
+**Notification Center:** Real-time notification system with AsyncStream. Domain model (AppNotification with friendRequest/nudge types), repository protocol, Firestore-backed implementation. ViewModel manages unread count badge. Bell button in toolbar next to Sign Out menu.
+
+**Architecture & Abstractions:**
+- **Domain Layer**: `AppNotification` struct with `NotificationType` enum (extensible for future types like scheduleChange, eventInvite)
+- **Data Layer**: `NotificationRepository` protocol (Firestore + Mock implementations for testing)
+- **Presentation Layer**: `NotificationViewModel` (@MainActor, @Published state), `NotificationCenterView` (inbox UI), `NotificationBellButton` (reusable component)
+- **Environment Injection**: NotificationViewModel passed via SwiftUI environment for clean prop drilling
+
+**Testing Patterns:**
+- **TestNotificationBuilder** (Factory pattern): Single source of truth for test data creation. Eliminates duplication across tests.
+- **NotificationTestAssertions** (Helper functions): Reusable assertions for message formatting. Central point to update message assertions.
+- **Focused test classes**: One responsibility per test file (ViewModel logic, Repository behavior, View rendering)
+- **DRY tests**: TestNotificationBuilder.friendRequest() replaces 5-line manual setup in every test
+
+**Firestore Security Rules Update Required:**
+```
+match /users/{userId}/notifications/{document=**} {
+  allow read: if request.auth.uid == userId;
+  allow create: if request.auth.uid == resource.data.senderId;
+  allow write: if request.auth.uid == userId;
+}
+```
+
+**Files:**
+- **Domain**: `AppNotification.swift`, `NotificationRepository.swift`
+- **Data**: `FirebaseNotificationRepository.swift`, `MockNotificationRepository.swift`
+- **Presentation**: `NotificationViewModel.swift`, `NotificationCenterView.swift`, `NotificationBellButton.swift`
+- **Tests**: `NotificationViewModelTests.swift`, `MockNotificationRepositoryTests.swift`, `NotificationCenterViewTests.swift`, `TestNotificationBuilder.swift`, `NotificationTestAssertions.swift`
+
+---
+
+**Last Updated:** January 8, 2026 (Sprint 5 in progress) | **Status:** Production Ready
+
+**Path Update:** January 8, 2026 - Migrated to `Khang_business_projects/UFree` (underscores instead of spaces)

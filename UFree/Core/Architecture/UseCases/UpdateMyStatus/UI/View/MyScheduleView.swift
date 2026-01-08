@@ -29,28 +29,29 @@ public struct MyScheduleView: View {
                         // Status Banner (padded) - fades in first (delay 0.1s)
                         StatusBannerView()
                             .padding()
-                            .opacity(isLoaded ? 1 : 0)
-                            .offset(y: isLoaded ? 0 : 10)
 
                         // My Week Carousel - fades in second (delay 0.2s)
                         myWeekCarouselSection
                             .padding(.vertical, 24)
-                            .opacity(isLoaded ? 1 : 0)
-                            .offset(y: isLoaded ? 0 : 10)
 
                         // Who's free on... Filter - fades in last (delay 0.3s)
                         whosFreOnFilterSection
                             .padding(.vertical, 24)
-                            .opacity(isLoaded ? 1 : 0)
-                            .offset(y: isLoaded ? 0 : 10)
+                            
                     }
+                    .opacity(isLoaded ? 1 : 0)
+                    .offset(y: isLoaded ? 0 : 10)
                 }
             }
         }
         .navigationTitle(navigationTitle)
         .navigationSubtitle("See when friends are available")
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                // Bell icon with notification badge
+                NotificationBellButton(isPresented: .constant(false))
+                
+                // Menu with sign out
                 Menu {
                     Button(role: .destructive, action: {
                         rootViewModel.signOut()
@@ -63,6 +64,7 @@ public struct MyScheduleView: View {
                 }
             }
         }
+
         .task {
             await viewModel.loadSchedule()
 

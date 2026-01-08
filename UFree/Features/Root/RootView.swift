@@ -15,6 +15,7 @@ struct RootView: View {
     @StateObject private var rootViewModel: RootViewModel
     @StateObject private var friendsScheduleViewModel: FriendsScheduleViewModel
     @StateObject private var friendsViewModel: FriendsViewModel
+    @StateObject private var notificationViewModel: NotificationViewModel
     let friendRepository: FriendRepositoryProtocol
 
     init(container: ModelContainer, authRepository: AuthRepository) {
@@ -36,6 +37,9 @@ struct RootView: View {
             availabilityRepository: availabilityRepo
         ))
         _friendsViewModel = StateObject(wrappedValue: FriendsViewModel(friendRepository: friendRepo))
+        _notificationViewModel = StateObject(wrappedValue: NotificationViewModel(
+            repository: FirebaseNotificationRepository()
+        ))
     }
 
     var body: some View {
@@ -60,7 +64,8 @@ struct RootView: View {
                         user: user,
                         friendRepository: friendRepository,
                         friendsScheduleViewModel: friendsScheduleViewModel,
-                        friendsViewModel: friendsViewModel
+                        friendsViewModel: friendsViewModel,
+                        notificationViewModel: notificationViewModel
                     )
                     .transition(.opacity)
                 } else {
@@ -93,6 +98,7 @@ struct MainAppView: View {
     let friendRepository: FriendRepositoryProtocol
     let friendsScheduleViewModel: FriendsScheduleViewModel
     let friendsViewModel: FriendsViewModel
+    @ObservedObject var notificationViewModel: NotificationViewModel
 
     var body: some View {
         TabView {
@@ -123,6 +129,7 @@ struct MainAppView: View {
                 Label("Add Friends", systemImage: "person.badge.plus")
             }
         }
+        .environment(\.notificationViewModel, notificationViewModel)
     }
 }
 
