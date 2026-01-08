@@ -78,7 +78,7 @@ platform :ios do
       build_number: latest_testflight_build_number + 1
     )
 
-    # 4. Build for the App Store
+    # 4. Build for the App Store (including dSYMs for crash reporting)
     puts "🔨 Building IPA for App Store..."
     build_app(
       project: "UFree.xcodeproj",
@@ -89,7 +89,15 @@ platform :ios do
       output_name: "UFree.ipa",
       clean: true,
       archive_path: "./fastlane/builds/UFree.xcarchive",
-      destination: "generic/platform=iOS"
+      destination: "generic/platform=iOS",
+      include_symbols: true,
+      include_bitcode: false
+    )
+
+    # 4.1 Upload dSYMs to Firebase Crashlytics
+    puts "📤 Uploading dSYMs to Firebase Crashlytics..."
+    upload_symbols_to_crashlytics(
+      gsp_path: "GoogleService-Info.plist"
     )
 
     # 5. Upload to TestFlight
@@ -111,7 +119,7 @@ platform :ios do
       }
     )
     
-    puts "✅ Build uploaded to TestFlight"
+    puts "✅ Build uploaded to TestFlight with Crashlytics reporting enabled"
   end
 
   # Helper lanes for common tasks

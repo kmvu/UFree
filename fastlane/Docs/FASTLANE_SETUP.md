@@ -447,10 +447,37 @@ With the Appfile, Fastfile, .env, and match configured:
 
 1. Run `fastlane tests` (verify all 206+ pass)
 2. Run `fastlane alpha` (test on your device with Firebase)
-3. Recruit 2-3 pair testers (friends/colleagues)
-4. Follow `TESTING_GUIDE_USER_FRIENDLY.md` for validation
-5. Run `fastlane beta` to submit to TestFlight
-6. Approve build in TestFlight & send to external testers
+3. **[IMPORTANT] Add Xcode Build Phase Script for Crashlytics** (see step below)
+4. Recruit 2-3 pair testers (friends/colleagues)
+5. Follow `TESTING_GUIDE_USER_FRIENDLY.md` for validation
+6. Run `fastlane beta` to submit to TestFlight
+7. Approve build in TestFlight & send to external testers
+8. Monitor crashes in Firebase Console → Crashlytics
+
+### Critical: Add Xcode Build Phase Script (5 minutes)
+
+Before running `fastlane beta`, you must add the Crashlytics dSYM upload script to Xcode:
+
+1. Open UFree.xcodeproj in Xcode
+2. Select UFree target → Build Phases
+3. Click `+` → New Run Script Phase
+4. Name it: `Upload dSYMs to Firebase Crashlytics`
+5. Paste this script:
+   ```bash
+   "${BUILD_DIR%Build/*}SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run"
+   ```
+6. **IMPORTANT:** Uncheck "Based on dependency analysis" (so it runs every archive)
+7. Build Phases order: Script should be AFTER "Compile Sources"
+
+**Why?** Without this, dSYM files won't be uploaded to Firebase, and crash reports will show memory addresses instead of readable code.
+
+**Verify it works:**
+```bash
+xcodebuild archive -scheme UFree -configuration Release
+# Look for "Upload dSYMs to Firebase Crashlytics" in build log
+```
+
+See `CRASHLYTICS_SETUP.md` for detailed explanation and troubleshooting.
 
 ## Future: CI/CD Automation (When Ready)
 

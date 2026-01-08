@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import FirebaseCore
+import FirebaseCrashlytics
 
 
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -19,6 +20,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
+        
+        // Enable Crashlytics crash reporting for distribution builds
+        #if !DEBUG
+        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
+        #endif
+        
         return true
     }
 }
