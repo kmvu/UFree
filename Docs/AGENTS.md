@@ -23,18 +23,6 @@ Use spaces naturally in this directory. All file operations will work with the s
 
 ---
 
-## Recent Work
-
-- **Sprint 6.1 ✅ COMPLETE**: Distribution Automation with match
-  - **Fastlane Integration**: Five lanes (tests, alpha, beta, test_report, sync_certs)
-  - **Appfile**: Centralized app configuration (bundle ID, team IDs, Apple ID)
-  - **match**: Private GitHub repo for encrypted certificate storage (MATCH_PASSWORD)
-  - **Hands-Off Signing**: beta lane automatically syncs and uses certificates
-  - **CI/CD Ready**: New machines only need MATCH_PASSWORD to build and distribute
-  - **Files**: Fastfile (5 lanes), Appfile, .env.default, .gitignore, FASTLANE_SETUP.md, MATCH_GUIDE.md
-
----
-
 ## Testing Protocol
 
 **Skip tests for docs/comments changes. Run tests ONLY if code logic changes.**
@@ -80,9 +68,9 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 | Layer | Key Components |
 |-------|---|
 | **Domain** | User, AvailabilityStatus, DayAvailability, UserSchedule, UserProfile, Protocols (AuthRepository, AvailabilityRepository, FriendRepositoryProtocol), UpdateMyStatusUseCase |
-| **Data** | FirebaseAuthRepository, MockAuthRepository, SwiftDataAvailabilityRepository, FirebaseAvailabilityRepository, CompositeAvailabilityRepository, FirebaseFriendRepository, AppleContactsRepository, CryptoUtils |
-| **Presentation** | RootViewModel (auth), MyScheduleViewModel, FriendsScheduleViewModel, FriendsViewModel, StatusBannerViewModel, DayFilterViewModel |
-| **UI** | RootView (auth + tabs), LoginView, MyScheduleView, FriendsView, FriendsScheduleView, Components |
+| **Data** | FirebaseAuthRepository, MockAuthRepository, SwiftDataAvailabilityRepository, FirebaseAvailabilityRepository, CompositeAvailabilityRepository, FirebaseFriendRepository, AppleContactsRepository, CryptoUtils, AnalyticsManager |
+| **Presentation** | RootViewModel (auth), MyScheduleViewModel, FriendsScheduleViewModel, FriendsViewModel, StatusBannerViewModel, DayFilterViewModel, NotificationViewModel |
+| **UI** | RootView (auth + tabs), LoginView, MyScheduleView, FriendsView, FriendsScheduleView, NotificationCenterView, Components |
 
 **Projects:** UFree (app), UFreeTests (206+ unit tests), UFreeUITests (integration tests)
 
@@ -152,6 +140,7 @@ Task {
 - `AvailabilityStatus+Colors.swift` - Domain-level color extension (`.displayColor`)
 - `ButtonStyles.swift` - NoInteractionButtonStyle (removes default highlight)
 - `HapticManager.swift` - Unified feedback API
+- `AnalyticsManager.swift` - Type-safe event tracking
 
 ---
 
@@ -180,26 +169,22 @@ NavigationStack {
 
 ---
 
-## Sprint 6.1 Additions (Distribution Automation) ✅
+## Recent Sprint (Sprint 6.1+) Summary
+
+### Sprint 6.1: Distribution Automation ✅
 
 **Theme:** Fastlane Automation - Every build validated before reaching testers
 
-**Fastlane Three-Tier Pipeline:**
+**Three-Tier Pipeline:**
 - **tests lane** - Pre-flight validation: runs all 206+ unit tests, fails build if any test fails
-- **alpha lane** - Internal Firebase distribution: tests → build → Firebase App Distribution (no Apple review)
-- **beta lane** - External TestFlight: tests → build → auto-increment build number → TestFlight (Apple review required)
+- **alpha lane** - Internal Firebase distribution: tests → build → Firebase App Distribution (no Apple review, instant)
+- **beta lane** - External TestFlight: tests → build → auto-increment build number → TestFlight (Apple review required, 1-2 days)
 
 **Enhanced with match Certificate Management:**
 - **match integration** - Stores certificates in private GitHub repo (encrypted with MATCH_PASSWORD)
 - **Appfile** - Centralized app ID, team ID, Apple ID configuration
 - **Hands-off signing** - beta lane automatically syncs and uses certificates from match
 - **CI/CD ready** - New machines only need MATCH_PASSWORD to build and distribute
-
-**Architecture:**
-- `fastlane/Fastfile` - Five lanes: tests, alpha, beta, test_report, sync_certs
-- `fastlane/Appfile` - App configuration (bundle ID, team IDs, Apple ID)
-- `fastlane/.env.default` - Template for credentials (Firebase, Apple ID, MATCH_PASSWORD)
-- `fastlane/.gitignore` - Secrets protection (AuthKey_*.p8, .env, builds/, match credentials)
 
 **Command Reference:**
 ```bash
@@ -210,146 +195,253 @@ fastlane sync_certs     # Manual certificate sync (usually not needed)
 fastlane test_report    # Generate detailed test report
 ```
 
-**Pair Testing Strategy ("The Trusted Circle"):**
-- User A searches User B by phone number (blind index privacy-safe)
-- User A sends friend request, User B accepts (handshake)
-- Both see "Who's free on..." heatmap with live friend counts
-- User A taps "Nudge all" → User B receives real-time notification
-- Validates: phone search, handshake, heatmap filtering, nudge delivery, haptics, notification persistence
-
 **Files Created:**
 - `fastlane/Fastfile` - Five lanes with match integration
 - `fastlane/Appfile` - Centralized app configuration
-- `fastlane/.env.default` - Template (Firebase, Apple ID, MATCH_PASSWORD)
+- `fastlane/.env.default` - Template for credentials (Firebase, Apple ID, MATCH_PASSWORD)
 - `fastlane/.gitignore` - Enhanced secrets protection
 - `FASTLANE_SETUP.md` - Setup guide with match initialization (20 minutes one-time)
 - `MATCH_GUIDE.md` - Deep dive on match certificate management
-- `SPRINT_6_1_MATCH_INTEGRATION.md` - Summary of enhancements
 
-**Build Automation Metrics:**
-- Test suite: < 90 sec
-- Alpha build: < 3 min (Firebase instant delivery)
-- Beta build: < 8 min (match cert sync + TestFlight)
-- Certificate sync: < 30 sec (automatic via match)
+### Sprint 6.1+ Additions: Testing & Analytics Phase ✅
 
----
+**Theme:** Stability & Insights - Crashlytics for crash reporting, Analytics for usage tracking
 
-## Sprint 5.1 Additions (Nudge Feature)
+**Firebase Crashlytics Integration ✅**
+- **UFreeApp.swift**: Added `import FirebaseCrashlytics`, enabled in Release builds, disabled in Debug
+- **Fastfile (beta lane)**: Added `include_symbols: true` + `upload_symbols_to_crashlytics` for dSYM uploads
+- **Build Phase Script**: Manual Xcode setup required - Run Script phase with Firebase SDK path
+- **Captures**: Stack traces with line numbers, device model, iOS version, app version, network status
+- **Result**: Readable crash reports in Firebase Console with device/version filtering
 
-**Nudge Interaction:** Real-time nudging on FriendsScheduleView. Tap wave button on any friend's row to send a nudge notification.
+**Firebase Analytics Integration ✅**
+- **AnalyticsManager.swift**: Type-safe event tracking (AnalyticsEvent enum + log methods)
+- **UFreeApp.swift**: Added `import FirebaseAnalytics`, auto-enabled for Release, auto-disabled for Debug
+- **Key Metrics**: nudgeSent, batchNudge, phoneSearch, availabilityUpdated, handshakeCompleted, appLaunched
+- **Auto-logging**: All events timestamped, parameters typed (string, int, double, long)
+- **Result**: Real-time user behavior in Firebase Console with Realtime dashboard
 
-**Implementation Details:**
-- **FriendsScheduleViewModel Enhancement**: Added `isNudging` property + `sendNudge(to:)` async method with rapid-tap protection
-- **Rapid-Tap Protection**: Guard clause `guard !isNudging else { return }` prevents concurrent nudges
-- **Haptic Feedback**: `.medium()` on tap, `.success()` on completion, `.warning()` on error (via HapticManager)
-- **Error Handling**: User-facing error messages via @Published errorMessage (reuses existing alert UI)
-- **Button State**: Disabled + opacity reduced while nudging (visual feedback)
-- **Dependency Injection**: NotificationRepository passed to FriendsScheduleViewModel via init
+**Documentation Created:**
+- `fastlane/Docs/FIREBASE_SETUP.md` - Combined Crashlytics + Analytics guide (Part 1 & Part 2)
+- `MATCH_GUIDE.md` - Deep dive on certificate management (separate, detailed)
+- Updated `FASTLANE_SETUP.md` (v1.4) - Added build phase instructions + AnalyticsManager wiring guide
 
-**Testing Patterns (4 New Tests):**
-- `test_sendNudge_setsProcessingFlag()` - Validates rapid-tap protection flag lifecycle
-- `test_sendNudge_completesSuccessfully()` - Success path (no errors)
-- `test_rapidNudgeTaps_ignoresSecondTap()` - Concurrent tap rejection
-- `test_sendNudge_clearsErrorOnSuccess()` - Error state cleanup
+**Testing Phase Complete:**
+- ✅ **Automation**: Fastlane (tests → alpha → beta pipeline)
+- ✅ **Security**: match (encrypted certificates, MATCH_PASSWORD sharing)
+- ✅ **Stability**: Crashlytics (readable crash reports with context)
+- ✅ **Insights**: Analytics (real-time usage metrics)
 
-**Files Modified:**
-- `FriendsScheduleViewModel.swift` - Added nudge logic with rapid-tap protection
-- `FriendsScheduleView.swift` - Added wave button to friend rows
-- `FriendsScheduleViewModelTests.swift` - Added 4 nudge-specific tests
-- `RootView.swift` - DI: Pass FirebaseNotificationRepository to FriendsScheduleViewModel
+**Manual Steps Required (One-Time):**
+1. Add Crashlytics build phase script to Xcode (5 minutes)
+2. Wire AnalyticsManager.log() calls into ViewModels (10 minutes)
 
----
-
-## Sprint 6 Additions (Complete) ✅
-
-**Theme:** Discovery & Intentions - Availability Heatmap + Group Nudging
-
-**Phase 1: Availability Heatmap ✅**
-- Added `freeFriendCount(for:friendsSchedules:)` to FriendsScheduleViewModel
-- Counts only .free status (excludes afternoonOnly, eveningOnly, busy, unknown)
-- Powers "Who's free on..." day selector with live friend availability counts
-- Tests: 6 heatmap logic tests (edge cases, date normalization, multi-friend scenarios)
-
-**Phase 2: Capsule UI Refactor ✅**
-- Redesigned DayFilterButtonView from square to vertical capsule (60w × 90h)
-- Active state: accentColor background with white text
-- Inactive state: systemGray6 background
-- Badge display: "X free" in green (inactive) or white (active), hidden when 0
-- Tests: 10 UI tests (state rendering, badge display, dimensions, transitions)
-
-**Phase 3: Contextual Group Nudge ✅**
-- Implemented `nudgeAllFree(for:)` in FriendsScheduleViewModel using `withThrowingTaskGroup`
-- Parallel processing: true concurrent execution (speed = slowest single write, not O(N) sequential)
-- Added "Nudge All" button to FriendsScheduleView (appears only when day selected + friends free)
-- @Published successMessage property for partial success counts
-- Three-tier messaging: "All 3 friends nudged! 👋" | "Nudged 2 of 3" | error message
-- Haptic strategy: medium() on tap, success() on all-success, warning() on partial/complete failure
-- Tests: 8 group nudge tests (parallel execution, failure tracking, message formatting, singular/plural)
-
-**Critical Bug Fixes During Verification:**
-1. **TaskGroup Result Tracking**: Changed `withThrowingTaskGroup(of: Void.self)` → `of: Bool.self` to properly track failures (was counting all completions as successes)
-2. **Ternary Operator**: Fixed `"nudged" : "nudged"` (both branches identical!) to proper singular/plural handling
-3. **Test Infrastructure**: Added `MockNotificationRepository.userIdsToFailFor` test hook to simulate failures in 3 new failure scenario tests
-
-**Test Coverage:**
-- Total: 206 tests (including 4 new tests + 4 updated tests = +4 net new assertions)
-- DayFilterButtonViewTests: 11 tests (capsule UI edge cases, badge logic)
-- DayFilterViewModelTests: 6 tests (heatmap counting, date normalization)
-- FriendsScheduleViewModelTests: 12 tests (group nudge + success/failure messaging)
-- All tests passing ✅
-
-**Files Modified:**
-- `FriendsScheduleViewModel.swift` - Added freeFriendCount(), nudgeAllFree(), successMessage property
-- `FriendsScheduleView.swift` - Added day selector with heatmap, "Nudge All" button
-- `DayFilterButtonView.swift` - Refactored to vertical capsule with badge
-- `MockNotificationRepository.swift` - Added userIdsToFailFor test hook
-- `FriendsScheduleViewModelTests.swift` - Added 4 new tests for partial/complete failures
-- `DayFilterButtonViewTests.swift` - Fixed flawed test, added 10 UI tests
-- `MyScheduleView.swift` - Fixed parameter passing to DayFilterButtonView
-
-**Design Decisions (IMPLEMENTED):**
-- Count only .free status (not partial availability) for clear signal
-- Use TaskGroup for true parallel execution (performance vs sequential)
-- Single haptic per action (no per-friend spam)
-- Partial success counts always shown (never binary success/fail)
+**Files Created/Modified:**
+- `UFree/Core/Utilities/AnalyticsManager.swift` - Event tracking wrapper
+- `UFree/UFreeApp.swift` - Updated with Crashlytics + Analytics imports
+- `fastlane/Fastfile` - Updated beta lane with dSYM upload
+- `fastlane/Docs/FIREBASE_SETUP.md` - Merged Crashlytics + Analytics guide
+- `Scripts/upload_dsyms.sh` - Build phase script template
 
 ---
 
-## Sprint 5 Additions (In Progress)
+## Build Automation Commands
 
-**Notification Center:** Real-time notification system with AsyncStream. Domain model (AppNotification with friendRequest/nudge types), repository protocol, Firestore-backed implementation. ViewModel manages unread count badge. Bell button in toolbar next to Sign Out menu.
+```bash
+# Validate all tests (pre-flight)
+fastlane tests
 
-**Architecture & Abstractions:**
-- **Domain Layer**: `AppNotification` struct with `NotificationType` enum (extensible for future types like scheduleChange, eventInvite)
-- **Data Layer**: `NotificationRepository` protocol (Firestore + Mock implementations for testing)
-- **Presentation Layer**: `NotificationViewModel` (@MainActor, @Published state), `NotificationCenterView` (inbox UI), `NotificationBellButton` (reusable component)
-- **Environment Injection**: NotificationViewModel passed via SwiftUI environment for clean prop drilling
+# Build and distribute internally (Firebase)
+fastlane alpha
 
-**Testing Patterns:**
-- **TestNotificationBuilder** (Factory pattern): Single source of truth for test data creation. Eliminates duplication across tests.
-- **NotificationTestAssertions** (Helper functions): Reusable assertions for message formatting. Central point to update message assertions.
-- **Focused test classes**: One responsibility per test file (ViewModel logic, Repository behavior, View rendering)
-- **DRY tests**: TestNotificationBuilder.friendRequest() replaces 5-line manual setup in every test
+# Build and submit to TestFlight
+fastlane beta
 
-**Firestore Security Rules Update Required:**
+# Generate detailed test report
+fastlane test_report
+
+# Manually sync certificates
+fastlane sync_certs
 ```
-match /users/{userId}/notifications/{document=**} {
-  allow read: if request.auth.uid == userId;
-  allow create: if request.auth.uid == resource.data.senderId;
-  allow write: if request.auth.uid == userId;
+
+---
+
+## File Organization
+
+**Always know where to find things:**
+
+| Type | Location |
+|------|----------|
+| Documentation | `Docs/` (README.md, AGENTS.md, SPRINT_HISTORY.md) |
+| Firebase Setup | `Docs/FIREBASE_SETUP.md` |
+| Fastlane Setup | `fastlane/Docs/FASTLANE_SETUP.md` |
+| Match Guide | `fastlane/Docs/MATCH_GUIDE.md` |
+| Domain Models | `UFree/Core/Domain/` |
+| Data Layer | `UFree/Core/Data/` |
+| ViewModels | `UFree/Features/*/` |
+| UI Components | `UFree/Features/*/` |
+| Tests | `UFreeTests/` |
+
+---
+
+## Common Tasks
+
+### Add a New Feature
+
+1. **Create domain model** in `UFree/Core/Domain/`
+2. **Create repository protocol** if needed
+3. **Implement repository** in `UFree/Core/Data/`
+4. **Create ViewModel** in `UFree/Features/{Feature}/`
+5. **Create View** in `UFree/Features/{Feature}/`
+6. **Write tests first** (TDD)
+7. **Wire dependency injection** in parent View
+8. **Add analytics tracking** via AnalyticsManager
+
+### Add a New ViewModel
+
+```swift
+@MainActor
+final class MyViewModel: ObservableObject {
+    @Published var state: MyState = .initial
+    
+    private let repository: MyRepository
+    
+    init(repository: MyRepository = .shared) {
+        self.repository = repository
+    }
+    
+    func doSomething() async {
+        do {
+            state = .loading
+            // ... async work ...
+            state = .success(result)
+            AnalyticsManager.log(.featureUsed)
+        } catch {
+            state = .error(error)
+        }
+    }
 }
 ```
 
-**Files:**
-- **Domain**: `AppNotification.swift`, `NotificationRepository.swift`
-- **Data**: `FirebaseNotificationRepository.swift`, `MockNotificationRepository.swift`
-- **Presentation**: `NotificationViewModel.swift`, `NotificationCenterView.swift`, `NotificationBellButton.swift`
-- **Tests**: `NotificationViewModelTests.swift`, `MockNotificationRepositoryTests.swift`, `NotificationCenterViewTests.swift`, `TestNotificationBuilder.swift`, `NotificationTestAssertions.swift`
+### Add a New Test
+
+```swift
+final class MyViewModelTests: XCTestCase {
+    var sut: MyViewModel!
+    var mockRepository: MockMyRepository!
+    
+    override func setUp() {
+        super.setUp()
+        mockRepository = MockMyRepository()
+        sut = MyViewModel(repository: mockRepository)
+    }
+    
+    func test_doSomething_succeeds() async {
+        // Arrange
+        mockRepository.stubbedResult = .success(42)
+        
+        // Act
+        await sut.doSomething()
+        
+        // Assert
+        XCTAssertEqual(sut.state, .success(42))
+    }
+}
+```
 
 ---
 
-**Last Updated:** January 8, 2026 (Sprint 6.1 - Distribution Automation with match) | **Status:** Production Ready ✅
+## Pair Testing Strategy ("The Trusted Circle")
 
-**Sprint 7 Planning:** (Upcoming) - Feature TBD
+Before distribution, validate core features:
 
-**Path:** `/Users/KhangVu/Documents/Development/git_project/Khang Business Projects/UFree`
+1. **Phone Search** - User A finds User B (blind index)
+2. **Handshake** - A sends request, B accepts
+3. **Heatmap** - Both see "Who's free on..." with counts
+4. **Nudge** - A nudges B → B gets real-time notification
+5. **Validation** - Check haptics, sync timing, rapid-tap protection
+
+See `README.md` for more details.
+
+---
+
+## Security & Secrets
+
+### Local Machine (.env Strategy)
+
+Your `.env` file contains:
+```
+FASTLANE_USER, FASTLANE_PASSWORD, MATCH_PASSWORD, FIREBASE_TOKEN, FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD
+```
+
+**Protection:**
+- `fastlane/.gitignore` prevents it from ever being committed
+- Keep `.env` in password manager as backup
+- Never share in Slack, email, or chat
+- Only share MATCH_PASSWORD securely (1Password, Vault, verbal)
+
+### Private match Repository
+
+- **GitHub (private):** Encrypted certificates + provisioning profiles
+- **Encryption:** AES-256-CBC (industry standard)
+- **Access:** Only with MATCH_PASSWORD
+- **Never commit** encrypted certs to main UFree repo (separate private repo only)
+
+### Security Checklist
+
+Before every push to Git:
+- ✅ `.env` is NOT tracked (`git status`)
+- ✅ No passwords in staged files (`git diff --cached fastlane/`)
+- ✅ `.gitignore` has `.env` listed
+- ✅ `Appfile` contains app config only (no secrets)
+- ✅ Only `Fastfile` and `Appfile` are committed from `fastlane/`
+
+---
+
+## Performance Targets
+
+| Operation | Expected |
+|-----------|----------|
+| Tests | ~90 sec |
+| Alpha build | ~3 min |
+| Beta build | ~8 min |
+| match sync | ~30 sec |
+| Real-time sync | < 3 sec |
+| Phone search | < 2 sec |
+| Nudge delivery | < 2 sec |
+
+---
+
+## Debugging Tips
+
+**Network issues?**
+- Check CompositeAvailabilityRepository logic (should use local first)
+- Verify Firestore rules allow read/write for current user
+- Check Firebase Console for write errors
+
+**UI flickering?**
+- Verify single NavigationStack at MainAppView (no nesting)
+- Check ViewModel subscription cleanup in deinit
+- Ensure AsyncStream listeners are cancelled properly
+
+**Test failures?**
+- Run with full output: `xcodebuild test ... (without grep)`
+- Check mock setup in setUp() method
+- Verify @MainActor isolation is correct
+
+**Analytics not appearing?**
+- Wait 5-10 minutes (Firebase batches events)
+- Check Release build (Debug has analytics disabled)
+- Verify `AnalyticsManager.log()` is called after action succeeds
+- Check Firebase Console → Analytics → Realtime tab
+
+---
+
+**Last Updated:** January 8, 2026 | **Status:** Production Ready ✅
+
+**References:**
+- `SPRINT_HISTORY.md` - Complete development record (Sprint 1-5.1)
+- `README.md` - Architecture overview & quick reference
+- `fastlane/Docs/FASTLANE_SETUP.md` - Build automation guide
+- `fastlane/Docs/FIREBASE_SETUP.md` - Crashlytics + Analytics integration
+- `fastlane/Docs/MATCH_GUIDE.md` - Certificate management deep dive

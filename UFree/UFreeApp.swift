@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import FirebaseCore
 import FirebaseCrashlytics
+import FirebaseAnalytics
 
 
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -24,7 +25,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Enable Crashlytics crash reporting for distribution builds
         #if !DEBUG
         Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
+        Analytics.setAnalyticsCollectionEnabled(true)
+        #else
+        // Debug builds: disable analytics to avoid noise during development
+        Analytics.setAnalyticsCollectionEnabled(false)
         #endif
+        
+        // Log app launch
+        AnalyticsManager.log(.appLaunched)
         
         return true
     }

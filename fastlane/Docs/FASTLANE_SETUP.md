@@ -422,37 +422,35 @@ fastlane test_report
 
 ## Where You Are Now
 
-With the Appfile, Fastfile, .env, and match configured:
+**Complete Testing & Analytics Phase** with 4 core pillars:
 
 **🧪 Quality is Guaranteed**
-- Every build runs your 206+ tests first
+- Every build runs 206+ tests first
 - Broken code cannot reach testers
 
-**🔐 Handshaking is Automatic**
-- Certificates for Nudge & Handshake features are managed securely
-- match keeps them encrypted on GitHub
-- Auto-renews before expiration
+**🔐 Security is Handled**
+- Certificates managed automatically via match
+- Encryption on GitHub, MATCH_PASSWORD the only secret
+- CI/CD ready with environment variables
 
-**📦 Distribution is One-Click**
-- `fastlane tests` → validate
-- `fastlane alpha` → Firebase (instant)
-- `fastlane beta` → TestFlight (1-2 days)
-
-**🚫 No Manual Certificate Headaches**
-- .env prevents password prompts
-- Teammates just set MATCH_PASSWORD once
-- CI/CD is ready with GitHub Secrets
+**📊 Stability & Insights**
+- Crashlytics: Captures readable crash reports from TestFlight
+- Analytics: Tracks core success metrics (nudges, searches, availability)
+- See both in Firebase Console with device filters and real-time dashboards
+- See "FIREBASE_SETUP.md" for complete integration guide
 
 ## Next: Real-World Testing
 
 1. Run `fastlane tests` (verify all 206+ pass)
 2. Run `fastlane alpha` (test on your device with Firebase)
 3. **[IMPORTANT] Add Xcode Build Phase Script for Crashlytics** (see step below)
-4. Recruit 2-3 pair testers (friends/colleagues)
-5. Follow `TESTING_GUIDE_USER_FRIENDLY.md` for validation
-6. Run `fastlane beta` to submit to TestFlight
-7. Approve build in TestFlight & send to external testers
-8. Monitor crashes in Firebase Console → Crashlytics
+4. **[IMPORTANT] Wire AnalyticsManager into ViewModels** (10 minutes, see below)
+5. Recruit 2-3 pair testers (friends/colleagues)
+6. Follow `TESTING_GUIDE_USER_FRIENDLY.md` for validation
+7. Run `fastlane beta` to submit to TestFlight
+8. Approve build in TestFlight & send to external testers
+9. Monitor crashes in Firebase Console → Crashlytics
+10. Monitor user behavior in Firebase Console → Analytics
 
 ### Critical: Add Xcode Build Phase Script (5 minutes)
 
@@ -477,7 +475,64 @@ xcodebuild archive -scheme UFree -configuration Release
 # Look for "Upload dSYMs to Firebase Crashlytics" in build log
 ```
 
-See `CRASHLYTICS_SETUP.md` for detailed explanation and troubleshooting.
+See "FIREBASE_SETUP.md" Part 1 for Crashlytics verification and troubleshooting.
+
+### Wire AnalyticsManager into ViewModels (10 minutes)
+
+Analytics is auto-initialized, but you must call AnalyticsManager in your ViewModels to track success metrics:
+
+**In your NudgeViewModel (or wherever nudges are sent):**
+```swift
+func nudgeUser(_ friend: Friend) async {
+    try await nudgeService.send(to: friend)
+    AnalyticsManager.logNudgeSent(isBatch: false)  // Log single nudge
+}
+
+func nudgeAllAvailable(for date: Date) async {
+    // ... existing batch logic ...
+    AnalyticsManager.logNudgeSent(isBatch: true)  // Log batch nudge
+}
+```
+
+**In your HeatmapViewModel (if you have one):**
+```swift
+func sendBatchNudge(recipients: [Friend]) async {
+    try await nudgeService.sendBatch(recipients)
+    AnalyticsManager.logBatchNudge(recipientCount: recipients.count)
+}
+```
+
+**In your SearchViewModel (phone search):**
+```swift
+func searchForFriend(_ phoneNumber: String) async {
+    let found = await repository.findFriend(phoneNumber)
+    AnalyticsManager.logPhoneSearchSuccess()
+    return found
+}
+```
+
+**In your StatusViewModel (availability updates):**
+```swift
+func updateStatus(_ newStatus: String) async {
+    try await statusService.update(newStatus)
+    AnalyticsManager.log(.availabilityUpdated(status: newStatus))
+}
+```
+
+**Why?** These 4 events prove your "Local Region" hypothesis:
+- ✅ Nudge Sent = Users want to reach each other
+- ✅ Batch Nudge = Heatmap feature is valuable
+- ✅ Phone Search = Blind-index search works
+- ✅ Availability Update = Users engage with status
+
+**Verify Analytics works:**
+1. Run `fastlane beta` and build to TestFlight
+2. Install on your phone
+3. Trigger actions (send nudges, update status, search)
+4. Go to Firebase Console → Analytics → Realtime
+5. You should see events appear within 5 seconds
+
+See "FIREBASE_SETUP.md" Part 2 for Analytics patterns and troubleshooting.
 
 ## Future: CI/CD Automation (When Ready)
 
@@ -496,4 +551,19 @@ For CI/CD integration, see `MATCH_GUIDE.md` for detailed GitHub Actions setup.
 
 ---
 
-**Date:** January 8, 2026 | **Version:** 1.3 (match integrated, .env secured, CI/CD ready)
+## Testing & Analytics Phase: Complete ✅
+
+You now have a production-grade distribution and monitoring stack:
+
+| Component | Status | Purpose |
+|-----------|--------|---------|
+| **Automation** | ✅ Ready | Fastlane: One command to test & deploy |
+| **Security** | ✅ Ready | match: Encrypted certificates, auto-sync |
+| **Stability** | ✅ Ready | Crashlytics: Readable crash reports |
+| **Insights** | ✅ Ready | Analytics: User behavior tracking |
+
+**Next sprint:** Implement hypothesis testing using Analytics data.
+
+---
+
+**Date:** January 8, 2026 | **Version:** 1.4 (Testing & Analytics Phase complete)
