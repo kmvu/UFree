@@ -1,0 +1,34 @@
+# fastlane/.gitignore
+# Sprint 6.1 Security: Protect secrets and build artifacts
+
+# Environment & Credentials
+.env
+.env.local
+.env.*.local
+
+# Apple API Key (never commit)
+AuthKey_*.p8
+
+# match: Certificate repo credentials
+.fastlane_user
+.fastlane_password
+
+# match: Cached certificates and profiles (local only)
+# Note: You'll store these in a private git repo instead
+# See FASTLANE_SETUP.md for match initialization
+match_password
+
+# Build artifacts
+builds/
+*.ipa
+*.xcarchive
+DerivedData/
+
+# Test results
+test_results/
+*.test.log
+
+# Temporary files
+*.tmp
+.DS_Store
+Gemfile.lock

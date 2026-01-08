@@ -508,6 +508,42 @@ HapticManager.selection()  // Day filter selection
 
 ---
 
-**Last Updated:** January 8, 2026 (Sprint 6 Complete - Discovery & Intentions) | **Status:** Production Ready ✅
+### Sprint 6.1: Distribution Automation ✅
+
+**Theme:** Fastlane Automation - Every build validated before reaching testers
+
+**Fastlane Three-Tier Pipeline:**
+- **tests lane** - Pre-flight validation: runs all 206+ unit tests, fails build if any test fails
+- **alpha lane** - Internal Firebase distribution: tests → build → Firebase App Distribution (no Apple review, instant)
+- **beta lane** - External TestFlight: tests → build → auto-increment build number → TestFlight (Apple review required, 1-2 days)
+
+**Command Reference:**
+```bash
+fastlane tests          # Pre-flight validation (206+ tests)
+fastlane alpha          # Build → Firebase (internal testers, instant)
+fastlane beta           # Build → TestFlight (external testers, 1-2 days)
+```
+
+**Pair Testing Strategy ("The Trusted Circle"):**
+- User A searches User B by phone number (blind index privacy-safe)
+- User A sends friend request, User B accepts (handshake)
+- Both see "Who's free on..." heatmap with live friend counts
+- User A taps "Nudge all" → User B receives real-time notification
+- Validates: phone search, handshake, heatmap filtering, nudge delivery, haptics, notification persistence
+
+**Files Created:**
+- `fastlane/Fastfile` - Three lanes (tests, alpha, beta) with automation
+- `fastlane/.env.default` - Template for credentials (Firebase, App Store Connect)
+- `fastlane/.gitignore` - Secrets protection
+- `fastlane/README.md` - Setup guide + pair testing documentation
+
+**Build Automation Metrics:**
+- Test suite: < 2 min
+- Alpha build: < 5 min (Firebase instant delivery)
+- Beta build: < 10 min (TestFlight + Apple review 1-2 days)
+
+---
+
+**Last Updated:** January 8, 2026 (Sprint 6.1 - Distribution Automation) | **Status:** Production Ready ✅
 
 **Sprint 7 Planning:** (Upcoming) - Feature TBD

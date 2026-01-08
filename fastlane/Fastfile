@@ -1,0 +1,149 @@
+# fastlane/Fastfile
+# Sprint 6.1: Distribution Automation
+# Integrated with Appfile + match for hands-off certificate management
+# Ensures every build passes tests before reaching testers
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Pre-flight Check: Run all 206+ Unit Tests"
+  lane :tests do
+    puts "🧪 Running test suite (206+ tests)..."
+    run_tests(
+      project: "UFree.xcodeproj",
+      scheme: "UFreeUnitTests",
+      devices: ["iPhone 17 Pro"],
+      clean: true,
+      fail_build: true,
+      output_directory: "fastlane/test_results",
+      result_bundle: true
+    )
+    puts "✅ All tests passed"
+  end
+
+  desc "Internal Alpha: Distribute via Firebase App Distribution"
+  lane :alpha do
+    puts "🚀 Starting Internal Alpha Distribution..."
+    
+    # 1. Run validation first
+    tests
+    
+    # 2. Build the app for Ad-Hoc distribution
+    puts "🔨 Building IPA for Firebase distribution..."
+    build_app(
+      project: "UFree.xcodeproj",
+      scheme: "UFree",
+      configuration: "Release",
+      export_method: "ad-hoc",
+      output_directory: "./fastlane/builds",
+      output_name: "UFree.ipa",
+      clean: true,
+      archive_path: "./fastlane/builds/UFree.xcarchive",
+      destination: "generic/platform=iOS",
+      build_for_testing: false,
+      derived_data_path: "./fastlane/builds/DerivedData"
+    )
+    
+    # 3. Upload to Firebase App Distribution
+    puts "📤 Uploading to Firebase App Distribution..."
+    firebase_app_distribution(
+      app: ENV["FIREBASE_APP_ID"] || "1:639000000000:ios:a1b2c3d4e5f6g7h8i9j0",
+      ipa_path: "./fastlane/builds/UFree.ipa",
+      groups: ENV["FIREBASE_GROUPS"] || "internal-testers",
+      release_notes: "Sprint 6.1: Automated Distribution - All 206+ tests validated",
+      firebase_cli_path: "/usr/local/bin/firebase"
+    )
+    
+    puts "✅ Build uploaded to Firebase for internal testing"
+  end
+
+  desc "External Beta: Submit to TestFlight"
+  lane :beta do
+    puts "🎯 Starting External Beta Build for TestFlight..."
+    
+    # 1. Full validation: Only ship if all tests pass
+    tests
+    
+    # 2. Automation: Fetch/Renew certificates and profiles via match
+    puts "🔐 Setting up signing certificates with match..."
+    match(
+      type: "appstore",
+      readonly: is_ci,
+      skip_confirmation: is_ci
+    )
+    
+    # 3. Preparation: Auto-increment build number
+    puts "📊 Incrementing build number..."
+    increment_build_number(
+      build_number: latest_testflight_build_number + 1
+    )
+
+    # 4. Build for the App Store
+    puts "🔨 Building IPA for App Store..."
+    build_app(
+      project: "UFree.xcodeproj",
+      scheme: "UFree",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "./fastlane/builds",
+      output_name: "UFree.ipa",
+      clean: true,
+      archive_path: "./fastlane/builds/UFree.xcarchive",
+      destination: "generic/platform=iOS"
+    )
+
+    # 5. Upload to TestFlight
+    puts "📤 Uploading to TestFlight..."
+    upload_to_testflight(
+      ipa: "./fastlane/builds/UFree.ipa",
+      skip_waiting_for_build_processing: true,
+      skip_submission: false,
+      distribute_external: false,
+      notify_external_testers: true,
+      beta_app_review_info: {
+        contact_email: ENV["APPLE_ID"] || "khang@example.com",
+        contact_first_name: "Khang",
+        contact_last_name: "Vu",
+        contact_phone: "+1234567890",
+        demo_account_name: "test@example.com",
+        demo_account_password: "password123",
+        notes: "Real-world testing for availability discovery feature"
+      }
+    )
+    
+    puts "✅ Build uploaded to TestFlight"
+  end
+
+  # Helper lanes for common tasks
+  desc "Get latest TestFlight build number"
+  lane :get_testflight_build_number do
+    latest_build = latest_testflight_build_number
+    puts "📊 Latest TestFlight build number: #{latest_build}"
+  end
+
+  desc "Run tests and generate report"
+  lane :test_report do
+    puts "📋 Running tests with detailed report..."
+    run_tests(
+      project: "UFree.xcodeproj",
+      scheme: "UFreeUnitTests",
+      devices: ["iPhone 17 Pro"],
+      clean: true,
+      fail_build: true,
+      output_directory: "fastlane/test_results",
+      result_bundle: true,
+      slack_url: ENV["SLACK_WEBHOOK"]
+    )
+  end
+
+  desc "Sync certificates and profiles (manual run if needed)"
+  lane :sync_certs do
+    puts "🔐 Syncing certificates with match..."
+    match(type: "appstore")
+  end
+end
+
+# Helper function to get info plist value
+def get_info_plist_value(key:)
+  return `cd #{Dir.pwd} && /usr/libexec/PlistBuddy -c "Print #{key}" UFree/Info.plist 2>/dev/null`.strip
+end

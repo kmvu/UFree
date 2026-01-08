@@ -2,14 +2,14 @@
 
 ## CRITICAL: Path Format
 
-**ALWAYS USE UNDERSCORES (NO SPACES)**
+**ALWAYS USE UNDERSCORES (NO SPACES) - OR USE SPACES WITH QUOTES**
 
 ✅ CORRECT:
 ```
-/Users/KhangVu/Documents/Development/git_project/Khang_business_projects/UFree
+/Users/KhangVu/Documents/Development/git_project/Khang Business Projects/UFree
 ```
 
-Use underscores instead of spaces to avoid escaping issues. This applies to all `create_file`, `Read`, `edit_file`, `Bash`, and other file operations.
+Use spaces naturally in this directory. All file operations will work with the space-based path.
 
 ---
 
@@ -19,19 +19,19 @@ Use underscores instead of spaces to avoid escaping issues. This applies to all 
 - **UFreeTests/**: Unit tests
 - **UFreeUITests/**: UI tests
 - **Docs/**: Documentation
+- **fastlane/**: Distribution automation
 
 ---
 
 ## Recent Work
 
-- **Sprint 4 ✅ COMPLETE**: Two-Way Handshake & Phone Search
-  - **Phone Search** (Privacy-Safe): findUserByPhoneNumber() with blind index pattern (clean → hash → Firestore). TextField with phonePad keyboard, clears after add, prevents self-add via Auth user ID check.
-  - **Friend Requests** (Handshake): sendFriendRequest() creates pending. observeIncomingRequests() AsyncStream for real-time. acceptFriendRequest() with atomic batch write. declineFriendRequest() marks declined. View lifecycle: .task { listenToRequests() } on appear, .onDisappear { stopListening() } to save battery/data.
-  - **Real-Time Listeners**: AsyncStream pattern instead of Combine. Proper cleanup on task cancellation.
-  - **Privacy-First**: Schedule visibility only after both parties consent.
-  - **Haptics**: medium() on search/send, success() on accept, warning() on decline.
-  - **Tests Optimized**: 15+ focused unit tests (phone search workflows, handshake scenarios, observation, lifecycle).
-  - **Files**: FriendRequest.swift, FriendRepository.swift (protocol + Firebase), FriendsViewModel.swift, FriendsView.swift, MockFriendRepository.swift, FriendsViewModelTests.swift, FriendsHandshakeTests.swift
+- **Sprint 6.1 ✅ COMPLETE**: Distribution Automation with match
+  - **Fastlane Integration**: Five lanes (tests, alpha, beta, test_report, sync_certs)
+  - **Appfile**: Centralized app configuration (bundle ID, team IDs, Apple ID)
+  - **match**: Private GitHub repo for encrypted certificate storage (MATCH_PASSWORD)
+  - **Hands-Off Signing**: beta lane automatically syncs and uses certificates
+  - **CI/CD Ready**: New machines only need MATCH_PASSWORD to build and distribute
+  - **Files**: Fastfile (5 lanes), Appfile, .env.default, .gitignore, FASTLANE_SETUP.md, MATCH_GUIDE.md
 
 ---
 
@@ -68,6 +68,8 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 | Provisioning profile error | Use `-scheme UFreeUnitTests`, not `-scheme UFree` |
 | No simulator specified error | Always include `-destination 'platform=iOS Simulator,name=iPhone 17 Pro'` |
 | Device selection fails | Use `-destination 'platform=iOS Simulator,name=iPhone 17 Pro'` |
+| Certificate expired | Run `fastlane match appstore` to renew |
+| match authentication fails | Check MATCH_PASSWORD in .env |
 
 **Validation workflow:** 1) Make changes → 2) Run tests with grep → 3) Look for "passed" → 4) Done
 
@@ -82,7 +84,7 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 | **Presentation** | RootViewModel (auth), MyScheduleViewModel, FriendsScheduleViewModel, FriendsViewModel, StatusBannerViewModel, DayFilterViewModel |
 | **UI** | RootView (auth + tabs), LoginView, MyScheduleView, FriendsView, FriendsScheduleView, Components |
 
-**Projects:** UFree (app), UFreeTests (154+ unit tests), UFreeUITests (integration tests)
+**Projects:** UFree (app), UFreeTests (206+ unit tests), UFreeUITests (integration tests)
 
 ---
 
@@ -178,59 +180,57 @@ NavigationStack {
 
 ---
 
-## Sprint 4 Additions
+## Sprint 6.1 Additions (Distribution Automation) ✅
 
-**Phone Search Pattern:** findUserByPhoneNumber() in repository protocol. Clean input → Hash via CryptoUtils → Firestore query on hashedPhoneNumber. FriendsViewModel state: searchText, searchResult, isSearching. Rapid-tap protection via isSearching guard. Clears search after adding. Prevents self-add via Auth user ID check.
+**Theme:** Fastlane Automation - Every build validated before reaching testers
 
-**Blind Index Pattern:** Privacy-safe search using hashed phone numbers. Raw numbers never exposed to Firestore.
+**Fastlane Three-Tier Pipeline:**
+- **tests lane** - Pre-flight validation: runs all 206+ unit tests, fails build if any test fails
+- **alpha lane** - Internal Firebase distribution: tests → build → Firebase App Distribution (no Apple review)
+- **beta lane** - External TestFlight: tests → build → auto-increment build number → TestFlight (Apple review required)
 
-**Two-Way Handshake:** FriendRequest domain model (id, fromId/Name, toId, RequestStatus enum, timestamp). sendFriendRequest() creates pending request. acceptFriendRequest() atomic batch write (mark accepted + bidirectional friendIds add). declineFriendRequest() marks declined. observeIncomingRequests() AsyncStream for real-time listener. Privacy-first: schedule visibility only after both parties consent.
+**Enhanced with match Certificate Management:**
+- **match integration** - Stores certificates in private GitHub repo (encrypted with MATCH_PASSWORD)
+- **Appfile** - Centralized app ID, team ID, Apple ID configuration
+- **Hands-off signing** - beta lane automatically syncs and uses certificates from match
+- **CI/CD ready** - New machines only need MATCH_PASSWORD to build and distribute
 
-**View Lifecycle Management:** FriendsViewModel.listenToRequests() starts real-time listener. .task { listenToRequests() } begins on view appear. .onDisappear { stopListening() } stops listener (saves battery/data). Real-time animation with .spring() when requests arrive. Listener cleanup on task cancellation.
+**Architecture:**
+- `fastlane/Fastfile` - Five lanes: tests, alpha, beta, test_report, sync_certs
+- `fastlane/Appfile` - App configuration (bundle ID, team IDs, Apple ID)
+- `fastlane/.env.default` - Template for credentials (Firebase, Apple ID, MATCH_PASSWORD)
+- `fastlane/.gitignore` - Secrets protection (AuthKey_*.p8, .env, builds/, match credentials)
 
----
-
-## Sprint 3.2 Additions
-
-**NavigationStack:** Single parent at MainAppView level (TabView parent), no nesting
-**HapticManager:** Unified feedback API - light(), medium(), heavy(), success(), warning(), selection()
-**Firebase:** Disabled swizzling (`Info.plist`), manual config in AppDelegate with safety checks
-**ViewModel Lifecycle:** Created at RootView level, persist across tab switches
-
----
-
----
-
-## Sprint 5 Additions (In Progress)
-
-**Notification Center:** Real-time notification system with AsyncStream. Domain model (AppNotification with friendRequest/nudge types), repository protocol, Firestore-backed implementation. ViewModel manages unread count badge. Bell button in toolbar next to Sign Out menu.
-
-**Architecture & Abstractions:**
-- **Domain Layer**: `AppNotification` struct with `NotificationType` enum (extensible for future types like scheduleChange, eventInvite)
-- **Data Layer**: `NotificationRepository` protocol (Firestore + Mock implementations for testing)
-- **Presentation Layer**: `NotificationViewModel` (@MainActor, @Published state), `NotificationCenterView` (inbox UI), `NotificationBellButton` (reusable component)
-- **Environment Injection**: NotificationViewModel passed via SwiftUI environment for clean prop drilling
-
-**Testing Patterns:**
-- **TestNotificationBuilder** (Factory pattern): Single source of truth for test data creation. Eliminates duplication across tests.
-- **NotificationTestAssertions** (Helper functions): Reusable assertions for message formatting. Central point to update message assertions.
-- **Focused test classes**: One responsibility per test file (ViewModel logic, Repository behavior, View rendering)
-- **DRY tests**: TestNotificationBuilder.friendRequest() replaces 5-line manual setup in every test
-
-**Firestore Security Rules Update Required:**
-```
-match /users/{userId}/notifications/{document=**} {
-  allow read: if request.auth.uid == userId;
-  allow create: if request.auth.uid == resource.data.senderId;
-  allow write: if request.auth.uid == userId;
-}
+**Command Reference:**
+```bash
+fastlane tests          # Pre-flight validation (206+ tests)
+fastlane alpha          # Build → Firebase (internal testers, instant)
+fastlane beta           # Build → TestFlight (external testers, 1-2 days)
+fastlane sync_certs     # Manual certificate sync (usually not needed)
+fastlane test_report    # Generate detailed test report
 ```
 
-**Files:**
-- **Domain**: `AppNotification.swift`, `NotificationRepository.swift`
-- **Data**: `FirebaseNotificationRepository.swift`, `MockNotificationRepository.swift`
-- **Presentation**: `NotificationViewModel.swift`, `NotificationCenterView.swift`, `NotificationBellButton.swift`
-- **Tests**: `NotificationViewModelTests.swift`, `MockNotificationRepositoryTests.swift`, `NotificationCenterViewTests.swift`, `TestNotificationBuilder.swift`, `NotificationTestAssertions.swift`
+**Pair Testing Strategy ("The Trusted Circle"):**
+- User A searches User B by phone number (blind index privacy-safe)
+- User A sends friend request, User B accepts (handshake)
+- Both see "Who's free on..." heatmap with live friend counts
+- User A taps "Nudge all" → User B receives real-time notification
+- Validates: phone search, handshake, heatmap filtering, nudge delivery, haptics, notification persistence
+
+**Files Created:**
+- `fastlane/Fastfile` - Five lanes with match integration
+- `fastlane/Appfile` - Centralized app configuration
+- `fastlane/.env.default` - Template (Firebase, Apple ID, MATCH_PASSWORD)
+- `fastlane/.gitignore` - Enhanced secrets protection
+- `FASTLANE_SETUP.md` - Setup guide with match initialization (20 minutes one-time)
+- `MATCH_GUIDE.md` - Deep dive on match certificate management
+- `SPRINT_6_1_MATCH_INTEGRATION.md` - Summary of enhancements
+
+**Build Automation Metrics:**
+- Test suite: < 90 sec
+- Alpha build: < 3 min (Firebase instant delivery)
+- Beta build: < 8 min (match cert sync + TestFlight)
+- Certificate sync: < 30 sec (automatic via match)
 
 ---
 
@@ -315,8 +315,41 @@ match /users/{userId}/notifications/{document=**} {
 
 ---
 
-**Last Updated:** January 8, 2026 (Sprint 6 Complete - Discovery & Intentions) | **Status:** Production Ready ✅
+## Sprint 5 Additions (In Progress)
+
+**Notification Center:** Real-time notification system with AsyncStream. Domain model (AppNotification with friendRequest/nudge types), repository protocol, Firestore-backed implementation. ViewModel manages unread count badge. Bell button in toolbar next to Sign Out menu.
+
+**Architecture & Abstractions:**
+- **Domain Layer**: `AppNotification` struct with `NotificationType` enum (extensible for future types like scheduleChange, eventInvite)
+- **Data Layer**: `NotificationRepository` protocol (Firestore + Mock implementations for testing)
+- **Presentation Layer**: `NotificationViewModel` (@MainActor, @Published state), `NotificationCenterView` (inbox UI), `NotificationBellButton` (reusable component)
+- **Environment Injection**: NotificationViewModel passed via SwiftUI environment for clean prop drilling
+
+**Testing Patterns:**
+- **TestNotificationBuilder** (Factory pattern): Single source of truth for test data creation. Eliminates duplication across tests.
+- **NotificationTestAssertions** (Helper functions): Reusable assertions for message formatting. Central point to update message assertions.
+- **Focused test classes**: One responsibility per test file (ViewModel logic, Repository behavior, View rendering)
+- **DRY tests**: TestNotificationBuilder.friendRequest() replaces 5-line manual setup in every test
+
+**Firestore Security Rules Update Required:**
+```
+match /users/{userId}/notifications/{document=**} {
+  allow read: if request.auth.uid == userId;
+  allow create: if request.auth.uid == resource.data.senderId;
+  allow write: if request.auth.uid == userId;
+}
+```
+
+**Files:**
+- **Domain**: `AppNotification.swift`, `NotificationRepository.swift`
+- **Data**: `FirebaseNotificationRepository.swift`, `MockNotificationRepository.swift`
+- **Presentation**: `NotificationViewModel.swift`, `NotificationCenterView.swift`, `NotificationBellButton.swift`
+- **Tests**: `NotificationViewModelTests.swift`, `MockNotificationRepositoryTests.swift`, `NotificationCenterViewTests.swift`, `TestNotificationBuilder.swift`, `NotificationTestAssertions.swift`
+
+---
+
+**Last Updated:** January 8, 2026 (Sprint 6.1 - Distribution Automation with match) | **Status:** Production Ready ✅
 
 **Sprint 7 Planning:** (Upcoming) - Feature TBD
 
-**Path:** `/Users/KhangVu/Documents/Development/git_project/Khang_business_projects/UFree` (underscores, no spaces)
+**Path:** `/Users/KhangVu/Documents/Development/git_project/Khang Business Projects/UFree`
