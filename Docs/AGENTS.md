@@ -203,6 +203,34 @@ fastlane test_report    # Generate detailed test report
 - `FASTLANE_SETUP.md` - Setup guide with match initialization (20 minutes one-time)
 - `MATCH_GUIDE.md` - Deep dive on match certificate management
 
+### Sprint 6.1+ Refinements: Fastlane Structure & CI/CD Improvements ✅
+
+**Theme:** Robust automation - CI/CD detection, versioning clarity, build artifact management
+
+**Structural Improvements:**
+1. **CI/CD Detection Helper** - Added `is_ci` function in Fastfile that detects GitHub Actions environment (`ENV["CI"]` and `ENV["GITHUB_ACTIONS"]`)
+   - Prevents password prompts in headless environments
+   - Works locally and in GitHub Actions without configuration
+   - Used in `match(readonly: is_ci, skip_confirmation: is_ci)`
+
+2. **Versioning Strategy Documentation** - Added clarity on version increments
+   - Build number (CFBundleVersion): Auto-incremented by `latest_testflight_build_number + 1`
+   - Marketing Version (CFBundleShortVersionString): Must be updated manually in Xcode before running beta lane
+   - Prevents build failures from version conflicts
+
+3. **Build Artifact Management** - Added to `.gitignore`
+   - `fastlane/builds/` - Large .ipa and .xcarchive files (multi-gigabyte)
+   - `fastlane/test_results/` - Test result bundles and reports
+   - Prevents accidental commits of build artifacts
+
+**Files Modified:**
+- `fastlane/Fastfile` - Added `is_ci` helper, versioning documentation comment
+- `.gitignore` - Added `fastlane/builds/` and `fastlane/test_results/`
+
+**Result:** Fastlane setup now handles local and CI environments seamlessly with clear version management.
+
+---
+
 ### Sprint 6.1+ Additions: Testing & Analytics Phase ✅
 
 **Theme:** Stability & Insights - Crashlytics for crash reporting, Analytics for usage tracking
@@ -465,7 +493,7 @@ See `Docs/GITHUB_ACTIONS_SETUP.md` for complete setup guide and troubleshooting.
 
 ---
 
-**Last Updated:** January 8, 2026 | **Status:** Production Ready ✅
+**Last Updated:** January 23, 2026 | **Status:** Production Ready ✅
 
 **References:**
 - `SPRINT_HISTORY.md` - Complete development record (Sprint 1-5.1)

@@ -32,3 +32,9 @@ DerivedData/
 *~
 GoogleService-Info.plist
 Package.resolved
+
+# Fastlane build artifacts (large .ipa and .xcarchive files)
+fastlane/builds/
+fastlane/test_results/
+.ruby-gemset
+.ruby-version

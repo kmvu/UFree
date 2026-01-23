@@ -5,6 +5,22 @@
 
 default_platform(:ios)
 
+# Helper: Determine if running in CI/CD environment
+def is_ci
+  ENV["CI"] == "true" || ENV["GITHUB_ACTIONS"] == "true"
+end
+
+# App Store Connect API Key (for automated TestFlight submission)
+def setup_api_key
+  app_store_connect_api_key(
+    key_id: ENV["ASC_KEY_ID"],
+    issuer_id: ENV["ASC_ISSUER_ID"],
+    key_filepath: ENV["ASC_KEY_PATH"] || "./fastlane/Keys/AuthKey_#{ENV["ASC_KEY_ID"]}.p8",
+    duration: 1200,
+    in_house: false
+  )
+end
+
 platform :ios do
   desc "Pre-flight Check: Run all 206+ Unit Tests"
   lane :tests do
@@ -64,21 +80,29 @@ platform :ios do
     # 1. Full validation: Only ship if all tests pass
     tests
     
-    # 2. Automation: Fetch/Renew certificates and profiles via match
+    # 2. Setup API key for TestFlight submission
+    puts "🔑 Setting up App Store Connect API Key..."
+    api_key = setup_api_key
+    
+    # 3. Automation: Fetch/Renew certificates and profiles via match
     puts "🔐 Setting up signing certificates with match..."
     match(
       type: "appstore",
       readonly: is_ci,
-      skip_confirmation: is_ci
+      skip_confirmation: is_ci,
+      api_key: api_key
     )
     
-    # 3. Preparation: Auto-increment build number
+    # 4. Preparation: Auto-increment build number
     puts "📊 Incrementing build number..."
+    # Note: Marketing Version (CFBundleShortVersionString) should be updated manually in Xcode
+    # before running this lane. Build number increments automatically.
     increment_build_number(
-      build_number: latest_testflight_build_number + 1
+      build_number: latest_testflight_build_number + 1,
+      api_key: api_key
     )
 
-    # 4. Build for the App Store (including dSYMs for crash reporting)
+    # 5. Build for the App Store (including dSYMs for crash reporting)
     puts "🔨 Building IPA for App Store..."
     build_app(
       project: "UFree.xcodeproj",
@@ -94,13 +118,13 @@ platform :ios do
       include_bitcode: false
     )
 
-    # 4.1 Upload dSYMs to Firebase Crashlytics
+    # 5.1 Upload dSYMs to Firebase Crashlytics
     puts "📤 Uploading dSYMs to Firebase Crashlytics..."
     upload_symbols_to_crashlytics(
       gsp_path: "GoogleService-Info.plist"
     )
 
-    # 5. Upload to TestFlight
+    # 6. Upload to TestFlight
     puts "📤 Uploading to TestFlight..."
     upload_to_testflight(
       ipa: "./fastlane/builds/UFree.ipa",
@@ -108,12 +132,13 @@ platform :ios do
       skip_submission: false,
       distribute_external: false,
       notify_external_testers: true,
+      api_key: api_key,
       beta_app_review_info: {
-        contact_email: ENV["APPLE_ID"] || "khang@example.com",
-        contact_first_name: "Khang",
-        contact_last_name: "Vu",
-        contact_phone: "+1234567890",
-        demo_account_name: "test@example.com",
+        contact_email: ENV["APPLE_ID"] || "kmvu91@gmail.com",
+        contact_first_name: "Test_account",
+        contact_last_name: "#{latest_build}",
+        contact_phone: "+84932440258",
+        demo_account_name: "test+ufree_#{latest_build}@example.com",
         demo_account_password: "password123",
         notes: "Real-world testing for availability discovery feature"
       }

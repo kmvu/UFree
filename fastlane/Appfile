@@ -2,22 +2,19 @@
 # UFree App Configuration
 # Sprint 6.1 Enhancement: Centralized app & account settings for Fastlane
 
-# The Bundle Identifier of your app
+# The Bundle ID you created in App Store Connect
 app_identifier("com.khangvu.UFree")
 
 # Your Apple ID (Email address)
-apple_id("khang@example.com")
+apple_id("khang.vu.studio91@gmail.com")
 
 # Your Developer Portal Team ID
 # Find this at developer.apple.com -> Membership -> Team ID
-team_id("XXXXXXXXXX")
+team_id("SNUXAG727V")
 
 # Your App Store Connect Team ID
 # Usually the same as team_id, but can differ for corporate accounts
-itc_team_id("XXXXXXXXXX")
+itc_team_id("SNUXAG727V")
 
 # Required for TestFlight distribution
-itunes_connect_id("khang@example.com")
-
-# Platform
-is_apple_developer_portal_member(true)
+itunes_connect_id("kmvu91@gmail.com")
