@@ -294,16 +294,46 @@ fastlane sync_certs
 
 ---
 
+## Setup Instructions
+
+### New Machine Setup (15 minutes)
+
+**1. Ruby & OpenSSL**
+```bash
+rvm install 3.2 --with-openssl-dir=$(brew --prefix openssl@3)
+rvm use 3.2 && rvm default 3.2
+ruby -ropenssl -e 'puts OpenSSL::OPENSSL_VERSION'  # Verify
+```
+
+**2. Gems**
+```bash
+bundle install
+```
+
+**3. Certificates (match)**
+```bash
+export MATCH_PASSWORD="your-password-from-vault"
+bundle exec fastlane match appstore
+```
+
+### Matchfile Configuration
+- **Location:** `fastlane/Matchfile`
+- **git_url:** `git@github.com:kmvu/ufree-certificates.git`
+- **app_identifier:** `com.khangvu.UFree`
+- **username:** `khang.vu.studio91@gmail.com`
+- **Read-only in CI/CD:** Uses `readonly(is_ci)` variable
+
+---
+
 ## File Organization
 
-**Always know where to find things:**
+**Key locations:**
 
 | Type | Location |
 |------|----------|
-| Documentation | `Docs/` (README.md, AGENTS.md, SPRINT_HISTORY.md) |
-| Firebase Setup | `Docs/FIREBASE_SETUP.md` |
-| Fastlane Setup | `fastlane/Docs/FASTLANE_SETUP.md` |
-| Match Guide | `fastlane/Docs/MATCH_GUIDE.md` |
+| Documentation | `Docs/` (README.md, AGENTS.md, SPRINT_HISTORY.md, SMOKE_TEST_CHECKLIST.md) |
+| Fastlane Config | `fastlane/Matchfile`, `fastlane/Appfile`, `fastlane/Fastfile` |
+| Build Setup | `fastlane/Docs/FASTLANE_SETUP.md`, `fastlane/Docs/MATCH_GUIDE.md` |
 | Domain Models | `UFree/Core/Domain/` |
 | Data Layer | `UFree/Core/Data/` |
 | ViewModels | `UFree/Features/*/` |
@@ -417,12 +447,25 @@ FASTLANE_USER, FASTLANE_PASSWORD, MATCH_PASSWORD, FIREBASE_TOKEN, FASTLANE_APPLE
 
 ### Security Checklist
 
-Before every push to Git:
+**Before every push to Git:**
 - ✅ `.env` is NOT tracked (`git status`)
+- ✅ No `.p8` files tracked (`git status | grep p8`)
 - ✅ No passwords in staged files (`git diff --cached fastlane/`)
-- ✅ `.gitignore` has `.env` listed
+- ✅ `.gitignore` protects: `.env`, `*.p8`, match credentials
 - ✅ `Appfile` contains app config only (no secrets)
-- ✅ Only `Fastfile` and `Appfile` are committed from `fastlane/`
+- ✅ Only committed from `fastlane/`: `Matchfile`, `Appfile`, `Fastfile`, `.gitignore`
+
+**Verify nothing secret is staged:**
+```bash
+git status
+git diff --cached fastlane/  # Should show only Appfile, Fastfile, Matchfile
+```
+
+**If you accidentally staged secrets:**
+```bash
+git reset HEAD fastlane/.env  # Unstage
+git checkout fastlane/.env     # Discard
+```
 
 ---
 
@@ -495,10 +538,12 @@ See `Docs/GITHUB_ACTIONS_SETUP.md` for complete setup guide and troubleshooting.
 
 **Last Updated:** January 23, 2026 | **Status:** Production Ready ✅
 
-**References:**
-- `SPRINT_HISTORY.md` - Complete development record (Sprint 1-5.1)
-- `README.md` - Architecture overview & quick reference
-- `fastlane/Docs/FASTLANE_SETUP.md` - Build automation guide
-- `fastlane/Docs/FIREBASE_SETUP.md` - Crashlytics + Analytics integration
-- `fastlane/Docs/MATCH_GUIDE.md` - Certificate management deep dive
-- `Docs/GITHUB_ACTIONS_SETUP.md` - Continuous delivery setup guide
+**Documentation:**
+- `README.md` - Architecture overview & features
+- `TESTING_GUIDE.md` - 206+ test organization
+- `SMOKE_TEST_CHECKLIST.md` - Pre-launch validation (30 min)
+- `SPRINT_HISTORY.md` - Development history
+- `fastlane/Docs/FASTLANE_SETUP.md` - Build automation
+- `fastlane/Docs/FIREBASE_SETUP.md` - Analytics + Crashlytics
+- `fastlane/Docs/MATCH_GUIDE.md` - Certificate management
+- `Docs/GITHUB_ACTIONS_SETUP.md` - CI/CD setup

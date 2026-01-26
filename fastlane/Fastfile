@@ -5,6 +5,10 @@
 
 default_platform(:ios)
 
+# Load environment variables from .env file
+require 'dotenv'
+Dotenv.load(File.expand_path("#{File.dirname(__FILE__)}/.env"))
+
 # Helper: Determine if running in CI/CD environment
 def is_ci
   ENV["CI"] == "true" || ENV["GITHUB_ACTIONS"] == "true"
@@ -12,10 +16,14 @@ end
 
 # App Store Connect API Key (for automated TestFlight submission)
 def setup_api_key
+  # Ensure .env is loaded
+  require 'dotenv'
+  Dotenv.load(File.expand_path("#{File.dirname(__FILE__)}/.env"))
+  
   app_store_connect_api_key(
     key_id: ENV["ASC_KEY_ID"],
     issuer_id: ENV["ASC_ISSUER_ID"],
-    key_filepath: ENV["ASC_KEY_PATH"] || "./fastlane/Keys/AuthKey_#{ENV["ASC_KEY_ID"]}.p8",
+    key_filepath: ENV["ASC_KEY_PATH"],
     duration: 1200,
     in_house: false
   )
@@ -32,7 +40,9 @@ platform :ios do
       clean: true,
       fail_build: true,
       output_directory: "fastlane/test_results",
-      result_bundle: true
+      result_bundle: true,
+      derived_data_path: "./fastlane/builds/DerivedData",
+      xcargs: "-skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache"
     )
     puts "✅ All tests passed"
   end
@@ -46,6 +56,11 @@ platform :ios do
     
     # 2. Build the app for Ad-Hoc distribution
     puts "🔨 Building IPA for Firebase distribution..."
+    
+    # Explicitly grab the provisioning profile mapping
+    profile_mapping = lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+    puts "📋 Provisioning Profile Mapping: #{profile_mapping}"
+    
     build_app(
       project: "UFree.xcodeproj",
       scheme: "UFree",
@@ -57,7 +72,12 @@ platform :ios do
       archive_path: "./fastlane/builds/UFree.xcarchive",
       destination: "generic/platform=iOS",
       build_for_testing: false,
-      derived_data_path: "./fastlane/builds/DerivedData"
+      derived_data_path: "./fastlane/builds/DerivedData",
+      xcargs: "-skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache",
+      export_options: {
+        signingStyle: "manual",
+        provisioningProfiles: profile_mapping
+      }
     )
     
     # 3. Upload to Firebase App Distribution
@@ -77,6 +97,9 @@ platform :ios do
   lane :beta do
     puts "🎯 Starting External Beta Build for TestFlight..."
     
+    # 0. Fetch project settings once to avoid repeated Xcode metadata lookups
+    setup_ci if is_ci
+    
     # 1. Full validation: Only ship if all tests pass
     tests
     
@@ -88,8 +111,8 @@ platform :ios do
     puts "🔐 Setting up signing certificates with match..."
     match(
       type: "appstore",
-      readonly: is_ci,
-      skip_confirmation: is_ci,
+      readonly: true,
+      skip_confirmation: true,
       api_key: api_key
     )
     
@@ -98,12 +121,16 @@ platform :ios do
     # Note: Marketing Version (CFBundleShortVersionString) should be updated manually in Xcode
     # before running this lane. Build number increments automatically.
     increment_build_number(
-      build_number: latest_testflight_build_number + 1,
-      api_key: api_key
+      build_number: latest_testflight_build_number(api_key: api_key) + 1
     )
 
     # 5. Build for the App Store (including dSYMs for crash reporting)
     puts "🔨 Building IPA for App Store..."
+    
+    # Explicitly grab the provisioning profile mapping from match
+    profile_mapping = lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
+    puts "📋 Provisioning Profile Mapping: #{profile_mapping}"
+    
     build_app(
       project: "UFree.xcodeproj",
       scheme: "UFree",
@@ -115,7 +142,13 @@ platform :ios do
       archive_path: "./fastlane/builds/UFree.xcarchive",
       destination: "generic/platform=iOS",
       include_symbols: true,
-      include_bitcode: false
+      include_bitcode: false,
+      derived_data_path: "./fastlane/builds/DerivedData",
+      xcargs: "-skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache",
+      export_options: {
+        signingStyle: "manual",
+        provisioningProfiles: profile_mapping
+      }
     )
 
     # 5.1 Upload dSYMs to Firebase Crashlytics
@@ -150,7 +183,8 @@ platform :ios do
   # Helper lanes for common tasks
   desc "Get latest TestFlight build number"
   lane :get_testflight_build_number do
-    latest_build = latest_testflight_build_number
+    api_key = setup_api_key
+    latest_build = latest_testflight_build_number(api_key: api_key)
     puts "📊 Latest TestFlight build number: #{latest_build}"
   end
 
@@ -172,7 +206,14 @@ platform :ios do
   desc "Sync certificates and profiles (manual run if needed)"
   lane :sync_certs do
     puts "🔐 Syncing certificates with match..."
-    match(type: "appstore")
+    api_key = setup_api_key
+    
+    match(
+      type: "appstore",
+      readonly: is_ci,
+      skip_confirmation: true,
+      api_key: api_key
+    )
   end
 end
 

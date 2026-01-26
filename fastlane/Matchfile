@@ -1,0 +1,15 @@
+# fastlane/Matchfile
+
+git_url("git@bitbucket.org:ufree-certificates/ios-certs.git")
+storage_mode("git")
+type("appstore")
+
+# App identifier - must match Xcode bundle ID
+app_identifier(["com.khangvu.UFree"])
+
+# Team ID (optional - usually inferred from Appfile)
+team_id("SNUXAG727V")
+
+# Options
+skip_confirmation(true)
+verbose(false)

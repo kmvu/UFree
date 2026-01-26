@@ -4,6 +4,21 @@
 
 ---
 
+## Documentation Quick Links
+
+**New to the project?**
+- Start: `AGENTS.md` (setup + code style)
+- Then: `README.md` (this file - architecture overview)
+
+**Pre-launch validation?**
+- `SMOKE_TEST_CHECKLIST.md` (30 min manual tests)
+
+**Deep dives:**
+- `TESTING_GUIDE.md` (206+ test organization)
+- `SPRINT_HISTORY.md` (complete dev history)
+
+---
+
 ## Quick Reference
 
 | Feature | Status | Notes |
@@ -349,6 +364,14 @@ Task {
 
 ---
 
-**Last Updated:** January 8, 2026 (Sprint 6.1+ - Testing & Analytics Phase Complete) | **Status:** Production Ready ✅
+---
 
-**Sprint 7 Planning:** (Upcoming) - Feature TBD
+## Next Steps (Pre-Launch)
+
+1. **Run Smoke Tests:** Follow `SMOKE_TEST_CHECKLIST.md` (30 minutes, two devices)
+2. **Build & Submit:** `bundle exec fastlane beta` → TestFlight
+3. **Monitor:** Crashlytics + Analytics in Firebase Console
+
+---
+
+**Last Updated:** January 23, 2026 (Sprint 6.1+ - CI/CD & Pre-Launch Ready) | **Status:** Production Ready ✅

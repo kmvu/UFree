@@ -50,28 +50,38 @@ struct NotificationRow: View {
     let note: AppNotification
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Icon based on type
-            ZStack {
-                Circle()
-                    .fill(note.type == .nudge ? Color.orange.opacity(0.2) : Color.blue.opacity(0.2))
-                    .frame(width: 40, height: 40)
+        Button(action: {}) {
+            HStack(spacing: 12) {
+                // Icon based on type
+                ZStack {
+                    Circle()
+                        .fill(note.type == .nudge ? Color.orange.opacity(0.2) : Color.blue.opacity(0.2))
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: note.type == .nudge ? "hand.wave.fill" : "person.badge.plus")
+                        .foregroundStyle(note.type == .nudge ? .orange : .blue)
+                }
                 
-                Image(systemName: note.type == .nudge ? "hand.wave.fill" : "person.badge.plus")
-                    .foregroundStyle(note.type == .nudge ? .orange : .blue)
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(message)
-                    .font(.body)
-                    .foregroundStyle(.primary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(message)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                    
+                    Text(note.date.formatted(.relative(presentation: .named)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 
-                Text(note.date.formatted(.relative(presentation: .named)))
-                    .font(.caption)
+                Spacer()
+                Image(systemName: "chevron.right")
                     .foregroundStyle(.secondary)
+                    .font(.caption)
             }
+            .contentShape(Rectangle())
+            .foregroundStyle(.primary)
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
     }
     
     var message: String {
