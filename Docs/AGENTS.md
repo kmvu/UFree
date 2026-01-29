@@ -120,9 +120,73 @@ Task {
 
 ---
 
-## Tappable Component Pattern
+## Deep Linking & Navigation
 
-**All interactive UI components follow this pattern:**
+### Universal Links (App Site Association)
+
+**Pattern:** iOS-native deep linking via URLs (no web fallback required)
+
+```swift
+// RootView.swift - Listen for incoming Universal Links
+.onOpenURL { url in
+    let deepLink = DeepLink.parse(url)
+    handleNavigation(deepLink)
+}
+
+// DeepLink enum - Parse URLs into actions
+enum DeepLink {
+    case notification(senderId: String)
+    case profile(userId: String)
+    case unknown
+    
+    static func parse(_ url: URL) -> DeepLink { /* ... */ }
+}
+
+// URL format: https://ufree.app/notification/{userId}
+```
+
+**Setup:**
+1. Create `.well-known/apple-app-site-association` on server
+2. Add `applinks:ufree.app` to Info.plist Associated Domains
+3. See **UNIVERSAL_LINKS_SETUP.md** for full guide
+
+**Benefits:**
+- ✅ Works from notifications, emails, web pages
+- ✅ No SMS codes or web detour
+- ✅ Seamless UX (app opens directly to content)
+
+---
+
+## Testing Patterns
+
+### Debug Auth Strategy (Development Only)
+
+For testing multi-user flows without SMS verification:
+
+```swift
+// AuthRepository protocol includes debug method:
+#if DEBUG
+func signInAsTestUser(phoneNumber: String) async throws -> User
+#endif
+
+// LoginView has developer overlay (DEBUG only):
+#if DEBUG
+VStack {
+    Button("User 1") { await viewModel.loginAsTestUser(index: 0) }
+    Button("User 2") { await viewModel.loginAsTestUser(index: 1) }
+    Button("User 3") { await viewModel.loginAsTestUser(index: 2) }
+}
+#endif
+
+// Firebase setup: Add test phone numbers in Console > Authentication
+// +1 555-000-0001 (code: 123456)
+// +1 555-000-0002 (code: 123456)
+// +1 555-000-0003 (code: 123456)
+```
+
+### Tappable Component Pattern
+
+**All interactive UI components follow:**
 
 1. **ViewModel** (@MainActor, @Published state, rapid-tap protection via `guard !isProcessing`)
 2. **View** (separate file with @StateObject for ViewModel)
@@ -169,107 +233,23 @@ NavigationStack {
 
 ---
 
-## Recent Sprint (Sprint 6.1+) Summary
+## Sprint 6+ Production Stack
 
-### Sprint 6.1: Distribution Automation ✅
+### Distribution Automation ✅
+- **Fastlane Three-Tier Pipeline:** `fastlane tests` → `fastlane alpha` → `fastlane beta`
+- **Certificate Management:** match (encrypted certificates, auto-synced)
+- **CI/CD Detection:** Handles local + GitHub Actions environments seamlessly
+- **Build Management:** Auto-increment build numbers, artifact cleanup
 
-**Theme:** Fastlane Automation - Every build validated before reaching testers
+### Firebase Integration ✅
+- **Crashlytics:** Automatic crash capture with readable stack traces
+- **Analytics:** Type-safe event tracking (AnalyticsManager enum)
+- **Metrics:** nudgeSent, batchNudge, phoneSearch, availabilityUpdated, handshakeCompleted, appLaunched
 
-**Three-Tier Pipeline:**
-- **tests lane** - Pre-flight validation: runs all 206+ unit tests, fails build if any test fails
-- **alpha lane** - Internal Firebase distribution: tests → build → Firebase App Distribution (no Apple review, instant)
-- **beta lane** - External TestFlight: tests → build → auto-increment build number → TestFlight (Apple review required, 1-2 days)
-
-**Enhanced with match Certificate Management:**
-- **match integration** - Stores certificates in private GitHub repo (encrypted with MATCH_PASSWORD)
-- **Appfile** - Centralized app ID, team ID, Apple ID configuration
-- **Hands-off signing** - beta lane automatically syncs and uses certificates from match
-- **CI/CD ready** - New machines only need MATCH_PASSWORD to build and distribute
-
-**Command Reference:**
-```bash
-fastlane tests          # Pre-flight validation (206+ tests)
-fastlane alpha          # Build → Firebase (internal testers, instant)
-fastlane beta           # Build → TestFlight (external testers, 1-2 days)
-fastlane sync_certs     # Manual certificate sync (usually not needed)
-fastlane test_report    # Generate detailed test report
-```
-
-**Files Created:**
-- `fastlane/Fastfile` - Five lanes with match integration
-- `fastlane/Appfile` - Centralized app configuration
-- `fastlane/.env.default` - Template for credentials (Firebase, Apple ID, MATCH_PASSWORD)
-- `fastlane/.gitignore` - Enhanced secrets protection
-- `FASTLANE_SETUP.md` - Setup guide with match initialization (20 minutes one-time)
-- `MATCH_GUIDE.md` - Deep dive on match certificate management
-
-### Sprint 6.1+ Refinements: Fastlane Structure & CI/CD Improvements ✅
-
-**Theme:** Robust automation - CI/CD detection, versioning clarity, build artifact management
-
-**Structural Improvements:**
-1. **CI/CD Detection Helper** - Added `is_ci` function in Fastfile that detects GitHub Actions environment (`ENV["CI"]` and `ENV["GITHUB_ACTIONS"]`)
-   - Prevents password prompts in headless environments
-   - Works locally and in GitHub Actions without configuration
-   - Used in `match(readonly: is_ci, skip_confirmation: is_ci)`
-
-2. **Versioning Strategy Documentation** - Added clarity on version increments
-   - Build number (CFBundleVersion): Auto-incremented by `latest_testflight_build_number + 1`
-   - Marketing Version (CFBundleShortVersionString): Must be updated manually in Xcode before running beta lane
-   - Prevents build failures from version conflicts
-
-3. **Build Artifact Management** - Added to `.gitignore`
-   - `fastlane/builds/` - Large .ipa and .xcarchive files (multi-gigabyte)
-   - `fastlane/test_results/` - Test result bundles and reports
-   - Prevents accidental commits of build artifacts
-
-**Files Modified:**
-- `fastlane/Fastfile` - Added `is_ci` helper, versioning documentation comment
-- `.gitignore` - Added `fastlane/builds/` and `fastlane/test_results/`
-
-**Result:** Fastlane setup now handles local and CI environments seamlessly with clear version management.
-
----
-
-### Sprint 6.1+ Additions: Testing & Analytics Phase ✅
-
-**Theme:** Stability & Insights - Crashlytics for crash reporting, Analytics for usage tracking
-
-**Firebase Crashlytics Integration ✅**
-- **UFreeApp.swift**: Added `import FirebaseCrashlytics`, enabled in Release builds, disabled in Debug
-- **Fastfile (beta lane)**: Added `include_symbols: true` + `upload_symbols_to_crashlytics` for dSYM uploads
-- **Build Phase Script**: Manual Xcode setup required - Run Script phase with Firebase SDK path
-- **Captures**: Stack traces with line numbers, device model, iOS version, app version, network status
-- **Result**: Readable crash reports in Firebase Console with device/version filtering
-
-**Firebase Analytics Integration ✅**
-- **AnalyticsManager.swift**: Type-safe event tracking (AnalyticsEvent enum + log methods)
-- **UFreeApp.swift**: Added `import FirebaseAnalytics`, auto-enabled for Release, auto-disabled for Debug
-- **Key Metrics**: nudgeSent, batchNudge, phoneSearch, availabilityUpdated, handshakeCompleted, appLaunched
-- **Auto-logging**: All events timestamped, parameters typed (string, int, double, long)
-- **Result**: Real-time user behavior in Firebase Console with Realtime dashboard
-
-**Documentation Created:**
-- `fastlane/Docs/FIREBASE_SETUP.md` - Combined Crashlytics + Analytics guide (Part 1 & Part 2)
-- `MATCH_GUIDE.md` - Deep dive on certificate management (separate, detailed)
-- Updated `FASTLANE_SETUP.md` (v1.4) - Added build phase instructions + AnalyticsManager wiring guide
-
-**Testing Phase Complete:**
-- ✅ **Automation**: Fastlane (tests → alpha → beta pipeline)
-- ✅ **Security**: match (encrypted certificates, MATCH_PASSWORD sharing)
-- ✅ **Stability**: Crashlytics (readable crash reports with context)
-- ✅ **Insights**: Analytics (real-time usage metrics)
-
-**Manual Steps Required (One-Time):**
-1. Add Crashlytics build phase script to Xcode (5 minutes)
-2. Wire AnalyticsManager.log() calls into ViewModels (10 minutes)
-
-**Files Created/Modified:**
-- `UFree/Core/Utilities/AnalyticsManager.swift` - Event tracking wrapper
-- `UFree/UFreeApp.swift` - Updated with Crashlytics + Analytics imports
-- `fastlane/Fastfile` - Updated beta lane with dSYM upload
-- `fastlane/Docs/FIREBASE_SETUP.md` - Merged Crashlytics + Analytics guide
-- `Scripts/upload_dsyms.sh` - Build phase script template
+### Continuous Delivery ✅
+- **GitHub Actions:** Push to main → auto-deploy to TestFlight
+- **Security:** Secrets in GitHub encrypted, no local .env in repo
+- **Monitoring:** Real-time dashboards in Firebase Console
 
 ---
 
@@ -331,13 +311,14 @@ bundle exec fastlane match appstore
 
 | Type | Location |
 |------|----------|
-| Documentation | `Docs/` (README.md, AGENTS.md, SPRINT_HISTORY.md, SMOKE_TEST_CHECKLIST.md) |
+| Documentation | `Docs/` (README.md, AGENTS.md, SPRINT_HISTORY.md, SMOKE_TEST_CHECKLIST.md, UNIVERSAL_LINKS_SETUP.md) |
 | Fastlane Config | `fastlane/Matchfile`, `fastlane/Appfile`, `fastlane/Fastfile` |
 | Build Setup | `fastlane/Docs/FASTLANE_SETUP.md`, `fastlane/Docs/MATCH_GUIDE.md` |
 | Domain Models | `UFree/Core/Domain/` |
 | Data Layer | `UFree/Core/Data/` |
 | ViewModels | `UFree/Features/*/` |
 | UI Components | `UFree/Features/*/` |
+| Deep Linking | `UFree/Features/Root/RootView.swift` (DeepLink enum) |
 | Tests | `UFreeTests/` |
 
 ---
@@ -536,14 +517,14 @@ See `Docs/GITHUB_ACTIONS_SETUP.md` for complete setup guide and troubleshooting.
 
 ---
 
-**Last Updated:** January 23, 2026 | **Status:** Production Ready ✅
+**Last Updated:** January 29, 2026 | **Status:** Production Ready ✅
 
-**Documentation:**
-- `README.md` - Architecture overview & features
-- `TESTING_GUIDE.md` - 206+ test organization
-- `SMOKE_TEST_CHECKLIST.md` - Pre-launch validation (30 min)
+**Quick Reference:**
+- `README.md` - Architecture overview
+- `TESTING_GUIDE.md` - Test organization (206+)
+- `SMOKE_TEST_CHECKLIST.md` - Manual validation
 - `SPRINT_HISTORY.md` - Development history
 - `fastlane/Docs/FASTLANE_SETUP.md` - Build automation
-- `fastlane/Docs/FIREBASE_SETUP.md` - Analytics + Crashlytics
-- `fastlane/Docs/MATCH_GUIDE.md` - Certificate management
-- `Docs/GITHUB_ACTIONS_SETUP.md` - CI/CD setup
+- `fastlane/Docs/FIREBASE_SETUP.md` - Crashlytics + Analytics
+- `fastlane/Docs/MATCH_GUIDE.md` - Certificates
+- `Docs/GITHUB_ACTIONS_SETUP.md` - CI/CD

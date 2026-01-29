@@ -1,21 +1,16 @@
 # UFree - Weekly Availability Scheduler
 
-**Status:** ✅ Sprint 6.1+ Complete (Testing & Analytics Phase) | **Version:** 6.1.0 | **Tests:** 206+ | **Coverage:** 85%+ | **Warnings:** 0
+**Status:** ✅ Production Ready | **Version:** 6.1.0+ | **Tests:** 206+ | **Coverage:** 85%+ | **Warnings:** 0
 
 ---
 
-## Documentation Quick Links
+## Quick Links
 
-**New to the project?**
-- Start: `AGENTS.md` (setup + code style)
-- Then: `README.md` (this file - architecture overview)
-
-**Pre-launch validation?**
-- `SMOKE_TEST_CHECKLIST.md` (30 min manual tests)
-
-**Deep dives:**
-- `TESTING_GUIDE.md` (206+ test organization)
-- `SPRINT_HISTORY.md` (complete dev history)
+- **Getting Started:** `AGENTS.md` (setup, code style, testing)
+- **Architecture:** This file (overview, features, models)
+- **Manual Testing:** `SMOKE_TEST_CHECKLIST.md` (30 min validation)
+- **Test Details:** `TESTING_GUIDE.md` (206+ test organization)
+- **Dev History:** `SPRINT_HISTORY.md` (Sprint 1-6 evolution)
 
 ---
 
@@ -37,6 +32,7 @@
 | Nudge Feature | ✅ | Wave button on friend cards, haptic feedback, rapid-tap protection |
 | Availability Heatmap | ✅ | "Who's free on..." with live counts per day |
 | Group Nudging | ✅ | Parallel "Nudge All" for free friends, success/failure messaging |
+| Universal Links | ✅ | App Site Association (deep link from notifications) |
 | Build Automation | ✅ | Fastlane (tests → alpha → beta pipeline) |
 | Certificate Management | ✅ | match (encrypted, auto-sync) |
 | Crash Reporting | ✅ | Firebase Crashlytics (readable stack traces) |
@@ -298,42 +294,24 @@ Task {
 10. **Nudge Feature** - Tap wave button to send nudge, real-time notifications, rapid-tap protection
 11. **Batch Nudging** - Tap "Nudge All" to send nudges to all free friends (parallel execution)
 12. **Notifications** - Real-time bell icon with unread badge, inbox view with read/unread states
-13. **Error Handling** - Past date rejection, network resilience, permission alerts
-14. **Haptic Feedback** - Tactile feedback throughout UI
-15. **Navigation** - Smooth tabbed navigation, no flickering
-16. **Crash Reporting** - Automatic crash capture via Crashlytics, readable stack traces
-17. **Analytics** - Event tracking for nudges, searches, status updates, handshakes
+13. **Deep Linking** - Universal Links (App Site Association) for notification tap-through
+14. **Error Handling** - Past date rejection, network resilience, permission alerts
+15. **Haptic Feedback** - Tactile feedback throughout UI
+16. **Navigation** - Smooth tabbed navigation, no flickering
+17. **Crash Reporting** - Automatic crash capture via Crashlytics, readable stack traces
+18. **Analytics** - Event tracking for nudges, searches, status updates, handshakes
 
 ---
 
-## Recent Work (Sprint 6.1+)
+## Current Status (Sprint 6+)
 
-### Distribution Automation ✅
-- **Fastlane Three-Tier Pipeline**
-  - `fastlane tests` - Pre-flight validation (206+ tests)
-  - `fastlane alpha` - Firebase App Distribution (internal, instant)
-  - `fastlane beta` - TestFlight (external, 1-2 days)
-
-- **Certificate Management via match**
-  - Encrypted certificates stored in private GitHub repo
-  - Auto-sync across machines (MATCH_PASSWORD only secret)
-  - CI/CD ready with environment variables
-
-- **Files:** `fastlane/Fastfile`, `fastlane/Appfile`, `fastlane/.env.default`, `FASTLANE_SETUP.md`, `MATCH_GUIDE.md`
-
-### Testing & Analytics Phase ✅
-- **Crashlytics Integration**
-  - Automatic crash capture with readable stack traces
-  - Filter by device, OS version, app version
-  - dSYM uploads automated via Fastfile
-
-- **Analytics Integration**
-  - Type-safe event tracking (AnalyticsManager enum)
-  - Key metrics: nudgeSent, batchNudge, phoneSearch, availabilityUpdated, handshakeCompleted, appLaunched
-  - Real-time dashboards in Firebase Console
-  - Auto-disabled in Debug, auto-enabled in Release
-
-- **Files:** `UFree/Core/Utilities/AnalyticsManager.swift`, `FIREBASE_SETUP.md`
+### Production Stack ✅
+- **Distribution:** Fastlane three-tier pipeline (tests → alpha → beta)
+- **Certificates:** match (encrypted, auto-synced)
+- **Crash Reporting:** Firebase Crashlytics (readable stack traces)
+- **Analytics:** Firebase Analytics (real-time metrics + event tracking)
+- **Testing:** 206+ unit tests, Debug Auth Strategy for multi-user dev testing
+- **CI/CD:** GitHub Actions (push to main → TestFlight)
 
 ---
 
@@ -355,23 +333,25 @@ Task {
 
 ## Documentation
 
-- **SPRINT_HISTORY.md** - Complete record of Sprint 1-5.1 development
-- **AGENTS.md** - Agent instructions, code style, architecture patterns
-- **fastlane/Docs/FASTLANE_SETUP.md** - Build automation setup guide
-- **fastlane/Docs/FIREBASE_SETUP.md** - Crashlytics + Analytics integration
-- **fastlane/Docs/MATCH_GUIDE.md** - Certificate management deep dive
-- **Docs/GITHUB_ACTIONS_SETUP.md** - Continuous delivery (push to main → auto-deploy to TestFlight)
+- **AGENTS.md** - Code style, architecture, testing protocols
+- **TESTING_GUIDE.md** - 206+ tests, test patterns, organization
+- **SMOKE_TEST_CHECKLIST.md** - Manual validation (30 min, two devices)
+- **SPRINT_HISTORY.md** - Development history (Sprint 1-6)
+- **UNIVERSAL_LINKS_SETUP.md** - Deep linking (App Site Association)
+- **fastlane/Docs/FASTLANE_SETUP.md** - Build automation
+- **fastlane/Docs/FIREBASE_SETUP.md** - Crashlytics + Analytics
+- **fastlane/Docs/MATCH_GUIDE.md** - Certificate management
+- **Docs/GITHUB_ACTIONS_SETUP.md** - CI/CD (GitHub Actions → TestFlight)
 
 ---
 
+## Launch Checklist
+
+1. ✅ Add Firebase test phone numbers (5 minutes)
+2. ✅ Run smoke tests (30 minutes, two devices)
+3. ✅ `bundle exec fastlane beta` → TestFlight
+4. ✅ Monitor Crashlytics + Analytics
+
 ---
 
-## Next Steps (Pre-Launch)
-
-1. **Run Smoke Tests:** Follow `SMOKE_TEST_CHECKLIST.md` (30 minutes, two devices)
-2. **Build & Submit:** `bundle exec fastlane beta` → TestFlight
-3. **Monitor:** Crashlytics + Analytics in Firebase Console
-
----
-
-**Last Updated:** January 23, 2026 (Sprint 6.1+ - CI/CD & Pre-Launch Ready) | **Status:** Production Ready ✅
+**Last Updated:** January 29, 2026 (Sprint 6+ - Production Ready) | **Status:** ✅ Ready for Distribution

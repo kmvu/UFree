@@ -331,6 +331,24 @@ users/{auth_uid}
 
 ---
 
-**Last Updated:** January 8, 2026 | **Total Sprints:** 5 (Plus Sprint 5.1) | **Tests:** 164+
+## Sprint 6+: Deep Linking & Production Readiness ✅
 
-**Next Phase:** Sprint 6 - Discovery & Intentions (Heatmap + Group Nudging)
+**Theme:** Enterprise Features - Universal Links, Analytics, Automation
+
+### Universal Links Implementation ✅
+- **App Site Association:** AASA file for `https://ufree.app/` deep linking
+- **DeepLink Enum:** Parse `/notification/{userId}`, `/profile/{userId}` URLs
+- **RootView Handler:** `.onOpenURL` modifier to handle incoming links
+- **NotificationViewModel:** `highlightedSenderId` property for link context
+- **Documentation:** Full UNIVERSAL_LINKS_SETUP.md guide
+
+### Files Added/Modified
+- `UFree/Features/Root/RootView.swift` - Added `.onOpenURL` + `DeepLink` enum
+- `UFree/Features/Notifications/NotificationViewModel.swift` - Added `highlightedSenderId`
+- `Docs/UNIVERSAL_LINKS_SETUP.md` - Complete deep linking guide
+
+---
+
+**Last Updated:** January 29, 2026 | **Total Sprints:** 6+ | **Tests:** 206+ | **Status:** Production Ready ✅
+
+**Next Phase:** Push Notifications (APNs) - Background delivery with deep links

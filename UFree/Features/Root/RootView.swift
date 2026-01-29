@@ -131,6 +131,61 @@ struct MainAppView: View {
             }
         }
         .environment(\.notificationViewModel, notificationViewModel)
+        .onOpenURL { url in
+            handleUniversalLink(url)
+        }
+    }
+    
+    // MARK: - Universal Links Handler
+    
+    /// Handles incoming Universal Links (App Site Association)
+    /// Example: https://ufree.app/notification/user123
+    private func handleUniversalLink(_ url: URL) {
+        let deepLink = DeepLink.parse(url)
+        
+        switch deepLink {
+        case .notification(let userId):
+            // Navigate to notification center and highlight sender
+            notificationViewModel.highlightedSenderId = userId
+            // Can also trigger sheet or navigation if needed
+            
+        case .profile(let userId):
+            // Navigate to friend profile (future implementation)
+            print("Navigate to profile: \(userId)")
+            
+        case .unknown:
+            print("Unknown deep link: \(url)")
+        }
+    }
+}
+
+// MARK: - Deep Link Parser
+
+enum DeepLink {
+    case notification(senderId: String)
+    case profile(userId: String)
+    case unknown
+    
+    /// Parses Universal Link URLs into navigation actions
+    /// - Parameter url: Universal Link URL (e.g., https://ufree.app/notification/user123)
+    static func parse(_ url: URL) -> DeepLink {
+        let components = url.pathComponents.filter { $0 != "/" }
+        
+        guard components.count >= 2 else {
+            return .unknown
+        }
+        
+        let pathType = components[0]
+        let parameter = components[1]
+        
+        switch pathType {
+        case "notification":
+            return .notification(senderId: parameter)
+        case "profile":
+            return .profile(userId: parameter)
+        default:
+            return .unknown
+        }
     }
 }
 

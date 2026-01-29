@@ -11,6 +11,7 @@ import Combine
 @MainActor
 public class NotificationViewModel: ObservableObject {
     @Published public var notifications: [AppNotification] = []
+    @Published public var highlightedSenderId: String?
     
     // Computed property for the red badge
     public var unreadCount: Int {

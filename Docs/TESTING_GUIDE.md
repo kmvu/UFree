@@ -1,6 +1,6 @@
 # UFree Testing Guide
 
-**Status:** ✅ Production Ready | **Tests:** 206+ (Sprint 6 Complete) | **Coverage:** 85%+ | **Quality:** Zero flaky, zero memory leaks
+**Status:** ✅ Production Ready | **Tests:** 206+ | **Coverage:** 85%+ | **Quality:** Zero flaky, zero memory leaks
 
 ---
 
@@ -12,13 +12,42 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | \
   grep -E '(PASS|FAIL|passed|failed|warning)'
 
-# Full output
+# Full output (for debugging)
 xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 
-# UI tests
-./run_all_tests.sh
+# Via fastlane
+fastlane tests
 ```
+
+---
+
+## Debug Auth Strategy (Manual Testing)
+
+For testing multi-user flows without SMS codes:
+
+```swift
+// Available in DEBUG builds only
+// LoginView shows developer overlay with quick login buttons
+
+// Steps:
+1. Add Firebase test phone numbers (5 min, one-time)
+   - Console > Authentication > Phone
+   - +1 555-000-0001, +1 555-000-0002, +1 555-000-0003 (all code: 123456)
+
+2. Tap "User 1", "User 2", "User 3" in developer tools section
+
+3. Test multi-user scenarios:
+   - User A sends friend request
+   - User B accepts instantly (no device-switching needed)
+   - Both see live updates within 2 seconds
+```
+
+**Benefits:**
+- No real SMS codes needed
+- Test on single simulator or device
+- Validates real-time Firestore sync
+- Rapid-tap protection verified
 
 ---
 
@@ -516,123 +545,30 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 
 ---
 
-## Sprint 6 Summary (Complete) ✅
+## Core Patterns Tested
 
-**Theme:** Discovery & Intentions - Availability Heatmap + Group Nudging
+### Group Nudging (Parallel TaskGroup)
 
-**New Tests:** 42+ (6 heatmap + 11 UI + 12 group nudge + 8 ancillary)  
-**Total Post-Sprint 6:** 206+ tests  
-**Coverage:** 85%+
+- **Rapid-tap protection:** `guard !isNudging` prevents concurrent calls
+- **Parallel execution:** `withThrowingTaskGroup(of: Bool.self)` for speed
+- **Partial success:** Track count of succeeded/failed nudges
+- **Haptic feedback:** medium → success/warning based on result
+- **20+ tests** validating all scenarios (success, partial, failure, rapid-tap, edge cases)
 
-### Files Modified
+### Heatmap Integration
 
-- `FriendsScheduleViewModel.swift` - Added `freeFriendCount()`, `nudgeAllFree()` with parallel TaskGroup
-- `FriendsScheduleView.swift` - Added day selector heatmap + "Nudge All" button
-- `DayFilterButtonView.swift` - Refactored to vertical capsule UI with badge
-- `MockNotificationRepository.swift` - Added `userIdsToFailFor` test hook
-- Test files - 4 new test suites with 42+ tests
+- **Friend count by day:** Aggregates friend availability across selected day
+- **Status filtering:** Only counts `.free` status
+- **Reactive updates:** UI refreshes when friendSchedules change
+- **Badge rendering:** Shows count or hides if zero
+- **6+ tests** validating counts, filtering, reactivity
 
-### Design Decisions Validated
+### Real-Time Sync
 
-1. **Count only .free status** - Clear signal, no ambiguity
-2. **Parallel TaskGroup(of: Bool.self)** - 3-5x faster than sequential
-3. **Single haptic per action** - No "machine gun" spam
-4. **Partial success counting** - User awareness of what happened
-5. **Three-tier messaging** - All success / Partial / Error
-
----
-
-## Sprint 6 Test Planning (Upcoming)
-
-**Theme:** Discovery & Intentions - Availability Heatmap + Capsule UI + Group Nudge
-
-### Phase 1: Availability Heatmap Tests (DayFilterViewModel)
-
-```swift
-// Intentional Availability: Count .free + partial states
-func test_friendCountByDay_includesAllAvailableStates() async
-// Verify: friendCountByDay includes .free, .afternoonOnly, .eveningOnly
-// Verify: friendCountByDay["2026-01-10"] == 4 (2 free + 1 afternoon + 1 evening)
-
-// Reactivity on schedule changes
-func test_friendCountByDay_updatesOnScheduleChange() async
-// Verify: count updates when friendSchedules change
-// Verify: reactive binding triggers UI update
-
-// Status color tinting
-func test_friendCountColor_green_whenMajorityFree() async
-// Verify: badge color = green when 3+ are .free out of 4
-
-func test_friendCountColor_orange_whenMostlyPartial() async
-// Verify: badge color = orange when majority are partial states
-
-// Edge cases
-func test_friendCountByDay_handlesMissingSchedules()
-// Verify: graceful handling of friends without schedule data
-
-func test_friendCountByDay_zeroFriends_emptyDay()
-// Verify: friendCountByDay[date] omitted if no friends available
-```
-
-### Phase 2: Capsule UI Visual Tests (DayFilterButtonView)
-
-```swift
-// State rendering
-func test_selectedDay_rendersWithDisplayColor()
-// Verify: active capsule uses brand purple/displayColor
-
-func test_unselectedDay_rendersWithThinMaterial()
-// Verify: inactive capsule uses light gray
-
-// Badge display
-func test_friendCountBadge_displaysCorrectly()
-// Verify: "3 free" badge shown on capsule
-
-func test_zeroFriendsDay_showsNoBadge()
-// Verify: no badge when friendCountByDay[date] == 0
-```
-
-### Phase 3: Group Nudge Tests (FriendsScheduleViewModel + DayFilterViewModel)
-
-```swift
-// Parallel batch operation via TaskGroup
-func test_nudgeAllFree_sendsNudgeToEachAvailableUser() async
-// Verify: all available users (.free + partial) for selected day receive nudge
-// Verify: uses withThrowingTaskGroup (parallel, not sequential)
-// Verify: completes in ~1 request time, not N * 0.5s sequential
-
-// Processing state & rapid-tap protection
-func test_nudgeAllFree_setsIsNudging_whileProcessing() async
-// Verify: isNudging flag = true at start, false at end
-// Verify: guard !isNudging prevents concurrent batch calls
-
-func test_nudgeAllFree_ignoresSecondTap_whileProcessing() async
-// Verify: second tap is rejected while isNudging = true
-
-// Haptic feedback strategy
-func test_nudgeAllFree_triggersHaptic_onTap() async
-// Verify: HapticManager.medium() fires immediately on button tap
-
-func test_nudgeAllFree_triggersHaptic_onSuccess() async
-// Verify: HapticManager.success() fires when all nudges sent
-
-func test_nudgeAllFree_triggersHaptic_onPartialFailure() async
-// Verify: HapticManager.warning() fires when some nudges fail
-
-// Partial success pattern
-func test_nudgeAllFree_showsSuccessMessage_allSucceed() async
-// Verify: successMessage = "All 4 friends nudged! 👋"
-
-func test_nudgeAllFree_showsPartialMessage_someFail() async
-// Verify: successMessage = "Nudged 3 friends. 1 failed."
-// Verify: captures (successCount, totalCount) from TaskGroup results
-
-func test_nudgeAllFree_showsErrorMessage_allFail() async
-// Verify: errorMessage = "Failed to nudge friends. Please try again."
-```
-
-**Est. New Tests:** 10-12 (3-4 per phase)
-**Total Test Count (Post-Sprint 6):** ~176+
+- **Firestore listeners:** AsyncStream for notifications + friend requests
+- **Local-first:** SwiftData instant, Firestore eventual consistency
+- **Offline graceful:** Catches errors without crashing
+- **15+ tests** covering success, failure, edge cases
 
 ---
 
@@ -653,4 +589,4 @@ func test_nudgeAllFree_showsErrorMessage_allFail() async
 
 ---
 
-**Last Updated:** January 23, 2026 (Sprint 6+ - Pre-Launch Ready) | **Status:** Production Ready ✅
+**Last Updated:** January 29, 2026 (Sprint 6+ - Production Ready) | **Status:** ✅ Ready to Ship

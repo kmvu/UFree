@@ -1,7 +1,6 @@
 # Pre-Launch Smoke Test Checklist
 
-**Status:** Ready for Testing ✅ | 18/19 Complete  
-**Time Estimate:** 30 minutes (two devices)
+**Status:** Ready for Testing ✅ | **Time:** 30 minutes (two devices or simulators)
 
 ---
 
@@ -19,7 +18,20 @@
 
 ---
 
-## Test Scenarios (Two Devices)
+## Setup (One-Time, 5 min)
+
+1. Add Firebase test phone numbers (Console > Authentication > Phone):
+   - +1 555-000-0001 (code: 123456)
+   - +1 555-000-0002 (code: 123456)
+   - +1 555-000-0003 (code: 123456)
+
+2. Run app in DEBUG mode:
+   - LoginView shows "DEVELOPER TOOLS" overlay with User 1/2/3 buttons
+   - Each button logs in instantly (no SMS required)
+
+---
+
+## Test Scenarios (Two Simulators or Devices)
 
 ### Scenario 1: Friend Request Flow (5 min)
 
@@ -86,12 +98,24 @@
 
 ---
 
-### Scenario 6: Deep Link Navigation (2 min)
+### Scenario 6: Universal Links / Deep Linking (2 min)
 
-1. Open NotificationCenterView
-2. Tap on a notification
-3. Expected: Smooth navigation to user's profile/details
-4. Chevron icon indicates tappable row
+**Prerequisites:** AASA file deployed to `https://ufree.app/.well-known/apple-app-site-association`
+
+**Test 1: Simulate Deep Link (Local)**
+1. Xcode: Simulate URL in console:
+   ```swift
+   let url = URL(string: "https://ufree.app/notification/user123")!
+   UIApplication.shared.open(url)
+   ```
+2. Expected: App opens, `NotificationViewModel.highlightedSenderId` = "user123"
+3. Can highlight the notification in UI
+
+**Test 2: Physical Device (24-48 hrs after AASA deployed)**
+1. Open Notes app → Type link: `https://ufree.app/notification/abc123`
+2. Tap link
+3. Expected: App opens (not Safari), notification highlighted
+4. Repeat with `https://ufree.app/profile/xyz789`
 
 ---
 
@@ -149,15 +173,11 @@ users/{userId}
 
 ## After Smoke Test Passes
 
-1. Run: `bundle exec fastlane tests` (verify all 206+ tests pass)
-2. Build: `bundle exec fastlane beta` (submit to TestFlight)
-3. Distribute to external testers
-4. Monitor Firestore for data issues
+1. `fastlane tests` - Verify all 206+ tests pass
+2. `fastlane beta` - Submit to TestFlight
+3. Distribute link to external testers
+4. Monitor Firebase Crashlytics + Analytics
 
 ---
 
-## Known Limitations (Future Sprints)
-
-- ⏳ Push notifications (APNs) - app-only, not background
-- ⏳ Deep link to friend profile (structural readiness exists)
-- ⏳ Notification persistence after uninstall (Cloud Messaging needed)
+**Last Updated:** January 29, 2026 | **Status:** Ready for Smoke Testing
