@@ -87,6 +87,48 @@ struct LoginView: View {
                 
                 Spacer()
                 Spacer()
+                
+                #if DEBUG
+                // Development Tools
+                VStack(spacing: 12) {
+                    Divider()
+                        .padding(.vertical, 8)
+                    
+                    Text("DEVELOPER TOOLS")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 8) {
+                        Button("User 1") {
+                            Task {
+                                await viewModel.loginAsTestUser(index: 0)
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        
+                        Button("User 2") {
+                            Task {
+                                await viewModel.loginAsTestUser(index: 1)
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        
+                        Button("User 3") {
+                            Task {
+                                await viewModel.loginAsTestUser(index: 2)
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                }
+                .padding()
+                .background(Color.yellow.opacity(0.1))
+                .cornerRadius(12)
+                .padding()
+                #endif
             }
             .padding()
         }

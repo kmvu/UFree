@@ -68,4 +68,15 @@ public actor MockAuthRepository: AuthRepository {
     private func createUser(id: String, isAnonymous: Bool, displayName: String?) -> User {
         User(id: id, isAnonymous: isAnonymous, displayName: displayName)
     }
+    
+    #if DEBUG
+    // MARK: - Debug Methods
+    
+    public func signInAsTestUser(phoneNumber: String) async throws -> User {
+        let newUser = createUser(id: phoneNumber, isAnonymous: false, displayName: nil)
+        self.user = newUser
+        self.authStateContinuation.yield(newUser)
+        return newUser
+    }
+    #endif
 }

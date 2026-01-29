@@ -50,4 +50,38 @@ final class LoginViewModel: ObservableObject {
             isLoading = false
         }
     }
+    
+    #if DEBUG
+    // MARK: - Debug Methods
+    
+    /// Logs in as a test user with a whitelisted phone number (no SMS required)
+    /// - Parameter index: 0 = User 1, 1 = User 2, 2 = User 3
+    func loginAsTestUser(index: Int) {
+        let testNumbers = [
+            "+15550000001",
+            "+15550000002",
+            "+15550000003"
+        ]
+        
+        guard index < testNumbers.count else { return }
+        
+        let phoneNumber = testNumbers[index]
+        
+        Task {
+            isLoading = true
+            do {
+                // Firebase recognizes these whitelisted numbers and doesn't require SMS
+                _ = try await authRepository.signInAsTestUser(phoneNumber: phoneNumber)
+                
+                // Update name to identify the test user
+                let displayName = "Test User \(index + 1)"
+                try await authRepository.updateDisplayName(displayName)
+            } catch {
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+            isLoading = false
+        }
+    }
+    #endif
 }

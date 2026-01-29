@@ -97,4 +97,22 @@ public final class FirebaseAuthRepository: AuthRepository {
     private func mapFirebaseUserToUser(_ firebaseUser: FirebaseAuth.User) -> User {
         User(id: firebaseUser.uid, isAnonymous: firebaseUser.isAnonymous, displayName: firebaseUser.displayName)
     }
+    
+    #if DEBUG
+    // MARK: - Debug Methods
+    
+    public func signInAsTestUser(phoneNumber: String) async throws -> User {
+        /// Firebase allows signing in with test phone numbers without SMS verification.
+        /// These are configured in the Firebase Console > Authentication > Phone
+        let verificationID = "test_verification_id_\(UUID().uuidString)"
+        
+        let credential = PhoneAuthProvider.provider()
+            .credential(withVerificationID: verificationID, verificationCode: "123456")
+        
+        let result = try await auth.signIn(with: credential)
+        let user = mapFirebaseUserToUser(result.user)
+        authStateContinuation.yield(user)
+        return user
+    }
+    #endif
 }

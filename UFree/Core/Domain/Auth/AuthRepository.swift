@@ -25,4 +25,11 @@ public protocol AuthRepository {
     /// Updates the current user's display name.
     /// - Parameter name: The new display name to set.
     func updateDisplayName(_ name: String) async throws
+    
+    #if DEBUG
+    /// Authenticates with a whitelisted test phone number (DEBUG only, no SMS required).
+    /// Firebase must have the test number configured in Authentication settings.
+    /// - Parameter phoneNumber: Test phone number (e.g., "+15550000001")
+    func signInAsTestUser(phoneNumber: String) async throws -> User
+    #endif
 }
