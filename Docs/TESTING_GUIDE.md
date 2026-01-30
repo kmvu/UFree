@@ -589,4 +589,73 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 
 ---
 
-**Last Updated:** January 29, 2026 (Sprint 6+ - Production Ready) | **Status:** ✅ Ready to Ship
+## QA Testing: 30-Minute Smoke Test
+
+**Purpose:** Manual validation of core features before release  
+**Time:** 30 minutes (two simulators/devices)  
+**Result:** Sign-off checklist confirms everything works end-to-end
+
+### Setup (One-time, 5 min)
+
+Add Firebase test phone numbers (Console > Authentication > Phone):
+- +1 555-000-0001 (code: 123456)
+- +1 555-000-0002 (code: 123456)
+- +1 555-000-0003 (code: 123456)
+
+LoginView shows "DEVELOPER TOOLS" overlay with User 1/2/3 buttons (DEBUG only)
+
+### Test Scenarios (25 min)
+
+#### Scenario 1: Friend Request Flow (5 min)
+1. **User A** - Search for User B by phone, tap "Add Friend"
+2. **User B** - See incoming request, tap "Accept"
+3. **Both** - Verify bidirectional friendship created within 2 sec
+
+#### Scenario 2: Nudge Flow (5 min)
+1. **User A** - Tap "Nudge" on User B's card, feel haptics
+2. **User B** - See red badge on bell, tap to open notification
+3. **Both** - Verify nudge appears, badge count correct, auto-marks as read
+
+#### Scenario 3: Rapid-Tap Protection (3 min)
+1. Send nudge, rapidly tap 5+ times during flight
+2. Verify only 1 notification created (no duplicates)
+
+#### Scenario 4: Cold Start (3 min)
+1. Log in, add friend, send nudge
+2. Force-close app, reopen
+3. Verify user still logged in, data preserved
+
+#### Scenario 5: Offline Graceful (3 min)
+1. Enable airplane mode, try to send nudge
+2. Verify error toast (no crash)
+3. Disable airplane mode, retry succeeds
+
+#### Scenario 6: Deep Linking (2 min)
+1. Simulate URL in Xcode console:
+   ```swift
+   let url = URL(string: "https://ufree.app/notification/user123")!
+   UIApplication.shared.open(url)
+   ```
+2. Verify app opens and notification is highlighted
+
+### Sign-Off Checklist
+
+- [ ] Friend request appears in Firestore within 2 sec
+- [ ] Recipient sees request within 3 sec
+- [ ] Accept creates bidirectional friendship
+- [ ] Nudge creates notification in recipient's collection
+- [ ] Notification badge updates correctly
+- [ ] Cold start preserves all data
+- [ ] Offline doesn't crash
+- [ ] Rapid-tap protection prevents duplicates
+- [ ] Deep linking works
+
+### After Smoke Test Passes
+```bash
+fastlane tests        # Verify 206+ tests pass
+fastlane beta         # Submit to TestFlight
+```
+
+---
+
+**Last Updated:** January 30, 2026 (Sprint 6+ - Production Ready) | **Status:** ✅ Ready to Ship

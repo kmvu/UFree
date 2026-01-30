@@ -4,13 +4,20 @@
 
 ---
 
-## Quick Links
+## Documentation Quick Links
 
-- **Getting Started:** `AGENTS.md` (setup, code style, testing)
-- **Architecture:** This file (overview, features, models)
-- **Manual Testing:** `SMOKE_TEST_CHECKLIST.md` (30 min validation)
-- **Test Details:** `TESTING_GUIDE.md` (206+ test organization)
-- **Dev History:** `SPRINT_HISTORY.md` (Sprint 1-6 evolution)
+| I want to... | Go to... |
+|---|---|
+| **Get started on new machine** | AGENTS.md → Environment Setup |
+| **Learn code standards** | AGENTS.md → Code Style |
+| **Understand architecture** | This file → Architecture |
+| **Fix a broken build** | TROUBLESHOOTING_RUNBOOK.md |
+| **Write tests** | TESTING_GUIDE.md → Test Organization |
+| **Do QA testing** | TESTING_GUIDE.md → QA Testing |
+| **Set up deep linking** | AGENTS.md → Deep Linking |
+| **Check dev history** | SPRINT_HISTORY.md |
+
+**5 Core Files:** README (this) | AGENTS | TESTING_GUIDE | TROUBLESHOOTING_RUNBOOK | SPRINT_HISTORY
 
 ---
 
@@ -331,17 +338,20 @@ Task {
 
 ---
 
-## Documentation
+## Documentation Structure
 
-- **AGENTS.md** - Code style, architecture, testing protocols
-- **TESTING_GUIDE.md** - 206+ tests, test patterns, organization
-- **SMOKE_TEST_CHECKLIST.md** - Manual validation (30 min, two devices)
-- **SPRINT_HISTORY.md** - Development history (Sprint 1-6)
-- **UNIVERSAL_LINKS_SETUP.md** - Deep linking (App Site Association)
-- **fastlane/Docs/FASTLANE_SETUP.md** - Build automation
-- **fastlane/Docs/FIREBASE_SETUP.md** - Crashlytics + Analytics
-- **fastlane/Docs/MATCH_GUIDE.md** - Certificate management
-- **Docs/GITHUB_ACTIONS_SETUP.md** - CI/CD (GitHub Actions → TestFlight)
+### Core (5 files)
+- **README.md** - Architecture, features, models (this file)
+- **AGENTS.md** - Setup, code standards, deep linking, security
+- **TESTING_GUIDE.md** - Tests, patterns, QA checklist
+- **TROUBLESHOOTING_RUNBOOK.md** - Fast diagnosis (40+ symptoms)
+- **SPRINT_HISTORY.md** - Development timeline (reference)
+
+### Build Automation (fastlane/Docs/)
+- **INDEX.md** - Navigation & learning path
+- **GETTING_STARTED.md** - First-time setup (20 min)
+- **DISTRIBUTION.md** - Workflows & certificate management
+- **REFERENCE.md** - Commands, config, troubleshooting
 
 ---
 
