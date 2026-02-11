@@ -49,14 +49,13 @@ platform :ios do
       project: "UFree.xcodeproj",
       scheme: "UFreeUnitTests",
       device: "iPhone 16",
-      destination: "platform=iOS Simulator,name=iPhone 16,OS=latest",
-      sdk: "iphonesimulator",
+      destination: "platform=iOS Simulator,name=iPhone 16",
       clean: true,
       fail_build: true,
       output_directory: "fastlane/test_results",
       result_bundle: true,
       derived_data_path: "./fastlane/builds/DerivedData",
-      xcargs: "-skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache"
+      xcargs: "-skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache ONLY_ACTIVE_ARCH=NO"
     )
     puts "✅ All tests passed"
   end
