@@ -147,6 +147,7 @@ platform :ios do
       project: "UFree.xcodeproj",
       scheme: "UFree",
       configuration: "Release",
+      sdk: "iphoneos",
       export_method: "app-store",
       output_directory: "./fastlane/builds",
       output_name: "UFree.ipa",
