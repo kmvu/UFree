@@ -123,6 +123,11 @@ storage_mode("git")
 type("appstore")
 app_identifier(["com.khangvu.UFree"])
 team_id("SNUXAG727V")
+
+# Temporary keychain (CI/CD only, created by GitHub Actions workflow)
+keychain_name("build.keychain") if ENV["GITHUB_ACTIONS"] == "true"
+keychain_password("") if ENV["GITHUB_ACTIONS"] == "true"
+
 skip_confirmation(true)
 verbose(false)
 ```
@@ -135,15 +140,16 @@ api_key = setup_api_key
 
 match(
   type: "appstore",
-  readonly: is_ci,        # Read-only on CI, write on local
+  readonly: true,          # Always read-only (prevent accidental writes)
   skip_confirmation: true, # Never prompt (certs already encrypted)
   api_key: api_key        # Use API key auth
 )
 ```
 
-**Why `readonly: is_ci`?**
-- **Local dev:** `readonly: false` → Can update if certs expire
-- **CI machine:** `readonly: true` → Only reads, doesn't modify
+**Why `readonly: true`?**
+- Prevents accidental certificate modifications locally
+- CI/CD creates temporary keychain automatically (no write needed)
+- Safer pattern for team environments
 
 ---
 
@@ -319,11 +325,11 @@ increment_build_number(
 ```
 fastlane/
 ├── Fastfile                    ← 5 lanes (tests, alpha, beta, sync_certs, helpers)
-├── Appfile                     ← App configuration
+├── Appfile                     ← App configuration (already clean)
 ├── Matchfile                   ← Certificate config
 ├── .env                        ← Credentials (NEVER commit)
-├── .env.default                ← Template
-├── .gitignore                  ← Protections
+├── .env.default                ← Template (commit this)
+├── .gitignore                  ← Protections (commit this)
 ├── Keys/
 │   └── AuthKey_*.p8            ← API key (NEVER commit)
 ├── builds/
@@ -333,10 +339,13 @@ fastlane/
 │   └── UFree.ipa               ← Built app
 ├── test_results/               ← Test output
 └── Docs/
-    ├── GETTING_STARTED.md
-    ├── DISTRIBUTION.md         ← This file
-    └── REFERENCE.md
+    ├── GETTING_STARTED.md      ← Local setup (3 steps)
+    ├── DISTRIBUTION.md         ← Workflows (this file)
+    ├── REFERENCE.md            ← Commands & troubleshooting
+    └── INDEX.md                ← Navigation guide
 ```
+
+**CI/CD Configuration:** See Docs/AGENTS.md → Security & Secrets → GitHub Secrets Setup
 
 ---
 

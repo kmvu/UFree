@@ -20,13 +20,25 @@ def setup_api_key
   require 'dotenv'
   Dotenv.load(File.expand_path("#{File.dirname(__FILE__)}/.env"))
   
-  app_store_connect_api_key(
-    key_id: ENV["ASC_KEY_ID"],
-    issuer_id: ENV["ASC_ISSUER_ID"],
-    key_filepath: ENV["ASC_KEY_PATH"],
-    duration: 1200,
-    in_house: false
-  )
+  # 1. Check if we are passing raw content (CI/CD with Base64 string)
+  if ENV["ASC_KEY_CONTENT"]
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_content: ENV["ASC_KEY_CONTENT"],
+      duration: 1200,
+      in_house: false
+    )
+  # 2. Fallback to file path (Local Machine)
+  else
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_PATH"],
+      duration: 1200,
+      in_house: false
+    )
+  end
 end
 
 platform :ios do
@@ -154,7 +166,8 @@ platform :ios do
     # 5.1 Upload dSYMs to Firebase Crashlytics
     puts "📤 Uploading dSYMs to Firebase Crashlytics..."
     upload_symbols_to_crashlytics(
-      gsp_path: "GoogleService-Info.plist"
+      gsp_path: "GoogleService-Info.plist",
+      binary_path: "./fastlane/spm_cache/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols"
     )
 
     # 6. Upload to TestFlight
@@ -210,7 +223,7 @@ platform :ios do
     
     match(
       type: "appstore",
-      readonly: is_ci,
+      readonly: true,
       skip_confirmation: true,
       api_key: api_key
     )

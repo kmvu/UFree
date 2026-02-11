@@ -10,20 +10,15 @@
 # 1. Install dependencies
 bundle install
 
-# 2. Generate API key (see step 1 below)
-# Download .p8 file → fastlane/Keys/
+# 2. Follow steps 1-2 below (generate API key, create .env)
 
-# 3. Create .env with credentials (see step 2 below)
-cp fastlane/.env.default fastlane/.env
-# Edit with your API key credentials
-
-# 4. Verify setup
+# 3. Verify setup works
 fastlane tests        # Should run without prompts
 fastlane sync_certs   # Should sync without prompts
 fastlane beta         # Should build & upload without prompts
 ```
 
-If you get password prompts → Follow step 1 below.
+If you get password prompts, follow the full steps below.
 
 ---
 
@@ -96,35 +91,9 @@ If `.env` or `.p8` not protected, add them to `.gitignore` manually.
 
 ---
 
-## Step 3: Update Appfile
+## Step 3: Verify Setup Works
 
-**Current issue:** `apple_id()` and `itunes_connect_id()` trigger credential prompts.
-
-**Fix:** Remove these lines from `fastlane/Appfile`
-
-### Before:
-```ruby
-app_identifier("com.khangvu.UFree")
-apple_id("khang.vu.studio91@gmail.com")  # ← REMOVE
-team_id("SNUXAG727V")
-itc_team_id("SNUXAG727V")
-itunes_connect_id("kmvu91@gmail.com")    # ← REMOVE
-```
-
-### After:
-```ruby
-app_identifier("com.khangvu.UFree")
-team_id("SNUXAG727V")
-itc_team_id("SNUXAG727V")
-
-# API key authentication used instead (see .env)
-```
-
----
-
-## Step 4: Verify Setup Works
-
-### 4.1 Test Certificate Sync
+### 3.1 Test Certificate Sync
 ```bash
 fastlane sync_certs
 ```
@@ -138,14 +107,14 @@ fastlane sync_certs
 
 **If you get prompted:** Check `ASC_KEY_PATH` is absolute and file exists.
 
-### 4.2 Test Unit Tests
+### 3.2 Test Unit Tests
 ```bash
 fastlane tests
 ```
 
 Should run 206+ tests without prompts.
 
-### 4.3 Test Full Distribution
+### 3.3 Test Full Distribution
 ```bash
 fastlane beta
 ```
@@ -155,7 +124,7 @@ Should:
 - ✅ Sync certificates
 - ✅ Build IPA
 - ✅ Upload to TestFlight
-- ❌ No password prompts anywhere
+- ✅ No password prompts anywhere
 
 ---
 
@@ -230,11 +199,12 @@ cp fastlane/.env.default fastlane/.env
 
 ## Next Steps
 
-1. ✅ Follow steps 1-4 above (20 minutes)
+1. ✅ Follow steps 1-3 above (20 minutes)
 2. ✅ Run `fastlane sync_certs` (verify no prompts)
 3. ✅ Run `fastlane beta` (full distribution)
 4. 📖 Read **DISTRIBUTION.md** for detailed workflows
 5. 📖 Read **REFERENCE.md** for commands & troubleshooting
+6. 🔒 For CI/CD: See **Docs/AGENTS.md → GitHub Secrets Setup**
 
 ---
 

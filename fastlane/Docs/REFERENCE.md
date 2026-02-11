@@ -36,13 +36,24 @@ def is_ci                                           # CI detector
 end
 
 def setup_api_key                                   # API key loader
-  app_store_connect_api_key(
-    key_id: ENV["ASC_KEY_ID"],
-    issuer_id: ENV["ASC_ISSUER_ID"],
-    key_filepath: ENV["ASC_KEY_PATH"],
-    duration: 1200,
-    in_house: false
-  )
+  # Handles both local (file path) and CI (base64 content)
+  if ENV["ASC_KEY_CONTENT"]
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_content: ENV["ASC_KEY_CONTENT"],        # CI/CD with base64
+      duration: 1200,
+      in_house: false
+    )
+  else
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_PATH"],         # Local with file path
+      duration: 1200,
+      in_house: false
+    )
+  end
 end
 
 platform :ios do
@@ -71,6 +82,11 @@ storage_mode("git")
 type("appstore")
 app_identifier(["com.khangvu.UFree"])
 team_id("SNUXAG727V")
+
+# Temporary keychain (CI/CD only, created by GitHub Actions workflow)
+keychain_name("build.keychain") if ENV["GITHUB_ACTIONS"] == "true"
+keychain_password("") if ENV["GITHUB_ACTIONS"] == "true"
+
 skip_confirmation(true)
 verbose(false)
 ```
@@ -358,7 +374,7 @@ lane :sync_certs do
   api_key = setup_api_key
   match(
     type: "appstore",
-    readonly: is_ci,
+    readonly: true,                # Always read-only locally
     skip_confirmation: true,
     api_key: api_key
   )
@@ -366,6 +382,7 @@ end
 ```
 
 **Use when:** Manually refreshing certificates (new team member, expired certs, etc).
+**Note:** Always read-only locally. CI/CD uses temporary keychain created by workflow.
 
 ---
 
@@ -396,30 +413,25 @@ end
 
 ## Environment Variables
 
-### Required
+### Local Development (.env file)
 ```env
 ASC_KEY_ID              # App Store Connect Key ID
 ASC_ISSUER_ID           # App Store Connect Issuer ID
-ASC_KEY_PATH            # Absolute path to .p8 file
+ASC_KEY_PATH            # Absolute path to .p8 file (local only)
 MATCH_PASSWORD          # Certificate encryption password
-```
-
-### Optional
-```env
 FIREBASE_APP_ID         # Firebase app ID (for alpha lane)
 FIREBASE_GROUPS         # Firebase tester groups (default: internal-testers)
-SLACK_WEBHOOK           # Slack notifications (optional)
 ```
 
-### CI/CD (GitHub Actions)
-Use GitHub Secrets instead of .env:
-```yaml
-Settings → Secrets and variables → Actions:
-  ASC_KEY_ID
-  ASC_ISSUER_ID
-  ASC_KEY_PATH
-  MATCH_PASSWORD
-```
+### CI/CD (GitHub Actions Secrets)
+For complete GitHub Secrets setup, SSH key generation, and keychain configuration, see:
+**Docs/AGENTS.md → Security & Secrets → GitHub Secrets Setup**
+
+Required secrets:
+- `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT` (base64)
+- `MATCH_PASSWORD`
+- `SSH_PRIVATE_KEY` (for Bitbucket access)
+- `FASTLANE_USER` (fallback)
 
 ---
 

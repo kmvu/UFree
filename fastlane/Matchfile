@@ -10,6 +10,11 @@ app_identifier(["com.khangvu.UFree"])
 # Team ID (optional - usually inferred from Appfile)
 team_id("SNUXAG727V")
 
+# Keychain configuration (uses temporary keychain in CI/CD only)
+# Match detects it automatically in workflow
+keychain_name("build.keychain") if ENV["GITHUB_ACTIONS"] == "true"
+keychain_password("") if ENV["GITHUB_ACTIONS"] == "true"
+
 # Options
 skip_confirmation(true)
 verbose(false)

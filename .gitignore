@@ -36,6 +36,7 @@ Package.resolved
 # Fastlane build artifacts (large .ipa and .xcarchive files)
 fastlane/builds/
 fastlane/test_results/
+fastlane/spm_cache/
 
 # Fastlane secrets (never commit)
 fastlane/.env

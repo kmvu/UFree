@@ -200,7 +200,7 @@ git status | grep -i ".env"           # Should be empty
 git diff --cached fastlane/           # Should show no secrets
 ```
 
-**Environment Variables:**
+**Local Environment Variables:**
 ```
 FASTLANE_USER
 FASTLANE_PASSWORD
@@ -209,6 +209,50 @@ ASC_KEY_ID
 ASC_ISSUER_ID
 ASC_KEY_PATH (absolute path)
 ```
+
+### GitHub Secrets Setup
+
+Think of it as two doors: **SSH_PRIVATE_KEY** unlocks the house (Bitbucket repo), **MATCH_PASSWORD** unlocks the safe inside (decrypts certificates).
+
+**Generate SSH Key for GitHub Actions:**
+
+```bash
+# Create new deploy key (leave password blank)
+ssh-keygen -t ed25519 -C "github_actions_deploy" -f ./github_actions_deploy
+
+# You now have:
+# - github_actions_deploy (private key → GitHub)
+# - github_actions_deploy.pub (public key → Bitbucket)
+```
+
+**Add Public Key to Bitbucket:**
+1. Go: Bitbucket > ufree-certificates repo > Settings > Access Keys > Add Key
+2. Label: `GitHub Actions CI`
+3. Key: Paste entire contents of `github_actions_deploy.pub`
+4. Permission: Read
+5. Save
+
+**Add Private Key to GitHub Secrets:**
+1. Go: GitHub > UFree > Settings > Secrets and variables > Actions > New repository secret
+2. Name: `SSH_PRIVATE_KEY`
+3. Value: Paste entire block from `github_actions_deploy` (includes BEGIN/END lines)
+4. Save
+
+**Cleanup:**
+```bash
+rm github_actions_deploy github_actions_deploy.pub
+```
+
+**GitHub Secrets Checklist:**
+
+| Secret | Source | Purpose |
+|--------|--------|---------|
+| `SSH_PRIVATE_KEY` | Generated key | Clone Bitbucket certs repo |
+| `MATCH_PASSWORD` | Your `.env` file | Decrypt certificates |
+| `ASC_KEY_CONTENT` | `base64 fastlane/AuthKey_*.p8` | Apple API authentication |
+| `ASC_KEY_ID` | Your `.env` file | Identify API key |
+| `ASC_ISSUER_ID` | Your `.env` file | Identify team |
+| `FASTLANE_USER` | Your `.env` file | Apple ID (fallback) |
 
 ---
 
@@ -303,12 +347,16 @@ fastlane sync_certs     # Refresh certificates
 
 ## CI/CD & Secrets
 
-**GitHub Actions** → Push to main → auto-deploy to TestFlight
+**GitHub Actions Workflow:** Push to main → `testflight.yml` runs → Tests pass → Build signed → Upload to TestFlight
+
+**Keychain Setup:** Workflow creates temporary throwaway keychain (3600s timeout) before running fastlane. No password stored.
+
+**SSH Access:** `webfactory/ssh-agent@v0.9.0` loads private key so `match` can clone Bitbucket certificates repo.
 
 **Secret Protection:**
-- Store in GitHub Secrets (Settings > Secrets and variables > Actions)
+- All secrets stored in GitHub (Settings > Secrets and variables > Actions)
 - Never commit `.env` locally
-- Use absolute paths for certificates
+- See "GitHub Secrets Setup" above for SSH key generation
 
 ---
 
