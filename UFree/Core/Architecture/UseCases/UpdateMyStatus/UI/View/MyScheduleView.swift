@@ -45,7 +45,6 @@ public struct MyScheduleView: View {
             }
         }
         .navigationTitle(navigationTitle)
-        .navigationSubtitle("See when friends are available")
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
                 // Bell icon with notification badge
