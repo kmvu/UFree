@@ -187,7 +187,7 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         try db.collection("friendRequests").addDocument(from: request)
     }
     
-    func observeIncomingRequests() -> AsyncStream<[FriendRequest]> {
+    nonisolated func observeIncomingRequests() -> AsyncStream<[FriendRequest]> {
         AsyncStream { continuation in
             guard let uid = Auth.auth().currentUser?.uid else {
                 continuation.finish()
