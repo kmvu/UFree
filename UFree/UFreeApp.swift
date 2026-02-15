@@ -51,8 +51,22 @@ struct UFreeApp: App {
     
     init() {
         do {
-            // Configure container with PersistentDayAvailability model
-            let configuration = ModelConfiguration(isStoredInMemoryOnly: false)
+            // Ensure Application Support directory exists (fixes CI simulator issues)
+            // Skip if running unit tests (they use in-memory containers)
+            if !TestConfiguration.isRunningUnitTests {
+                let paths = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+                if let applicationSupport = paths.first {
+                    try? FileManager.default.createDirectory(
+                        at: applicationSupport,
+                        withIntermediateDirectories: true,
+                        attributes: nil
+                    )
+                }
+            }
+            
+            // Use in-memory storage for unit tests, disk storage for production/UI tests
+            let isInMemory = TestConfiguration.isRunningUnitTests
+            let configuration = ModelConfiguration(isStoredInMemoryOnly: isInMemory)
             container = try ModelContainer(
                 for: PersistentDayAvailability.self,
                 configurations: configuration

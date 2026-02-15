@@ -268,6 +268,15 @@ In the workflow, it's decoded before the build runs with:
 echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 --decode > ./GoogleService-Info.plist
 ```
 
+**Environment Variables (Workflow):**
+These are set in testflight.yml (not secrets, just env config):
+```yaml
+FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120    # Package resolution timeout
+FASTLANE_XCODEBUILD_SETTINGS_RETRIES: 3      # Retry attempts
+```
+
+These prevent timeout warnings and reduce build time by ~45 seconds.
+
 ---
 
 ## File Organization
@@ -371,6 +380,12 @@ fastlane sync_certs     # Refresh certificates
 5. Create temporary keychain (3600s, auto-cleanup)
 6. Decode Google Service Info from secrets
 7. Run `fastlane beta` (tests → cert sync → build → upload)
+
+**Test Simulator:**
+- Device: iPhone 16 Pro (verified to exist on runners)
+- Platform: iOS Simulator
+- Timeout: 120s package resolution (FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT)
+- Retries: 3 attempts (FASTLANE_XCODEBUILD_SETTINGS_RETRIES)
 
 **Keychain Setup:** Workflow creates temporary throwaway keychain (3600s timeout) before running fastlane. No password stored.
 

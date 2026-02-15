@@ -20,7 +20,7 @@ final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
     @MainActor
     override func setUp() {
         super.setUp()
-        container = makeInMemoryContainer()
+        container = TestContainerFactory.makeInMemoryContainer()
         sut = SwiftDataAvailabilityRepository(container: container)
     }
     
@@ -166,15 +166,7 @@ final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
     // MARK: - Helper Methods
     
     @MainActor
-    private func makeInMemoryContainer() -> ModelContainer {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try! ModelContainer(
-            for: PersistentDayAvailability.self,
-            configurations: config
-        )
-        return container
-    }
-    
+
     private func makeDate(daysOffset: Int) -> Date {
         Calendar.current.date(byAdding: .day, value: daysOffset, to: Date())!
     }

@@ -48,8 +48,8 @@ platform :ios do
     run_tests(
       project: "UFree.xcodeproj",
       scheme: "UFreeUnitTests",
-      device: "iPhone 16",
-      destination: "platform=iOS Simulator,name=iPhone 16",
+      device: "iPhone 16 Pro",
+      destination: "platform=iOS Simulator,name=iPhone 16 Pro",
       clean: true,
       fail_build: true,
       output_directory: "fastlane/test_results",

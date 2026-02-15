@@ -54,3 +54,7 @@ jobs:
           
           # Optional: Apple ID fallback (Only if API Key fails)
           FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+          
+          # Xcode Package Resolution Timeout
+          FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120
+          FASTLANE_XCODEBUILD_SETTINGS_RETRIES: 3
