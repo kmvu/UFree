@@ -370,33 +370,96 @@ fastlane sync_certs     # Refresh certificates
 
 ## CI/CD & Secrets
 
-**GitHub Actions Workflow:** Push to main → `testflight.yml` runs → Tests pass → Build signed → Upload to TestFlight
+### Two-Workflow Strategy (Free Plan)
 
-**Workflow Steps:**
-1. Checkout code
-2. Setup Ruby (3.3.0, bundler cache)
-3. Setup SSH agent (clone Bitbucket certs)
-4. Setup Xcode (latest)
-5. Create temporary keychain (3600s, auto-cleanup)
-6. Decode Google Service Info from secrets
-7. Run `fastlane beta` (tests → cert sync → build → upload)
+**ci.yml (Automatic Quality Gate):**
+- Trigger: Every push to main + pull requests
+- Purpose: Safety net — runs 206+ tests, reports status
+- Time: ~90 seconds
+- Failure: Blocks deployment (you see red X)
 
-**Test Simulator:**
-- Device: iPhone 16 Pro (verified to exist on runners)
-- Platform: iOS Simulator
-- Timeout: 120s package resolution (FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT)
-- Retries: 3 attempts (FASTLANE_XCODEBUILD_SETTINGS_RETRIES)
+**deploy.yml (Manual Button):**
+- Trigger: Manual only (GitHub → Actions → "🚀 Deploy to TestFlight" → Run)
+- Purpose: Controlled release — only deploy when you decide
+- Time: ~8 minutes total
+- Failure: You fix and try again
+
+**Why two workflows?** Free GitHub plan = limited concurrent runs. Split into fast auto-check + slow manual deploy saves quota.
+
+### ci.yml (Automatic Quality Check)
+
+```yaml
+on:
+  push: [ main ]
+  pull_request: [ main ]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - Checkout code
+      - Setup Ruby (3.3.0)
+      - Run `fastlane tests` → All 206+ tests pass or fail
+```
+
+**What happens:**
+- ✅ All tests pass → green checkmark → you can deploy
+- ❌ Any test fails → red X → fix code → try again
+
+### deploy.yml (Manual TestFlight Deployment)
+
+```yaml
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  deploy:
+    runs-on: macos-latest
+    steps:
+      1. Checkout code
+      2. Setup Ruby (3.3.0, bundler cache)
+      3. Setup SSH + Trust Bitbucket (prevents hangs)
+      4. Setup Xcode (latest)
+      5. Create temporary keychain (3600s, auto-cleanup)
+      6. Decode GoogleService-Info.plist from secrets
+      7. Run `fastlane beta` (tests → certs → build → upload)
+```
+
+**Deployment Flow:**
+1. Push code to main
+2. ci.yml runs automatically (tests only)
+3. If tests pass, you decide when to deploy
+4. Click "Run workflow" on deploy.yml
+5. Build signs, uploads to TestFlight (immediate return, no wait)
+6. You manually approve in TestFlight before distribution
+
+### Test Configuration
+
+**Device:** iPhone 16 Pro (verified to exist on runners)
+
+**Timeouts:**
+```yaml
+FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120    # Package resolution (seconds)
+```
 
 **Persistence:** Unit tests auto-use in-memory SwiftData (no disk I/O). Detected via `TestConfiguration.isRunningUnitTests`. See TESTING_GUIDE.md for details.
 
-**Keychain Setup:** Workflow creates temporary throwaway keychain (3600s timeout) before running fastlane. No password stored.
+### SSH & Certificate Management
 
 **SSH Access:** `webfactory/ssh-agent@v0.9.0` loads private key so `match` can clone Bitbucket certificates repo.
 
+**Bitbucket Trust:** Pre-adds to known_hosts to prevent 3+ hour SSH handshake delays:
+```bash
+ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
+```
+
+**Keychain Setup:** Temporary throwaway keychain (3600s timeout) created before fastlane. No password stored.
+
 **Firebase Configuration:** `GoogleService-Info.plist` is base64-encoded in secrets, decoded before build runs.
 
-**Secret Protection:**
-- All secrets stored in GitHub (Settings > Secrets and variables > Actions)
+### Secret Protection
+
+All secrets stored in GitHub (Settings > Secrets and variables > Actions):
 - Never commit `.env` locally
 - See "GitHub Secrets Setup" above for SSH key generation and all required secrets
 

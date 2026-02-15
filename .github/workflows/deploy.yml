@@ -1,17 +1,17 @@
-name: TestFlight Distribution
+name: 🚀 Deploy to TestFlight
 
 on:
-  # OPTION 2: Manual Trigger Only (No auto-runs on push)
+  # The "Manual Button" you wanted
   workflow_dispatch:
     inputs:
       reason:
-        description: 'Reason for build (e.g., Feature Complete)'
+        description: 'Release Note (Optional)'
         required: false
-        default: 'Manual Trigger'
+        default: 'Manual Release'
 
 jobs:
   deploy:
-    name: Build and Upload to TestFlight
+    name: Build & Ship
     runs-on: macos-latest
     
     steps:
@@ -20,19 +20,14 @@ jobs:
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3.0'
-          bundler-cache: true
+        with: { ruby-version: '3.3.0', bundler-cache: true }
 
-      # 1. Setup the SSH Key
-      - name: Setup SSH for Match
+      # --- 🛠️ FIX 1: SSH Hang Fix ---
+      - name: Setup SSH & Trust Bitbucket
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      # 2. FIX: Trust Bitbucket (Prevents the 3-hour hang)
-      - name: Add Bitbucket to Known Hosts
-        run: |
+      - run: |
           mkdir -p ~/.ssh
           ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
 
@@ -41,6 +36,7 @@ jobs:
         with:
           xcode-version: 'latest'
 
+      # --- 🛠️ FIX 2: Keychain Fix ---
       - name: Setup Temporary Keychain
         run: |
           security create-keychain -p "" build.keychain
@@ -49,17 +45,16 @@ jobs:
           security unlock-keychain -p "" build.keychain
           security set-keychain-settings -t 3600 -l ~/Library/Keychains/build.keychain
 
-      # 3. FIX: Create the GoogleService-Info.plist from Secret
-      - name: Create Google Service Info Plist
-        run: |
-          echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 --decode > ./GoogleService-Info.plist
-          # If your project is inside a subfolder, uncomment the next line:
-          # mv ./GoogleService-Info.plist ./UFree/GoogleService-Info.plist
+      # --- 🛠️ FIX 3: Google Plist Fix ---
+      - name: Restore GoogleService-Info.plist
+        run: echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 --decode > ./GoogleService-Info.plist
+        # mv ./GoogleService-Info.plist ./UFree/GoogleService-Info.plist  <-- Uncomment if needed
 
-      - name: Build and Deploy to TestFlight
+      # --- 🚀 THE UPLOAD ---
+      - name: Build and Upload
         run: bundle exec fastlane beta
         env:
-          # API Key
+          # API Keys
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
@@ -67,5 +62,5 @@ jobs:
           # Certificates
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           
-          # Optimization
+          # Configs
           FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120

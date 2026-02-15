@@ -1,0 +1,21 @@
+name: 🛡️ Quality Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: '3.3.0', bundler-cache: true }
+      
+      - name: Run Tests
+        run: bundle exec fastlane tests
+        env:
+           FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120
