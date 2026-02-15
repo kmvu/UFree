@@ -253,6 +253,20 @@ rm github_actions_deploy github_actions_deploy.pub
 | `ASC_KEY_ID` | Your `.env` file | Identify API key |
 | `ASC_ISSUER_ID` | Your `.env` file | Identify team |
 | `FASTLANE_USER` | Your `.env` file | Apple ID (fallback) |
+| `GOOGLE_SERVICE_INFO_PLIST` | `base64 GoogleService-Info.plist` | Firebase configuration (decoded in CI) |
+
+**Generate `GOOGLE_SERVICE_INFO_PLIST`:**
+```bash
+# Locally, encode the Firebase config file to base64
+base64 GoogleService-Info.plist | pbcopy
+
+# Then paste into GitHub Secrets as GOOGLE_SERVICE_INFO_PLIST
+```
+
+In the workflow, it's decoded before the build runs with:
+```bash
+echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 --decode > ./GoogleService-Info.plist
+```
 
 ---
 
@@ -349,14 +363,25 @@ fastlane sync_certs     # Refresh certificates
 
 **GitHub Actions Workflow:** Push to main → `testflight.yml` runs → Tests pass → Build signed → Upload to TestFlight
 
+**Workflow Steps:**
+1. Checkout code
+2. Setup Ruby (3.3.0, bundler cache)
+3. Setup SSH agent (clone Bitbucket certs)
+4. Setup Xcode (latest)
+5. Create temporary keychain (3600s, auto-cleanup)
+6. Decode Google Service Info from secrets
+7. Run `fastlane beta` (tests → cert sync → build → upload)
+
 **Keychain Setup:** Workflow creates temporary throwaway keychain (3600s timeout) before running fastlane. No password stored.
 
 **SSH Access:** `webfactory/ssh-agent@v0.9.0` loads private key so `match` can clone Bitbucket certificates repo.
 
+**Firebase Configuration:** `GoogleService-Info.plist` is base64-encoded in secrets, decoded before build runs.
+
 **Secret Protection:**
 - All secrets stored in GitHub (Settings > Secrets and variables > Actions)
 - Never commit `.env` locally
-- See "GitHub Secrets Setup" above for SSH key generation
+- See "GitHub Secrets Setup" above for SSH key generation and all required secrets
 
 ---
 

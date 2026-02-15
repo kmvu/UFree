@@ -37,6 +37,10 @@ jobs:
           security unlock-keychain -p "" build.keychain
           security set-keychain-settings -t 3600 -l ~/Library/Keychains/build.keychain
 
+      - name: Create Google Service Info Plist
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 --decode > ./GoogleService-Info.plist
+
       - name: Build and Deploy to TestFlight
         run: bundle exec fastlane beta
         env:
