@@ -10,6 +10,7 @@ import FirebaseFirestore
 import FirebaseAuth
 
 // MARK: - Protocol
+@MainActor
 public protocol FriendRepositoryProtocol {
     /// Syncs local contacts, hashes them, and finds matching users in Firestore.
     func findFriendsFromContacts() async throws -> [UserProfile]
@@ -40,6 +41,7 @@ public protocol FriendRepositoryProtocol {
 }
 
 // MARK: - Implementation
+@MainActor
 final class FirebaseFriendRepository: FriendRepositoryProtocol {
      
     private let db = Firestore.firestore()
@@ -187,7 +189,7 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         try db.collection("friendRequests").addDocument(from: request)
     }
     
-    nonisolated func observeIncomingRequests() -> AsyncStream<[FriendRequest]> {
+    func observeIncomingRequests() -> AsyncStream<[FriendRequest]> {
         AsyncStream { continuation in
             guard let uid = Auth.auth().currentUser?.uid else {
                 continuation.finish()
