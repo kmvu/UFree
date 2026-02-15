@@ -1,8 +1,13 @@
 name: TestFlight Distribution
 
 on:
-  push:
-    branches: [ main ]
+  # OPTION 2: Manual Trigger Only (No auto-runs on push)
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for build (e.g., Feature Complete)'
+        required: false
+        default: 'Manual Trigger'
 
 jobs:
   deploy:
@@ -19,10 +24,17 @@ jobs:
           ruby-version: '3.3.0'
           bundler-cache: true
 
+      # 1. Setup the SSH Key
       - name: Setup SSH for Match
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      # 2. FIX: Trust Bitbucket (Prevents the 3-hour hang)
+      - name: Add Bitbucket to Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
 
       - name: Set up Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -37,24 +49,23 @@ jobs:
           security unlock-keychain -p "" build.keychain
           security set-keychain-settings -t 3600 -l ~/Library/Keychains/build.keychain
 
+      # 3. FIX: Create the GoogleService-Info.plist from Secret
       - name: Create Google Service Info Plist
         run: |
           echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 --decode > ./GoogleService-Info.plist
+          # If your project is inside a subfolder, uncomment the next line:
+          # mv ./GoogleService-Info.plist ./UFree/GoogleService-Info.plist
 
       - name: Build and Deploy to TestFlight
         run: bundle exec fastlane beta
         env:
-          # API Key (Modern Auth)
+          # API Key
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
           
-          # Match (Cert Decryption)
+          # Certificates
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           
-          # Optional: Apple ID fallback (Only if API Key fails)
-          FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
-          
-          # Xcode Package Resolution Timeout
+          # Optimization
           FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120
-          FASTLANE_XCODEBUILD_SETTINGS_RETRIES: 3

@@ -43,8 +43,10 @@ fastlane beta
 3. Auto-increment build number
 4. Build IPA for App Store
 5. Upload dSYMs to Firebase Crashlytics
-6. Upload to TestFlight
+6. Upload to TestFlight (immediate return, no wait)
 7. ~8 minutes total
+
+**Distribution:** Build uploads but requires manual approval in TestFlight before external testers are notified.
 
 **Who uses it:** Product, external testers, App Store review
 
@@ -178,17 +180,15 @@ fastlane beta
 
 **Time:** ~8 minutes (vs 30+ minutes manually)
 
-### TestFlight Distribution Code
+### TestFlight Configuration
 
 In `fastlane/Fastfile`:
 ```ruby
 upload_to_testflight(
   ipa: "./fastlane/builds/UFree.ipa",
-  skip_waiting_for_build_processing: true,
-  skip_submission: false,
-  distribute_external: false,
-  notify_external_testers: true,
   api_key: api_key,
+  skip_submission: true,              # Requires manual approval in TestFlight
+  skip_waiting_for_build_processing: true,  # Returns immediately
   beta_app_review_info: {
     contact_email: ENV["APPLE_ID"] || "kmvu91@gmail.com",
     contact_first_name: "Test_account",
@@ -389,10 +389,10 @@ fastlane tests
 # Build & submit to TestFlight
 fastlane beta
 
-# Wait for Apple review (1-2 days)
-# Approve in TestFlight
-# Send to external testers
+# Approve in TestFlight (App Store Connect → TestFlight → "Approve for Testing" → "Send to Testers")
 ```
+
+**Manual approval required:** After `fastlane beta` completes, you must manually approve the build in TestFlight before external testers are notified. This prevents accidental releases.
 
 ### Emergency: Force Refresh Certificates
 ```bash

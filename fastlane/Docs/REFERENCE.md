@@ -366,16 +366,15 @@ end
 lane :beta do
   tests
   api_key = setup_api_key
-  produce(...)          # Ensure App ID exists
   match(...)            # Get certificates
   increment_build_number(...)
   build_app(...)        # Build for App Store
   upload_symbols_to_crashlytics(...)
-  upload_to_testflight(...)
+  upload_to_testflight(skip_submission: true, skip_waiting_for_build_processing: true)
 end
 ```
 
-**Use when:** Submitting to TestFlight for external testers.
+**Use when:** Submitting to TestFlight for external testers (requires manual approval before distribution).
 
 ### sync_certs Lane (~30 seconds)
 ```ruby
@@ -444,6 +443,28 @@ Required secrets:
 - `FASTLANE_USER` (fallback)
 
 **Note:** `ASC_KEY_CONTENT` should contain the Base64-encoded P8 file contents. The `setup_api_key` method automatically detects the encoding and decodes it before passing to Fastlane.
+
+---
+
+## CI/CD Workflow Trigger
+
+### GitHub Actions: Manual Dispatch Only
+
+The TestFlight workflow requires manual trigger (no auto-run on push):
+
+**How to trigger:**
+1. GitHub → Actions → "TestFlight Distribution" → "Run workflow"
+2. Enter reason (optional)
+3. Workflow executes: tests → build → upload to TestFlight
+
+**SSH Optimization:**
+The workflow pre-adds Bitbucket to known_hosts to prevent SSH handshake delays:
+```yaml
+- name: Add Bitbucket to Known Hosts
+  run: |
+    mkdir -p ~/.ssh
+    ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
+```
 
 ---
 

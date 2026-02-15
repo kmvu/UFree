@@ -188,11 +188,9 @@ platform :ios do
     puts "📤 Uploading to TestFlight..."
     upload_to_testflight(
       ipa: "./fastlane/builds/UFree.ipa",
-      skip_waiting_for_build_processing: true,
-      skip_submission: false,
-      distribute_external: false,
-      notify_external_testers: true,
       api_key: api_key,
+      skip_submission: true,
+      skip_waiting_for_build_processing: true,
       beta_app_review_info: {
         contact_email: ENV["APPLE_ID"] || "kmvu91@gmail.com",
         contact_first_name: "Test_account",
