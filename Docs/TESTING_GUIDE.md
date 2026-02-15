@@ -196,6 +196,32 @@ Notifications/
 
 ---
 
+## In-Memory Persistence for Tests
+
+Unit tests automatically use in-memory SwiftData containers (no disk I/O). Auto-detection via `TestConfiguration.isRunningUnitTests` flag in UFreeApp.
+
+**How it works:**
+- `TestConfiguration.swift` detects XCTest environment
+- UFreeApp.init() checks flag → creates in-memory container if testing
+- `TestContainerFactory.makeInMemoryContainer()` available for explicit control
+
+**Benefits:** 100x faster (RAM vs disk), no CI permission/space errors, complete isolation.
+
+**Example:**
+```swift
+@MainActor
+final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
+    private var container: ModelContainer!
+    
+    override func setUp() {
+        super.setUp()
+        container = TestContainerFactory.makeInMemoryContainer()
+    }
+}
+```
+
+---
+
 ### Rapid-Tap Protection (ViewModel)
 
 ViewModels prevent concurrent operations using guard clause:

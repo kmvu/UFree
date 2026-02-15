@@ -37,11 +37,20 @@ end
 
 def setup_api_key                                   # API key loader
   # Handles both local (file path) and CI (base64 content)
-  if ENV["ASC_KEY_CONTENT"]
+  # Automatically detects and decodes Base64-encoded keys
+  key_content = ENV["ASC_KEY_CONTENT"]
+  
+  # If Base64 (no PEM header), decode it
+  if key_content && !key_content.include?("-----BEGIN PRIVATE KEY-----")
+    require 'base64'
+    key_content = Base64.decode64(key_content)
+  end
+  
+  if key_content
     app_store_connect_api_key(
       key_id: ENV["ASC_KEY_ID"],
       issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_KEY_CONTENT"],        # CI/CD with base64
+      key_content: key_content,                  # CI/CD with decoded content
       duration: 1200,
       in_house: false
     )
@@ -49,7 +58,7 @@ def setup_api_key                                   # API key loader
     app_store_connect_api_key(
       key_id: ENV["ASC_KEY_ID"],
       issuer_id: ENV["ASC_ISSUER_ID"],
-      key_filepath: ENV["ASC_KEY_PATH"],         # Local with file path
+      key_filepath: ENV["ASC_KEY_PATH"],        # Local with file path
       duration: 1200,
       in_house: false
     )
@@ -428,10 +437,13 @@ For complete GitHub Secrets setup, SSH key generation, and keychain configuratio
 **Docs/AGENTS.md → Security & Secrets → GitHub Secrets Setup**
 
 Required secrets:
-- `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT` (base64)
+- `ASC_KEY_ID`, `ASC_ISSUER_ID` 
+- `ASC_KEY_CONTENT` — **Must be Base64-encoded** (see setup_api_key for auto-decoding)
 - `MATCH_PASSWORD`
 - `SSH_PRIVATE_KEY` (for Bitbucket access)
 - `FASTLANE_USER` (fallback)
+
+**Note:** `ASC_KEY_CONTENT` should contain the Base64-encoded P8 file contents. The `setup_api_key` method automatically detects the encoding and decodes it before passing to Fastlane.
 
 ---
 

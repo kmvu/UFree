@@ -197,6 +197,24 @@ cp fastlane/.env.default fastlane/.env
 
 ---
 
+## For CI/CD (GitHub Actions)
+
+The `setup_api_key` method automatically handles Base64-encoded P8 keys:
+
+1. **Encode your P8 file:**
+   ```bash
+   base64 -i fastlane/Keys/AuthKey_XXXXXXXXXX.p8 | pbcopy
+   ```
+
+2. **Add to GitHub Secrets:**
+   - Secret name: `ASC_KEY_CONTENT`
+   - Value: Paste the Base64 string
+   - Fastlane will auto-detect and decode it
+
+See **Docs/AGENTS.md → GitHub Secrets Setup** for full CI/CD configuration.
+
+---
+
 ## Next Steps
 
 1. ✅ Follow steps 1-3 above (20 minutes)

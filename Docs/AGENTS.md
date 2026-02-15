@@ -387,6 +387,8 @@ fastlane sync_certs     # Refresh certificates
 - Timeout: 120s package resolution (FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT)
 - Retries: 3 attempts (FASTLANE_XCODEBUILD_SETTINGS_RETRIES)
 
+**Persistence:** Unit tests auto-use in-memory SwiftData (no disk I/O). Detected via `TestConfiguration.isRunningUnitTests`. See TESTING_GUIDE.md for details.
+
 **Keychain Setup:** Workflow creates temporary throwaway keychain (3600s timeout) before running fastlane. No password stored.
 
 **SSH Access:** `webfactory/ssh-agent@v0.9.0` loads private key so `match` can clone Bitbucket certificates repo.
