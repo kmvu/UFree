@@ -7,7 +7,7 @@
 
 import Foundation
 
-public actor MockAuthRepository: AuthRepository {
+public class MockAuthRepository: AuthRepository {
     private var user: User?
     private let authStateStream: AsyncStream<User?>
     private let authStateContinuation: AsyncStream<User?>.Continuation

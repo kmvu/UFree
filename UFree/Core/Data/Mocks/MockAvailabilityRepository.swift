@@ -7,7 +7,7 @@
 
 import Foundation
 
-public actor MockAvailabilityRepository: AvailabilityRepository {
+public class MockAvailabilityRepository: AvailabilityRepository {
     private var mySchedule: [DayAvailability]
     private var friendsSchedules: [String: [DayAvailability]]
 

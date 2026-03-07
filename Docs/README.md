@@ -1,6 +1,6 @@
 # UFree - Weekly Availability Scheduler
 
-**Status:** ✅ Production Ready | **Version:** 6.1.0+ | **Tests:** 206+ | **Coverage:** 85%+ | **Warnings:** 0
+**Status:** ✅ Production Ready | **Version:** 6.1.0+ | **Tests:** 195+ | **Coverage:** 85%+ | **Warnings:** 0
 
 ---
 
@@ -77,7 +77,7 @@ UI → ViewModel → CompositeRepository → SwiftData [instant]
 
 **Projects:**
 - **UFree** - Main app (SwiftUI)
-- **UFreeTests** - 206+ unit tests
+- **UFreeTests** - 195+ unit tests
 - **UFreeUITests** - Integration tests
 
 ---
@@ -317,7 +317,7 @@ Task {
 - **Certificates:** match (encrypted, auto-synced)
 - **Crash Reporting:** Firebase Crashlytics (readable stack traces)
 - **Analytics:** Firebase Analytics (real-time metrics + event tracking)
-- **Testing:** 206+ unit tests, Debug Auth Strategy for multi-user dev testing
+- **Testing:** 195+ unit tests, Debug Auth Strategy for multi-user dev testing
 - **CI/CD:** GitHub Actions (push to main → TestFlight)
 
 ---

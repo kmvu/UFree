@@ -345,7 +345,7 @@ final class MyViewModelTests: XCTestCase {
 
 **Commands:**
 ```bash
-fastlane tests          # Run 206+ tests
+fastlane tests          # Run 195+ tests
 fastlane alpha          # Build for Firebase
 fastlane beta           # Build for TestFlight
 fastlane sync_certs     # Refresh certificates
@@ -374,7 +374,7 @@ fastlane sync_certs     # Refresh certificates
 
 **ci.yml (Automatic Quality Gate):**
 - Trigger: Every push to main + pull requests
-- Purpose: Safety net — runs 206+ tests, reports status
+- Purpose: Safety net — runs 195+ tests, reports status
 - Time: ~90 seconds
 - Failure: Blocks deployment (you see red X)
 
@@ -399,7 +399,7 @@ jobs:
     steps:
       - Checkout code
       - Setup Ruby (3.3.0)
-      - Run `fastlane tests` → All 206+ tests pass or fail
+      - Run `fastlane tests` → All 195+ tests pass or fail
 ```
 
 **What happens:**

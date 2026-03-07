@@ -1,6 +1,6 @@
 # UFree Testing Guide
 
-**Status:** ✅ Production Ready | **Tests:** 206+ | **Coverage:** 85%+ | **Quality:** Zero flaky, zero memory leaks
+**Status:** ✅ Production Ready | **Tests:** 195+ | **Coverage:** 85%+ | **Quality:** Zero flaky, zero memory leaks
 
 ---
 
@@ -74,7 +74,6 @@ UFreeTests/
 │   │   ├── PersistentDayAvailabilityTests.swift (9)
 │   │   └── SwiftDataAvailabilityRepositoryTests.swift (11)
 │   ├── Repositories/
-│   │   ├── CompositeAvailabilityRepositoryTests.swift (11)
 │   │   └── FriendRepositoryTests.swift (3)
 │   └── Utilities/
 │       └── CryptoUtilsTests.swift (placeholder)
@@ -112,12 +111,12 @@ UFreeTests/
 | Use Cases | 4 | 100% |
 | Data Layer (Mock) | 9 | 100% |
 | Data Layer (Persistence) | 20 | 100% |
-| Data Layer (Firestore & Composite) | 24 | 100% |
+| Data Layer (Firestore) | 13 | 100% |
 | ViewModels | 90+ | 85%+ |
 | Notifications | 25 | 85%+ |
 | Extensions | 7 | 100% |
 | UI Views | — | SwiftUI previews |
-| **Total** | **206+** | **85%+** |
+| **Total** | **195+** | **85%+** |
 
 ---
 
@@ -219,6 +218,13 @@ final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
     }
 }
 ```
+
+### Simulator log noise (harmless)
+
+When running unit tests in the iOS Simulator you may see:
+
+- **Firebase:** `[FirebaseAnalytics][I-ACS023013] Analytics collection disabled` — Avoided by not configuring Firebase when `TestConfiguration.isRunningUnitTests` is true (see UFreeApp / AppDelegate).
+- **Haptics:** `CHHapticPattern... hapticpatternlibrary.plist couldn't be opened` — From the system keyboard/haptic stack. The Simulator does not ship that file; the message is harmless and cannot be fixed in app code. Ignore it.
 
 ---
 
@@ -604,7 +610,7 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 
 | Metric | Value |
 |--------|-------|
-| Total Tests | 206+ |
+| Total Tests | 195+ |
 | Code Coverage | 85%+ |
 | Warnings | 0 |
 | Flaky Tests | 0 |
@@ -678,7 +684,7 @@ LoginView shows "DEVELOPER TOOLS" overlay with User 1/2/3 buttons (DEBUG only)
 
 ### After Smoke Test Passes
 ```bash
-fastlane tests        # Verify 206+ tests pass
+fastlane tests        # Verify 195+ tests pass
 fastlane beta         # Submit to TestFlight
 ```
 

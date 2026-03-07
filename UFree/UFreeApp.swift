@@ -17,23 +17,26 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        // Configure Firebase only if GoogleService-Info.plist exists (not in unit tests)
+        // Configure Firebase when needed (including unit test host so Firestore doesn't throw)
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
-        
-        // Enable Crashlytics crash reporting for distribution builds
-        #if !DEBUG
-        Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
-        Analytics.setAnalyticsCollectionEnabled(true)
-        #else
-        // Debug builds: disable analytics to avoid noise during development
-        Analytics.setAnalyticsCollectionEnabled(false)
-        #endif
-        
-        // Log app launch
-        AnalyticsManager.log(.appLaunched)
-        
+
+        // Skip analytics/crashlytics and app launch log in unit test runs to avoid SDK noise
+        if !TestConfiguration.isRunningUnitTests {
+            // Enable Crashlytics crash reporting for distribution builds
+            #if !DEBUG
+            Crashlytics.crashlytics().setCrashlyticsCollectionEnabled(true)
+            Analytics.setAnalyticsCollectionEnabled(true)
+            #else
+            // Debug builds: disable analytics to avoid noise during development
+            Analytics.setAnalyticsCollectionEnabled(false)
+            #endif
+
+            // Log app launch
+            AnalyticsManager.log(.appLaunched)
+        }
+
         return true
     }
 }
@@ -76,13 +79,15 @@ struct UFreeApp: App {
         }
         
         // Initialize auth repository
-        // Configure Firebase if not already done
+        // Configure Firebase if not already done (AppDelegate usually does this; needed for Firestore in test host)
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
-        
-        // Use Firebase if successfully configured
-        if FirebaseApp.app() != nil {
+
+        // In unit tests use mock auth so tests don't depend on network/Firebase Auth
+        if TestConfiguration.isRunningUnitTests {
+            authRepository = MockAuthRepository()
+        } else if FirebaseApp.app() != nil {
             authRepository = FirebaseAuthRepository()
         } else {
             authRepository = MockAuthRepository()

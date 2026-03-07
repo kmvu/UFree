@@ -7,16 +7,15 @@
 
 import Foundation
 
-@MainActor
 public final class MockFriendRepository: FriendRepositoryProtocol {
-    
+     
     private var discoveredUsers: [UserProfile]
     private var myFriends: [UserProfile]
     private var incomingRequests: [FriendRequest]
     private var sentRequests: [FriendRequest]
     private var allUsers: [UserProfile]
     
-    nonisolated public init(discoveredUsers: [UserProfile] = [], myFriends: [UserProfile] = [], incomingRequests: [FriendRequest] = [], allUsers: [UserProfile] = []) {
+    public init(discoveredUsers: [UserProfile] = [], myFriends: [UserProfile] = [], incomingRequests: [FriendRequest] = [], allUsers: [UserProfile] = []) {
         self.discoveredUsers = discoveredUsers
         self.myFriends = myFriends
         self.incomingRequests = incomingRequests
