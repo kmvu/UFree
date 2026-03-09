@@ -15,6 +15,11 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: '3.3.0', bundler-cache: true }
       
+      # 🛠️ THE FIX: Restore the Plist for the Test environment too
+      - name: Restore GoogleService-Info.plist
+        run: echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 --decode > ./GoogleService-Info.plist
+        # mv ./GoogleService-Info.plist ./UFree/GoogleService-Info.plist  <-- Uncomment if your file lives inside a subfolder
+      
       - name: Run Tests
         run: bundle exec fastlane tests
         env:
