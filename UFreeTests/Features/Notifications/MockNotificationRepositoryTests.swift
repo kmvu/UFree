@@ -8,6 +8,7 @@
 import XCTest
 @testable import UFree
 
+@MainActor
 final class MockNotificationRepositoryTests: XCTestCase {
     var sut: MockNotificationRepository!
     

@@ -9,6 +9,7 @@ import XCTest
 import SwiftUI
 @testable import UFree
 
+@MainActor
 final class NotificationCenterViewTests: XCTestCase {
     
     // MARK: - Message Generation (View Logic)
