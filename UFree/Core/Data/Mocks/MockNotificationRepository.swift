@@ -7,6 +7,7 @@
 
 import Foundation
 
+@MainActor
 public class MockNotificationRepository: NotificationRepository {
     public var mockNotifications: [AppNotification]
     public var userIdsToFailFor: Set<String> = []  // Test hook: cause sendNudge to fail for these user IDs
