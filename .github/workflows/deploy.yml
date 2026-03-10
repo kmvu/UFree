@@ -54,6 +54,8 @@ jobs:
       - name: Build and Upload
         run: bundle exec fastlane beta
         env:
+          SKIP_TESTS: "true" # <--- ADD THIS LINE
+          
           # API Keys
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}

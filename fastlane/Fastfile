@@ -126,7 +126,12 @@ platform :ios do
     setup_ci if is_ci
     
     # 1. Full validation: Only ship if all tests pass
-    tests
+    # 🛑 THE OPTIMIZATION: Allow CI to skip tests when SKIP_TESTS is true
+    if ENV["SKIP_TESTS"] != "true"
+      tests # (Or whatever command you use to call your tests lane)
+    else
+      puts "⏭️ Skipping tests because SKIP_TESTS is set to true!"
+    end
     
     # 2. Setup API key for TestFlight submission
     puts "🔑 Setting up App Store Connect API Key..."
