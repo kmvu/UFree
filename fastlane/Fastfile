@@ -190,7 +190,9 @@ platform :ios do
     )
 
     # 6. Upload to TestFlight
-    puts "📤 Uploading to TestFlight..."
+    # 6.1 Grab the current build number from Fastlane's shared lane_context
+    current_build = lane_context[SharedValues::BUILD_NUMBER]
+    puts "📤 Uploading to TestFlight (Build: #{current_build})..."
     upload_to_testflight(
       ipa: "./fastlane/builds/UFree.ipa",
       api_key: api_key,
@@ -199,9 +201,9 @@ platform :ios do
       beta_app_review_info: {
         contact_email: ENV["APPLE_ID"] || "kmvu91@gmail.com",
         contact_first_name: "Test_account",
-        contact_last_name: "#{latest_build}",
+        contact_last_name: "#{current_build}",
         contact_phone: "+84932440258",
-        demo_account_name: "test+ufree_#{latest_build}@example.com",
+        demo_account_name: "test+ufree_#{current_build}@example.com",
         demo_account_password: "password123",
         notes: "Real-world testing for availability discovery feature"
       }
