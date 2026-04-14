@@ -450,6 +450,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSContactsUsageDescription = "UFree uses your contacts to find friends who are already on the app. We strictly use hashed data for matching and do not store your contacts.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -490,6 +491,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSContactsUsageDescription = "UFree uses your contacts to find friends who are already on the app. We strictly use hashed data for matching and do not store your contacts.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
