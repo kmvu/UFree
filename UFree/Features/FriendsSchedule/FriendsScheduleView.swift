@@ -9,7 +9,6 @@ import SwiftUI
 
 public struct FriendsScheduleView: View {
     @ObservedObject var viewModel: FriendsScheduleViewModel
-    @State private var selectedDate: Date?
 
     // Display next 5 days
     private var daysToShow: [Date] {
@@ -38,10 +37,10 @@ public struct FriendsScheduleView: View {
                                     
                                     DayFilterButtonView(
                                         date: date,
-                                        isSelected: selectedDate.map { Calendar.current.isDate($0, inSameDayAs: date) } ?? false,
+                                        isSelected: viewModel.selectedDate.map { Calendar.current.isDate($0, inSameDayAs: date) } ?? false,
                                         freeCount: freeCount,
                                         action: {
-                                            selectedDate = date
+                                            viewModel.toggleDate(date)
                                         }
                                     )
                                 }
@@ -52,7 +51,7 @@ public struct FriendsScheduleView: View {
                 }
 
                 // Nudge All Button (Phase 3 - Sprint 6)
-                if let selectedDate = selectedDate {
+                if let selectedDate = viewModel.selectedDate {
                     let freeCount = viewModel.freeFriendCount(for: selectedDate, friendsSchedules: viewModel.friendSchedules)
                     
                     if freeCount > 0 {

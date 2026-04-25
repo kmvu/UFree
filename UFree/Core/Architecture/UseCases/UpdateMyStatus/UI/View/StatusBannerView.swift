@@ -9,6 +9,7 @@ import SwiftUI
 
 struct StatusBannerView: View {
     @StateObject private var viewModel = StatusBannerViewModel()
+    let scheduleViewModel: MyScheduleViewModel
 
     var body: some View {
         Button(action: {
@@ -64,9 +65,17 @@ struct StatusBannerView: View {
         .buttonStyle(NoInteractionButtonStyle())
         .contentShape(RoundedRectangle(cornerRadius: 24))
         .disabled(viewModel.isProcessing)
+        .onAppear {
+            viewModel.configure(with: scheduleViewModel)
+        }
     }
 }
 
 #Preview {
-    StatusBannerView()
+    StatusBannerView(
+        scheduleViewModel: MyScheduleViewModel(
+            updateUseCase: UpdateMyStatusUseCase(repository: MockAvailabilityRepository()),
+            repository: MockAvailabilityRepository()
+        )
+    )
 }

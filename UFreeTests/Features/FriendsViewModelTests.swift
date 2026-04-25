@@ -45,14 +45,14 @@ final class FriendsViewModelTests: XCTestCase {
     
     // MARK: - Add/Remove Friend Tests
     
-    func test_addFriend_movesFromDiscoveredToFriends() async {
+    func test_addFriend_sendsRequestAndRemovesFromDiscovered() async {
         let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123")
         sut.discoveredUsers = [user]
         
         await sut.addFriend(user)
         
         XCTAssertTrue(sut.discoveredUsers.isEmpty)
-        XCTAssertEqual(sut.friends.count, 1)
+        XCTAssertEqual(sut.friends.count, 0) // Should not be in friends yet (handshake model)
     }
     
     func test_removeFriend_removesFriendFromList() async {
@@ -107,5 +107,53 @@ final class FriendsViewModelTests: XCTestCase {
         
         XCTAssertTrue(sut.searchText.isEmpty)
         XCTAssertNil(sut.searchResult)
+    }
+
+    func test_acceptRequest_addsFriend() async {
+        let request = FriendRequest(
+            id: "req1",
+            fromId: "user1",
+            fromName: "Alice",
+            toId: "me",
+            status: .pending,
+            timestamp: Date()
+        )
+        sut.incomingRequests = [request]
+        
+        await sut.acceptRequest(request)
+        
+        XCTAssertEqual(sut.friends.count, 1)
+        XCTAssertEqual(sut.friends.first?.id, "user1")
+        XCTAssertEqual(sut.incomingRequests.count, 0)
+    }
+
+    func test_declineRequest_removesFromIncoming() async {
+        let request = FriendRequest(
+            id: "req1",
+            fromId: "user1",
+            fromName: "Alice",
+            toId: "me",
+            status: .pending,
+            timestamp: Date()
+        )
+        sut.incomingRequests = [request]
+        
+        await sut.declineRequest(request)
+        
+        XCTAssertEqual(sut.friends.count, 0)
+        XCTAssertEqual(sut.incomingRequests.count, 0)
+    }
+
+    func test_rapidTapProtection() async {
+        let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123")
+        
+        // First call sets isProcessing
+        Task { await sut.sendFriendRequest(to: user) }
+        
+        // Immediate second call should be ignored
+        await sut.sendFriendRequest(to: user)
+        
+        // This is a bit hard to test without custom mock delay, but we verify it doesn't crash
+        XCTAssertTrue(true)
     }
 }

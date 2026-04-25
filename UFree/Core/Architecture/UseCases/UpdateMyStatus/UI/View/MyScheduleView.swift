@@ -10,7 +10,6 @@ import SwiftUI
 public struct MyScheduleView: View {
     @StateObject private var viewModel: MyScheduleViewModel
     @ObservedObject var rootViewModel: RootViewModel
-    @StateObject private var dayFilterViewModel = DayFilterViewModel()
     @State private var isLoaded = false
 
     public init(viewModel: MyScheduleViewModel, rootViewModel: RootViewModel) {
@@ -27,7 +26,7 @@ public struct MyScheduleView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         // Status Banner (padded) - fades in first (delay 0.1s)
-                        StatusBannerView()
+                        StatusBannerView(scheduleViewModel: viewModel)
                             .padding()
 
                         // My Week Carousel - fades in second (delay 0.2s)
@@ -128,10 +127,10 @@ public struct MyScheduleView: View {
                     ForEach(viewModel.weeklySchedule) { day in
                         DayFilterButtonView(
                             date: day.date,
-                            isSelected: dayFilterViewModel.selectedDay == day.date,
-                            freeCount: 0,  // MySchedule doesn't show friend counts
+                            isSelected: rootViewModel.friendsScheduleViewModel?.selectedDate.map { Calendar.current.isDate($0, inSameDayAs: day.date) } ?? false,
+                            freeCount: rootViewModel.friendsScheduleViewModel?.freeFriendCount(for: day.date, friendsSchedules: rootViewModel.friendsScheduleViewModel?.friendSchedules ?? []) ?? 0,
                             action: {
-                                dayFilterViewModel.toggleDay(day.date)
+                                rootViewModel.friendsScheduleViewModel?.toggleDate(day.date)
                             }
                         )
                     }

@@ -21,9 +21,8 @@ struct RootView: View {
     init(container: ModelContainer, authRepository: AuthRepository) {
         self.container = container
         self.authRepository = authRepository
-        _rootViewModel = StateObject(wrappedValue: RootViewModel(authRepository: authRepository))
 
-        // Create ViewModels early
+        // 1. Setup Repositories
         let availabilityRepo = CompositeAvailabilityRepository(
             local: SwiftDataAvailabilityRepository(container: container),
             remote: FirebaseAvailabilityRepository()
@@ -31,16 +30,27 @@ struct RootView: View {
         let contactsRepo = AppleContactsRepository()
         let friendRepo = FirebaseFriendRepository(contactsRepo: contactsRepo)
         self.friendRepository = friendRepo
+        let notificationRepo = FirebaseNotificationRepository()
 
-        _friendsScheduleViewModel = StateObject(wrappedValue: FriendsScheduleViewModel(
+        // 2. Instantiate ViewModels (Non-StateObject versions for injection)
+        let friendsScheduleVM = FriendsScheduleViewModel(
             friendRepository: friendRepo,
             availabilityRepository: availabilityRepo,
-            notificationRepository: FirebaseNotificationRepository()
-        ))
-        _friendsViewModel = StateObject(wrappedValue: FriendsViewModel(friendRepository: friendRepo))
-        _notificationViewModel = StateObject(wrappedValue: NotificationViewModel(
-            repository: FirebaseNotificationRepository()
-        ))
+            notificationRepository: notificationRepo
+        )
+        let friendsVM = FriendsViewModel(friendRepository: friendRepo)
+        let notificationVM = NotificationViewModel(repository: notificationRepo)
+        let rootVM = RootViewModel(authRepository: authRepository)
+
+        // 3. Inject dependencies into Root
+        rootVM.friendsScheduleViewModel = friendsScheduleVM
+        rootVM.friendsViewModel = friendsVM
+
+        // 4. Wrap in StateObjects for SwiftUI lifecycle
+        _rootViewModel = StateObject(wrappedValue: rootVM)
+        _friendsScheduleViewModel = StateObject(wrappedValue: friendsScheduleVM)
+        _friendsViewModel = StateObject(wrappedValue: friendsVM)
+        _notificationViewModel = StateObject(wrappedValue: notificationVM)
     }
 
     var body: some View {

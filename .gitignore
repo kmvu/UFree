@@ -47,3 +47,4 @@ fastlane/Keys/*.p8
 .ruby-gemset
 .ruby-version
 report.xml
+build.log

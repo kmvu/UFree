@@ -22,6 +22,10 @@ public final class RootViewModel: ObservableObject {
     @Published var isSigningIn = false
     @Published var errorMessage: String? = nil
     
+    // Feature ViewModels for navigation and cross-feature state
+    @Published public var friendsScheduleViewModel: FriendsScheduleViewModel?
+    @Published public var friendsViewModel: FriendsViewModel?
+    
     private let authRepository: AuthRepository
     private var authStateTask: Task<Void, Never>?
     

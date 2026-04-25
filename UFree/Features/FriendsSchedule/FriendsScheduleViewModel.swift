@@ -11,10 +11,11 @@ import Combine
 @MainActor
 public final class FriendsScheduleViewModel: ObservableObject {
     @Published public var friendSchedules: [FriendScheduleDisplay] = []
-    @Published public var isLoading = false
-    @Published public var isNudging = false
+    @Published public var isLoading: Bool = false
     @Published public var errorMessage: String?
     @Published public var successMessage: String?
+    @Published public var isNudging: Bool = false
+    @Published public var selectedDate: Date?
 
     private let friendRepository: FriendRepositoryProtocol
     private let availabilityRepository: AvailabilityRepository
@@ -46,7 +47,23 @@ public final class FriendsScheduleViewModel: ObservableObject {
         self.friendRepository = friendRepository
         self.availabilityRepository = availabilityRepository
         self.notificationRepository = notificationRepository
+        
+        // Default selectedDate to today
+        self.selectedDate = Calendar.current.startOfDay(for: Date())
     }
+
+    // MARK: - Date Selection
+    
+    public func toggleDate(_ date: Date) {
+        let normalizedDate = Calendar.current.startOfDay(for: date)
+        if let current = selectedDate, Calendar.current.isDate(current, inSameDayAs: normalizedDate) {
+            selectedDate = nil
+        } else {
+            selectedDate = normalizedDate
+        }
+    }
+
+    // MARK: - Data Loading
 
     /// Counts how many friends are "Free" on a specific date (Phase 1 - Sprint 6 heatmap)
     /// Only counts .free status (excludes afternoonOnly, eveningOnly, busy, unknown)

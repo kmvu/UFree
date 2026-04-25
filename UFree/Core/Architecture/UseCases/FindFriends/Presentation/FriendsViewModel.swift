@@ -15,6 +15,7 @@ public final class FriendsViewModel: ObservableObject {
     @Published public var friends: [UserProfile] = []
     @Published public var discoveredUsers: [UserProfile] = []
     @Published public var isLoading = false
+    @Published public var isProcessing = false
     @Published public var errorMessage: String?
     @Published public var showPermissionAlert = false
 
@@ -64,8 +65,13 @@ public final class FriendsViewModel: ObservableObject {
     }
     
     public func loadFriends() async {
+        guard !isProcessing else { return }
         isLoading = true
-        defer { isLoading = false }
+        isProcessing = true
+        defer { 
+            isLoading = false
+            isProcessing = false
+        }
         do {
             self.friends = try await friendRepository.getMyFriends()
         } catch {
@@ -74,10 +80,15 @@ public final class FriendsViewModel: ObservableObject {
     }
 
     public func findFriendsFromContacts() async {
+        guard !isProcessing else { return }
         isLoading = true
+        isProcessing = true
         errorMessage = nil
         discoveredUsers = []
-        defer { isLoading = false }
+        defer { 
+            isLoading = false
+            isProcessing = false
+        }
 
         // Step 1: Check authorization status first
         let status = CNContactStore.authorizationStatus(for: .contacts)
@@ -109,15 +120,20 @@ public final class FriendsViewModel: ObservableObject {
 
     /// Search for a user by phone number (privacy-safe via hash lookup)
     public func performPhoneSearch() async {
+        guard !isProcessing else { return }
         guard !searchText.isEmpty else {
             errorMessage = "Please enter a phone number."
             return
         }
 
         isSearching = true
+        isProcessing = true
         searchResult = nil
         errorMessage = nil
-        defer { isSearching = false }
+        defer { 
+            isSearching = false
+            isProcessing = false
+        }
 
         do {
             self.searchResult = try await friendRepository.findUserByPhoneNumber(searchText)
@@ -130,30 +146,19 @@ public final class FriendsViewModel: ObservableObject {
         }
     }
 
+    @available(*, deprecated, message: "Use sendFriendRequest(to:) instead for handshake model")
     public func addFriend(_ user: UserProfile) async {
-        guard let uid = user.id else { return }
-        withAnimation {
-            if let index = discoveredUsers.firstIndex(where: { $0.id == user.id }) {
-                discoveredUsers.remove(at: index)
-            }
-            // Check if already in friends list
-            if !friends.contains(where: { $0.id == user.id }) {
-                friends.append(user)
-            }
-        }
-        do {
-            try await friendRepository.addFriend(userId: uid)
-            // Clear search after adding
-            searchResult = nil
-            searchText = ""
-        } catch {
-            self.errorMessage = "Failed to add friend."
-            await loadFriends()
-        }
+        await sendFriendRequest(to: user)
     }
 
     public func removeFriend(_ user: UserProfile) async {
+        guard !isProcessing else { return }
         guard let uid = user.id else { return }
+        
+        isProcessing = true
+        defer { isProcessing = false }
+        
+        let originalFriends = friends
         withAnimation {
             if let index = friends.firstIndex(where: { $0.id == user.id }) {
                 friends.remove(at: index)
@@ -162,22 +167,30 @@ public final class FriendsViewModel: ObservableObject {
         do {
             try await friendRepository.removeFriend(userId: uid)
         } catch {
+            self.friends = originalFriends
             self.errorMessage = "Failed to remove friend."
-            await loadFriends()
         }
     }
     
     // MARK: - Handshake Model (Friend Requests)
     
     public func sendFriendRequest(to user: UserProfile) async {
+        guard !isProcessing else { return }
+        isProcessing = true
+        defer { isProcessing = false }
+        
         do {
             HapticManager.medium()
             try await friendRepository.sendFriendRequest(to: user)
             
-            // Remove from discovered users
+            // Remove from discovered users or search result
             withAnimation {
                 if let index = discoveredUsers.firstIndex(where: { $0.id == user.id }) {
                     discoveredUsers.remove(at: index)
+                }
+                if searchResult?.id == user.id {
+                    searchResult = nil
+                    searchText = ""
                 }
             }
         } catch {
@@ -186,6 +199,10 @@ public final class FriendsViewModel: ObservableObject {
     }
     
     public func acceptRequest(_ request: FriendRequest) async {
+        guard !isProcessing else { return }
+        isProcessing = true
+        defer { isProcessing = false }
+        
         do {
             HapticManager.success()
             try await friendRepository.acceptFriendRequest(request)
@@ -208,6 +225,10 @@ public final class FriendsViewModel: ObservableObject {
     }
     
     public func declineRequest(_ request: FriendRequest) async {
+        guard !isProcessing else { return }
+        isProcessing = true
+        defer { isProcessing = false }
+        
         do {
             HapticManager.warning()
             try await friendRepository.declineFriendRequest(request)
