@@ -11,6 +11,7 @@ import Combine
 @MainActor
 public final class MyScheduleViewModel: ObservableObject {
     @Published public var weeklySchedule: [DayAvailability] = []
+    @Published public var selectedDate: Date = Date()
     @Published public var isLoading: Bool = false
     @Published public var errorMessage: String?
     
@@ -63,6 +64,24 @@ public final class MyScheduleViewModel: ObservableObject {
         }
     }
     
+    public func updateStatus(for day: DayAvailability) {
+        guard let index = weeklySchedule.firstIndex(where: { $0.id == day.id }) else { return }
+        
+        let oldStatus = weeklySchedule[index].status
+        weeklySchedule[index].status = day.status
+        
+        Task {
+            do {
+                try await updateUseCase.execute(day: day)
+            } catch {
+                await MainActor.run {
+                    weeklySchedule[index].status = oldStatus
+                    errorMessage = "Failed to update status: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
     public func toggleStatus(for day: DayAvailability) {
         guard let index = weeklySchedule.firstIndex(where: { $0.id == day.id }) else { return }
         
@@ -96,4 +115,3 @@ public final class MyScheduleViewModel: ObservableObject {
         }
     }
 }
-

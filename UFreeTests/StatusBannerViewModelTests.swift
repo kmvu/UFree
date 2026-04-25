@@ -24,47 +24,47 @@ final class StatusBannerViewModelTests: XCTestCase {
     func test_initialProcessingState_isFalse() {
         XCTAssertFalse(viewModel.isProcessing)
     }
+    
+    func test_initialExpansionState_isFalse() {
+        XCTAssertFalse(viewModel.isExpanded)
+    }
 
-    func test_cycleStatus_updatesStatus_immediately() async {
-        viewModel.cycleStatus()
+    func test_setStatus_updatesStatus_immediately() async {
+        viewModel.setStatus(.free)
 
         // Status should update immediately, not after delay
-        let status = viewModel.currentStatus
-        XCTAssertEqual(status, .free)
-    }
-
-    func test_cycleStatus_cycles_checkSchedule_to_free() async {
-        viewModel.currentStatus = .checkSchedule
-        viewModel.cycleStatus()
-
         XCTAssertEqual(viewModel.currentStatus, .free)
     }
 
-    func test_cycleStatus_cycles_free_to_busy() async {
-        viewModel.currentStatus = .free
-        viewModel.cycleStatus()
-
-        XCTAssertEqual(viewModel.currentStatus, .busy)
+    func test_setStatus_sets_any_status() async {
+        viewModel.setStatus(.morning)
+        XCTAssertEqual(viewModel.currentStatus, .morning)
+        
+        // Wait for processing to complete
+        try? await Task.sleep(nanoseconds: 350_000_000)
+        
+        viewModel.setStatus(.afternoon)
+        XCTAssertEqual(viewModel.currentStatus, .afternoon)
     }
 
-    func test_cycleStatus_cycles_busy_to_free() async {
-        viewModel.currentStatus = .busy
-        viewModel.cycleStatus()
-
-        XCTAssertEqual(viewModel.currentStatus, .free)
+    func test_toggleExpansion_updatesState() {
+        XCTAssertFalse(viewModel.isExpanded)
+        viewModel.toggleExpansion()
+        XCTAssertTrue(viewModel.isExpanded)
+        viewModel.toggleExpansion()
+        XCTAssertFalse(viewModel.isExpanded)
     }
 
     func test_rapidTaps_ignored_while_processing() async {
-        // First tap
-        viewModel.cycleStatus()
+        // First set
+        viewModel.setStatus(.free)
         XCTAssertTrue(viewModel.isProcessing)
 
-        // Try to tap while processing (should be ignored)
-        viewModel.cycleStatus()
-        viewModel.cycleStatus()
-        viewModel.cycleStatus()
+        // Try to set while processing (should be ignored)
+        viewModel.setStatus(.busy)
+        viewModel.setStatus(.morning)
 
-        // Status should be free (only first tap counted)
+        // Status should be free (only first set counted)
         XCTAssertEqual(viewModel.currentStatus, .free)
         
         // Wait for processing to complete
@@ -73,7 +73,7 @@ final class StatusBannerViewModelTests: XCTestCase {
     }
 
     func test_processingState_betweenTaps() async {
-        viewModel.cycleStatus()
+        viewModel.setStatus(.free)
 
         // Should be processing immediately after tap
         XCTAssertTrue(viewModel.isProcessing)
@@ -82,25 +82,5 @@ final class StatusBannerViewModelTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 350_000_000)
 
         XCTAssertFalse(viewModel.isProcessing)
-    }
-
-    func test_multipleSequentialTaps_after_processing() async {
-        // First tap: checkSchedule → free (immediate)
-        viewModel.cycleStatus()
-        XCTAssertEqual(viewModel.currentStatus, .free)
-
-        // Wait for processing to complete
-        try? await Task.sleep(nanoseconds: 350_000_000)
-
-        // Second tap: free → busy
-        viewModel.cycleStatus()
-        XCTAssertEqual(viewModel.currentStatus, .busy)
-        
-        // Wait for processing to complete
-        try? await Task.sleep(nanoseconds: 350_000_000)
-
-        // Third tap: busy → free (cycles between free and busy)
-        viewModel.cycleStatus()
-        XCTAssertEqual(viewModel.currentStatus, .free)
     }
 }
