@@ -103,7 +103,7 @@ final class FriendsViewModelTests: XCTestCase {
         sut.searchText = phoneNumber
         sut.searchResult = user
         
-        await sut.sendFriendRequest(to: user)
+        await sut.sendFriendRequest(to: user, source: "manual")
         
         XCTAssertTrue(sut.searchText.isEmpty)
         XCTAssertNil(sut.searchResult)
@@ -156,10 +156,10 @@ final class FriendsViewModelTests: XCTestCase {
         let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123")
         
         // First call sets isProcessing
-        let task = Task { await sut.sendFriendRequest(to: user) }
+        let task = Task { await sut.sendFriendRequest(to: user, source: "manual") }
         
         // Immediate second call should be ignored
-        await sut.sendFriendRequest(to: user)
+        await sut.sendFriendRequest(to: user, source: "manual")
         
         await task.value
         

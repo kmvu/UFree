@@ -15,7 +15,7 @@ enum AnalyticsEvent {
     case nudgeSent(type: String) // "single" or "batch"
     
     /// User sent a friend request
-    case friendRequestSent
+    case friendRequestSent(source: String) // e.g., "contact_sync", "qr_code", "deep_link", "manual"
     
     /// User performed a phone-based search for friends
     case searchPerformed(success: Bool)
@@ -45,8 +45,9 @@ struct AnalyticsManager {
                 "timestamp": Date().timeIntervalSince1970
             ])
             
-        case .friendRequestSent:
+        case .friendRequestSent(let source):
             Analytics.logEvent("friend_request_sent", parameters: [
+                "source": source,
                 "timestamp": Date().timeIntervalSince1970
             ])
             
@@ -93,6 +94,11 @@ extension AnalyticsManager {
     /// Log "Nudge Sent" - Core success metric
     static func logNudgeSent(isBatch: Bool) {
         AnalyticsManager.log(.nudgeSent(type: isBatch ? "batch" : "single"))
+    }
+
+    /// Log "Friend Request Sent" - Tracks social growth sources
+    static func logFriendRequestSent(source: String) {
+        AnalyticsManager.log(.friendRequestSent(source: source))
     }
     
     /// Log "Batch Nudge" - Tests if heatmap feature is used

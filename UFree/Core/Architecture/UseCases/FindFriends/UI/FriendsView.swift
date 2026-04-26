@@ -188,7 +188,7 @@ public struct FriendsView: View {
             
             // Search result or empty state button
             if let result = viewModel.searchResult {
-                friendRow(for: result, isDiscovered: true)
+                friendRow(for: result, isDiscovered: true, source: "manual")
                     .transition(.move(edge: .top).combined(with: .opacity))
             } else if viewModel.discoveredUsers.isEmpty {
                 Button(action: {
@@ -199,7 +199,7 @@ public struct FriendsView: View {
                 }
             } else {
                 ForEach(viewModel.discoveredUsers) { user in
-                    friendRow(for: user, isDiscovered: true)
+                    friendRow(for: user, isDiscovered: true, source: "contact_sync")
                 }
             }
         } header: {
@@ -210,7 +210,7 @@ public struct FriendsView: View {
         }
     }
 
-    private func friendRow(for user: UserProfile, isDiscovered: Bool) -> some View {
+    private func friendRow(for user: UserProfile, isDiscovered: Bool, source: String = "manual") -> some View {
         HStack(spacing: 12) {
             Circle().fill(isDiscovered ? Color.green.opacity(0.2) : Color.blue.opacity(0.2))
                 .frame(width: 40, height: 40)
@@ -240,7 +240,7 @@ public struct FriendsView: View {
                     ProgressView().controlSize(.small)
                 } else {
                     Button("Request") { 
-                        Task { await viewModel.sendFriendRequest(to: user) } 
+                        Task { await viewModel.sendFriendRequest(to: user, source: source) } 
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)

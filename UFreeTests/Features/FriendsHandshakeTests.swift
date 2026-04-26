@@ -26,7 +26,7 @@ final class FriendsHandshakeTests: XCTestCase {
         let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "hash1")
         viewModel.discoveredUsers = [user]
         
-        await viewModel.sendFriendRequest(to: user)
+        await viewModel.sendFriendRequest(to: user, source: "manual")
         
         XCTAssertTrue(viewModel.discoveredUsers.isEmpty)
     }

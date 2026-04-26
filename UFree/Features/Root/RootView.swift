@@ -144,9 +144,27 @@ struct MainAppView: View {
             }
         }
         .sheet(item: $rootViewModel.deepLinkProfileId) { userId in
-            // Profile Card View for Deep Links (Future implementation)
-            Text("Profile Card for User: \(userId)")
-                .presentationDetents([.medium])
+            // Profile Card View for Deep Links
+            VStack(spacing: 20) {
+                Circle().fill(Color.blue.opacity(0.1)).frame(width: 80, height: 80)
+                    .overlay { Image(systemName: "person.fill").font(.system(size: 40)).foregroundColor(.blue) }
+                
+                Text("Connect on UFree").font(.headline)
+                Text("User ID: \(userId)").font(.caption).foregroundStyle(.secondary)
+                
+                Button("Send Friend Request") {
+                    let placeholderUser = UserProfile(id: userId, displayName: "UFree User", hashedPhoneNumber: "")
+                    Task {
+                        await friendsViewModel.sendFriendRequest(to: placeholderUser, source: "deep_link")
+                        rootViewModel.deepLinkProfileId = nil
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                
+                Button("Cancel") { rootViewModel.deepLinkProfileId = nil }.foregroundStyle(.secondary)
+            }
+            .padding()
+            .presentationDetents([.medium])
         }
         .environment(\.notificationViewModel, notificationViewModel)
         .onOpenURL { url in

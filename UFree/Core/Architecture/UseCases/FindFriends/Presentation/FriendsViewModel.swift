@@ -155,6 +155,7 @@ public final class FriendsViewModel: ObservableObject {
             // This is a placeholder for the "Profile Card" deep-link logic
             print("Scanned user ID: \(code)")
             HapticManager.success()
+            AnalyticsManager.logFriendRequestSent(source: "qr_code")
         } catch {
             self.errorMessage = "Invalid QR code."
         }
@@ -196,9 +197,9 @@ public final class FriendsViewModel: ObservableObject {
         }
     }
 
-    @available(*, deprecated, message: "Use sendFriendRequest(to:) instead for handshake model")
+    @available(*, deprecated, message: "Use sendFriendRequest(to:source:) instead for handshake model")
     public func addFriend(_ user: UserProfile) async {
-        await sendFriendRequest(to: user)
+        await sendFriendRequest(to: user, source: "manual")
     }
 
     public func removeFriend(_ user: UserProfile) async {
@@ -224,7 +225,7 @@ public final class FriendsViewModel: ObservableObject {
     
     // MARK: - Handshake Model (Friend Requests)
     
-    public func sendFriendRequest(to user: UserProfile) async {
+    public func sendFriendRequest(to user: UserProfile, source: String) async {
         guard !isProcessing else { return }
         isProcessing = true
         defer { isProcessing = false }
@@ -232,6 +233,7 @@ public final class FriendsViewModel: ObservableObject {
         do {
             HapticManager.medium()
             try await friendRepository.sendFriendRequest(to: user)
+            AnalyticsManager.logFriendRequestSent(source: source)
             
             // Remove from discovered users or search result
             withAnimation {
