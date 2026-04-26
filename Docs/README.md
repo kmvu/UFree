@@ -1,6 +1,6 @@
 # UFree - Weekly Availability Scheduler
 
-**Status:** ✅ Production Ready | **Version:** 6.1.0+ | **Tests:** 195+ | **Coverage:** 85%+ | **Warnings:** 0
+**Status:** ✅ Production Ready | **Version:** 6.5.0 | **Tests:** 195+ | **Coverage:** 85%+
 
 ---
 
@@ -8,56 +8,25 @@
 
 | I want to... | Go to... |
 |---|---|
-| **Get started on new machine** | AGENTS.md → Environment Setup |
-| **Learn code standards** | AGENTS.md → Code Style |
-| **Understand architecture** | This file → Architecture |
-| **Fix a broken build** | TROUBLESHOOTING_RUNBOOK.md |
-| **Write tests** | TESTING_GUIDE.md → Test Organization |
-| **Do QA testing** | TESTING_GUIDE.md → QA Testing |
-| **Set up deep linking** | AGENTS.md → Deep Linking |
-| **Check dev history** | SPRINT_HISTORY.md |
-
-**5 Core Files:** README (this) | AGENTS | TESTING_GUIDE | TROUBLESHOOTING_RUNBOOK | SPRINT_HISTORY
+| **Setup & Standards** | `AGENTS.md` |
+| **Architecture** | This file → Architecture |
+| **Troubleshooting** | `TROUBLESHOOTING_RUNBOOK.md` |
+| **Testing & QA** | `TESTING_GUIDE.md` |
+| **History** | `SPRINT_HISTORY.md` |
 
 ---
 
-## Quick Reference
+## The Frictionless Handshake (Social Strategy)
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Local Persistence (SwiftData) | ✅ | Offline-capable, upsert pattern |
-| Firebase Auth | ✅ | Anonymous signin, @MainActor safety |
-| Cloud Sync (Firestore) | ✅ | CompositeRepository (offline-first) |
-| Contact Discovery | ✅ | Hash-based contact sync + matching |
-| Phone Number Search | ✅ | Blind index lookup, privacy-safe |
-| Friend Requests | ✅ | Request/Response handshake, privacy-first |
-| Friends Sync | ✅ | Bidirectional add/remove, swipe-to-remove |
-| Navigation | ✅ | TabView with single NavigationStack (no flicker) |
-| Haptic Feedback | ✅ | HapticManager integrated throughout |
-| Real-time Sync | ✅ | AsyncStream listeners (observeIncomingRequests) |
-| Notification Center | ✅ | Real-time bell icon + badge, inbox view |
-| Nudge Feature | ✅ | Wave button on friend cards, haptic feedback, rapid-tap protection |
-| Availability Heatmap | ✅ | "Who's free on..." with live counts per day |
-| Group Nudging | ✅ | Parallel "Nudge All" for free friends, success/failure messaging |
-| Universal Links | ✅ | App Site Association (deep link from notifications) |
-| Build Automation | ✅ | Fastlane (tests → alpha → beta pipeline) |
-| Certificate Management | ✅ | match (encrypted, auto-sync) |
-| Crash Reporting | ✅ | Firebase Crashlytics (readable stack traces) |
-| Analytics | ✅ | Firebase Analytics (real-time usage metrics) |
+UFree uses a privacy-first connection model called **The Frictionless Handshake**:
+1.  **Just-In-Time Discovery**: Securely hash your contacts locally to find friends already on the app without exposing raw numbers.
+2.  **The In-Person Handshake**: Instantly connect by scanning a friend's personal QR code.
+3.  **Mutual Consent**: No schedule data is shared until both parties explicitly accept the connection request.
+4.  **Trust Indicators**: Reassuring badges ("✓ In your contacts") help verify identities before connecting.
 
 ---
 
-## Current Architecture
-
-**Navigation & State (Top-Level):**
-```
-RootView (ViewModels created once, persisted)
-    ↓
-MainAppView (TabView with single NavigationStack)
-    ├─ Tab 1: ScheduleContainer → MyScheduleView
-    ├─ Tab 2: FriendsScheduleView  
-    └─ Tab 3: FriendsView (phone search + handshake)
-```
+## Core Architecture
 
 **Data Flow (Offline-First):**
 ```
@@ -66,302 +35,32 @@ UI → ViewModel → CompositeRepository → SwiftData [instant]
                     Firestore [sync, non-blocking]
 ```
 
-**Layers:**
-
-| Layer | Key Components |
-|-------|---|
-| **Domain** | User, AvailabilityStatus, DayAvailability, UserSchedule, UserProfile, Protocols |
-| **Data** | FirebaseAuthRepository, SwiftDataAvailabilityRepository, FirebaseAvailabilityRepository, CompositeAvailabilityRepository, FirebaseFriendRepository, FirebaseNotificationRepository |
-| **Presentation** | RootViewModel, MyScheduleViewModel, FriendsScheduleViewModel, FriendsViewModel, StatusBannerViewModel, DayFilterViewModel, NotificationViewModel |
-| **UI** | RootView, LoginView, MyScheduleView, FriendsView, FriendsScheduleView, NotificationCenterView, Components |
-
-**Projects:**
-- **UFree** - Main app (SwiftUI)
-- **UFreeTests** - 195+ unit tests
-- **UFreeUITests** - Integration tests
+**Key Layers:**
+- **Domain**: Pure business logic and models (`DayAvailability`, `UserSchedule`).
+- **Data**: Repositories handling SwiftData (local) and Firestore (cloud) sync.
+- **Presentation**: ViewModels marked with `@MainActor` with rapid-tap protection.
+- **UI**: 100% SwiftUI with consistent haptic feedback.
 
 ---
 
-## File Structure (Key Files)
+## Quick Reference: Features
 
-```
-UFree/Core/Domain/
-├── User.swift, AuthRepository.swift
-├── AvailabilityStatus.swift, AvailabilityStatus+Colors.swift
-├── DayAvailability.swift, UserSchedule.swift
-├── AppNotification.swift, NotificationRepository.swift
-
-UFree/Core/Data/
-├── Auth/ → FirebaseAuthRepository.swift, MockAuthRepository.swift
-├── Repositories/ → SwiftData/Firebase/Composite repositories
-├── Utilities/ → CryptoUtils, HapticManager, AnalyticsManager
-└── Mocks/ → MockAuthRepository, MockAvailabilityRepository, MockFriendRepository
-
-UFree/Features/
-├── Root/ → RootViewModel, RootView (auth + TabView), LoginView
-├── MySchedule/ → ViewModel, View (MyScheduleView), Components
-│   ├── StatusBannerView + ViewModel (status cycling)
-│   ├── DayStatusCardView (stateless day card)
-│   └── DayFilterButtonView + ViewModel (day filter + heatmap badge)
-├── FriendsSchedule/ → FriendsScheduleView, FriendsScheduleViewModel
-├── FindFriends/ → FriendsView, FriendsViewModel
-└── Notifications/ → NotificationCenterView, NotificationViewModel, NotificationBellButton
-
-UFree/Core/Extensions/
-├── Color+Hex.swift
-└── ButtonStyles.swift (NoInteractionButtonStyle)
-```
-
----
-
-## Core Models
-
-| Model | Fields | Purpose |
-|-------|--------|---------|
-| `User` | id, isAnonymous, displayName | Auth entity |
-| `DayAvailability` | id, date (midnight), status, note | Schedule per day |
-| `UserProfile` | id, displayName, hashedPhoneNumber | Friend profile |
-| `AvailabilityStatus` | 6 states + colors | Domain enum (free, busy, afternoonOnly, eveningOnly, unknown) |
-| `AppNotification` | id, type, senderId, recipientId | Notification (friendRequest, nudge) |
-
----
-
-## Component Architecture
-
-### Tappable Component Pattern
-
-All interactive UI components follow:
-1. **ViewModel** (@MainActor, @Published state, rapid-tap protection via `guard !isProcessing`)
-2. **View** (separate file with @StateObject for ViewModel)
-3. **Tests** (single tap, rapid taps, sequential taps)
-
-**Example:** `StatusBannerView` + `StatusBannerViewModel` (status cycling, 0.3s processing, rapid-tap protection)
-
-### Components
-
-| Component | Type | Feedback |
-|-----------|------|----------|
-| StatusBannerView | Stateful (ViewModel) | `.medium()` |
-| DayStatusCardView | Stateless | `.light()` |
-| DayFilterButtonView | Parent-managed state | `.selection()` |
-| FriendsView | Various | `.medium()`/`.success()`/`.warning()` |
-| NotificationBellButton | Reusable toolbar | No feedback (notification center handles it) |
-
-### Shared Utilities
-
-- `AvailabilityStatus+Colors.swift` - Domain-level color extension (`.displayColor`)
-- `ButtonStyles.swift` - NoInteractionButtonStyle (no highlight flash)
-- `HapticManager.swift` - Unified feedback API
-- `AnalyticsManager.swift` - Type-safe event tracking (Firebase Analytics)
-
----
-
-## Firestore Schema
-
-```
-users/{auth_uid}
-├── displayName: String
-├── hashedPhoneNumber: String
-├── friendIds: [String]
-├── availability/{YYYY-MM-DD}
-│   ├── status: Int (0-4)
-│   ├── note: String?
-│   └── updatedAt: Timestamp
-└── notifications/{notificationId}
-    ├── type: String ("friendRequest", "nudge")
-    ├── senderId: String
-    ├── recipientId: String
-    ├── read: Bool
-    └── createdAt: Timestamp
-```
-
-**Security Rules:**
-```javascript
-match /users/{userId} {
-  allow read: if request.auth != null;
-  allow write: if isOwner(userId);
-  match /availability/{dayId} {
-    allow read: if request.auth != null;
-    allow write: if isOwner(userId);
-  }
-  match /notifications/{document=**} {
-    allow read: if request.auth.uid == userId;
-    allow create: if request.auth.uid == resource.data.senderId;
-    allow write: if request.auth.uid == userId;
-  }
-}
-```
-
----
-
-## Running Tests
-
-```bash
-# Quick validation (recommended)
-xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | \
-  grep -E '(PASS|FAIL|passed|failed|warning)'
-
-# Full output
-xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
-
-# Single test suite
-xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing UFreeTests/MockAuthRepositoryTests
-```
-
-See AGENTS.md for troubleshooting.
-
----
-
-## UI Conventions
-
-| Element | Style |
-|---------|-------|
-| Main Title | "UFree" (navigationTitle) |
-| Subtitle | "See when friends are available" (navigationSubtitle) |
-| Status Colors | Free (green), Busy (gray), Morning (yellow), Afternoon (orange), Evening (purple) |
-| Corner Radius | Cards (20pt), Buttons (8pt), Banner (24pt) |
-| Status Banner Height | 110pt |
-| Spacing | Large (24pt), Medium (12pt), Small (8pt) |
-| Nav Bar | Large title + Sign Out button (trailing) |
-
----
-
-## HapticManager API
-
-```swift
-HapticManager.light()      // Card taps
-HapticManager.medium()     // Primary actions
-HapticManager.heavy()      // Significant changes
-HapticManager.success()    // Success feedback (friend added)
-HapticManager.warning()    // Destructive action (remove friend)
-HapticManager.selection()  // Day filter selection
-```
-
----
-
-## Code Style & Conventions
-
-**Swift Standards:**
-- SwiftUI only (no UIKit)
-- `@Published` for ViewModel state (required for `@StateObject`)
-- Async/await for concurrency (not Combine Publishers)
-- `@MainActor` on UI/Presentation components and auth repos
-- Dependency injection via init parameters
-- Protocol-based repos for testability
-- Actor for mocks requiring concurrent access
-
-**Naming:** CamelCase types, camelCase properties/functions. Descriptive names (e.g., `AuthRepository`, not `Auth`)
-
-**Architecture Principles:**
-- **Abstractions**: Protocol-based repos + Factory patterns (TestNotificationBuilder) reduce coupling
-- **Maintainability**: Single Responsibility - each class/struct does one thing well
-- **Reusability**: Shared utilities (HapticManager, AvailabilityStatus+Colors) avoid duplication
-- **Extensibility**: Enum-based types (NotificationType) allow easy additions without breaking changes
-
-**Testing:** Arrange-Act-Assert pattern. Test names: `test_[method]_[expectedBehavior]()`. Include rapid-tap protection tests (single tap, rapid taps, sequential taps).
-
-**AsyncStream Pattern (Auth State):**
-```swift
-var authState: AsyncStream<User?> { get }
-
-// In ViewModel:
-Task {
-    for await user in authRepository.authState {
-        self.currentUser = user
-    }
-}
-```
-
-**Actor Isolation:**
-1. `nonisolated` initializers if they don't access actor state
-2. `nonisolated` properties if they don't need isolation (e.g., AsyncStream)
-3. Extract properties to local variables before assertions in tests
-
-**Error Handling:** Typed errors (e.g., `UpdateMyStatusUseCaseError.cannotUpdatePastDate`). Propagate repo errors; catch and rollback in ViewModel.
-
-**Imports:** Foundation, SwiftUI, SwiftData, FirebaseAuth, FirebaseFirestore (if needed), then local modules.
-
----
-
-## Features End-to-End
-
-1. **Auth Flow** - Firebase init → LoginView → Anonymous signin → MainAppView
-2. **Schedule** - View 7 days, update per-day status (5 states), persist locally
-3. **Status Banner** - Cycle through states with gradient animations + rapid-tap protection
-4. **Day Filter** - Select days, filter schedule view, see "Who's free on..." heatmap
-5. **Cloud Sync** - Local instant + background Firestore sync
-6. **Friend Discovery** - Contact hash OR phone search, view profiles
-7. **Friend Requests** - Send request, real-time incoming list, accept/decline (handshake)
-8. **Friends Sync** - Bidirectional add/remove, swipe-to-remove, privacy-protected
-9. **Friends Schedule** - View friend availability next 5 days
-10. **Nudge Feature** - Tap wave button to send nudge, real-time notifications, rapid-tap protection
-11. **Batch Nudging** - Tap "Nudge All" to send nudges to all free friends (parallel execution)
-12. **Notifications** - Real-time bell icon with unread badge, inbox view with read/unread states
-13. **Deep Linking** - Universal Links (App Site Association) for notification tap-through
-14. **Error Handling** - Past date rejection, network resilience, permission alerts
-15. **Haptic Feedback** - Tactile feedback throughout UI
-16. **Navigation** - Smooth tabbed navigation, no flickering
-17. **Crash Reporting** - Automatic crash capture via Crashlytics, readable stack traces
-18. **Analytics** - Event tracking for nudges, searches, status updates, handshakes
-
----
-
-## Current Status (Sprint 6+)
-
-### Production Stack ✅
-- **Distribution:** Fastlane three-tier pipeline (tests → alpha → beta)
-- **Certificates:** match (encrypted, auto-synced)
-- **Crash Reporting:** Firebase Crashlytics (readable stack traces)
-- **Analytics:** Firebase Analytics (real-time metrics + event tracking)
-- **Testing:** 195+ unit tests, Debug Auth Strategy for multi-user dev testing
-- **CI/CD:** GitHub Actions (push to main → TestFlight)
+- ✅ **Offline-First**: Instant local updates with background cloud sync.
+- ✅ **Privacy Discovery**: Hash-based contact matching + QR scanning.
+- ✅ **Handshake Protocol**: Mutual consent enforced via real-time listeners.
+- ✅ **Nudge Feature**: Real-time engagement with haptic feedback.
+- ✅ **Availability Heatmap**: Visual summary of "Who's free on..." any given day.
+- ✅ **Universal Links**: Deep linking to notifications and profiles.
 
 ---
 
 ## Technical Highlights
 
-✅ Clean Architecture (Domain → Data → Presentation → UI)  
-✅ Protocol-based DI (swap repos easily)  
-✅ @MainActor isolation (thread safety)  
-✅ Actor-based mocks with nonisolated inits  
-✅ AsyncStream for auth state (no Combine)  
-✅ Conditional Firebase init  
-✅ Async/await throughout  
-✅ Single NavigationStack (no nesting)  
-✅ Fastlane automation (tests → distribution)  
-✅ Firebase Crashlytics + Analytics  
-✅ Zero warnings, zero memory leaks, zero flaky tests
+- **@MainActor Isolation**: Guaranteed thread safety for UI updates.
+- **AsyncStream**: Reactive state management without the overhead of Combine.
+- **HapticManager**: Unified tactile feedback across all primary interactions.
+- **Zero Warnings**: Clean build with 195+ automated unit tests.
 
 ---
 
-## Documentation Structure
-
-### Core (5 files)
-- **README.md** - Architecture, features, models (this file)
-- **AGENTS.md** - Setup, code standards, deep linking, security
-- **TESTING_GUIDE.md** - Tests, patterns, QA checklist
-- **TROUBLESHOOTING_RUNBOOK.md** - Fast diagnosis (40+ symptoms)
-- **SPRINT_HISTORY.md** - Development timeline (reference)
-
-### Build Automation (fastlane/Docs/)
-- **INDEX.md** - Navigation & learning path
-- **GETTING_STARTED.md** - First-time setup (20 min)
-- **DISTRIBUTION.md** - Workflows & certificate management
-- **REFERENCE.md** - Commands, config, troubleshooting
-
----
-
-## Launch Checklist
-
-1. ✅ Add Firebase test phone numbers (5 minutes)
-2. ✅ Run smoke tests (30 minutes, two devices)
-3. ✅ `bundle exec fastlane beta` → TestFlight
-4. ✅ Monitor Crashlytics + Analytics
-
----
-
-**Last Updated:** January 29, 2026 (Sprint 6+ - Production Ready) | **Status:** ✅ Ready for Distribution
+**Last Updated:** April 26, 2026 | **Sprint:** 6.5 | **Status:** ✅ Production Ready
