@@ -9,19 +9,60 @@ import SwiftUI
 
 public struct FriendsView: View {
     @StateObject private var viewModel: FriendsViewModel
+    @ObservedObject var rootViewModel: RootViewModel
 
-    public init(friendRepository: FriendRepositoryProtocol) {
+    public init(friendRepository: FriendRepositoryProtocol, rootViewModel: RootViewModel) {
+        self.rootViewModel = rootViewModel
         _viewModel = StateObject(wrappedValue: FriendsViewModel(friendRepository: friendRepository))
     }
 
     public var body: some View {
         NavigationStack {
             List {
+                qrShortcutSection
                 incomingRequestsSection
                 myFriendsSection
                 addFriendsSection
             }
             .navigationTitle("Friends")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        HapticManager.medium()
+                        viewModel.showQRScanner = true
+                    } label: {
+                        Image(systemName: "qrcode.viewfinder")
+                    }
+                }
+            }
+            .sheet(isPresented: $viewModel.showQRScanner) {
+                // Future implementation: QR Scanner View
+                VStack {
+                    Text("Align QR Code within the frame").font(.headline)
+                    Rectangle().stroke(Color.green, lineWidth: 2)
+                        .frame(width: 250, height: 250)
+                        .overlay {
+                            Text("Scanner Placeholder")
+                        }
+                    Button("Cancel") { viewModel.showQRScanner = false }
+                        .padding()
+                }
+            }
+            .sheet(isPresented: $viewModel.showMyQR) {
+                if let qrImage = viewModel.qrImage {
+                    VStack(spacing: 20) {
+                        Text("Your UFree Handshake").font(.title2).bold()
+                        Image(uiImage: qrImage)
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 200, height: 200)
+                        Text("Friends can scan this to add you instantly").font(.caption).foregroundStyle(.secondary)
+                        Button("Done") { viewModel.showMyQR = false }.buttonStyle(.bordered)
+                    }
+                    .padding()
+                }
+            }
             .overlay { if viewModel.isLoading { ProgressView() } }
             .task {
                 viewModel.listenToRequests()
@@ -44,6 +85,21 @@ public struct FriendsView: View {
                 Button("Cancel", role: .destructive) {}
             } message: {
                 Text("Please allow Contacts access in Settings to find friends.")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var qrShortcutSection: some View {
+        Section {
+            Button {
+                HapticManager.medium()
+                if let userId = rootViewModel.currentUser?.id {
+                    viewModel.generateMyQRCode(from: userId)
+                    viewModel.showMyQR = true
+                }
+            } label: {
+                Label("My Handshake QR", systemImage: "qrcode")
             }
         }
     }
@@ -165,7 +221,15 @@ public struct FriendsView: View {
                 }
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(user.displayName).font(.headline)
+                HStack(spacing: 4) {
+                    Text(user.displayName).font(.headline)
+                    if isDiscovered && viewModel.isContactMatched(user) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.caption)
+                            .help("In your contacts")
+                    }
+                }
                 Text(isDiscovered ? "UFree Member" : "Connected").font(.caption).foregroundStyle(.secondary)
             }
             
@@ -207,5 +271,8 @@ public struct FriendsView: View {
         myFriends: [UserProfile(id: "user3", displayName: "Charlie", hashedPhoneNumber: "ghi789")],
         incomingRequests: [incomingRequest]
     )
-    FriendsView(friendRepository: mockRepo)
+    FriendsView(
+        friendRepository: mockRepo,
+        rootViewModel: RootViewModel(authRepository: MockAuthRepository())
+    )
 }

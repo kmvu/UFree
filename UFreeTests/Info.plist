@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict/>
+<dict>
+	<key>NSContactsUsageDescription</key>
+	<string>UFree uses your contacts to find friends already on the app using privacy-safe hashing.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>UFree uses the camera to scan your friends' QR codes for instant connections.</string>
+</dict>
 </plist>

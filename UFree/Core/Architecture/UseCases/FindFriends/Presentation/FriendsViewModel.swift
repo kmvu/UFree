@@ -9,6 +9,7 @@ import Foundation
 import Combine
 import SwiftUI
 import Contacts
+import CoreImage.CIFilterBuiltins
 
 @MainActor
 public final class FriendsViewModel: ObservableObject {
@@ -16,8 +17,16 @@ public final class FriendsViewModel: ObservableObject {
     @Published public var discoveredUsers: [UserProfile] = []
     @Published public var isLoading = false
     @Published public var isProcessing = false
-    @Published public var errorMessage: String?
+    @Published public var errorMessage: String? = nil
     @Published public var showPermissionAlert = false
+    
+    // QR Code & Handshake
+    @Published public var showQRScanner = false
+    @Published public var showMyQR = false
+    @Published public var qrImage: UIImage? = nil
+    
+    // Privacy & Trust
+    @Published public var contactHashes: Set<String> = []
 
     // Phone number search
     @Published public var searchText: String = ""
@@ -33,12 +42,7 @@ public final class FriendsViewModel: ObservableObject {
 
     public init(friendRepository: FriendRepositoryProtocol, contactsRepository: ContactsRepositoryProtocol? = nil) {
         self.friendRepository = friendRepository
-        // Extract ContactsRepository from FriendRepository if available
-        if let friendRepo = friendRepository as? FirebaseFriendRepository {
-            self.contactsRepository = AppleContactsRepository()
-        } else {
-            self.contactsRepository = contactsRepository ?? AppleContactsRepository()
-        }
+        self.contactsRepository = contactsRepository ?? AppleContactsRepository()
     }
     
     // MARK: - Real-Time Listener Lifecycle
@@ -103,8 +107,12 @@ public final class FriendsViewModel: ObservableObject {
             }
         }
 
-        // Step 2: Fetch friends
+        // Step 2: Fetch and Hash contacts in background
         do {
+            // Local hashes for "Trust Badge" logic
+            let hashes = try await contactsRepository.fetchHashedContacts()
+            self.contactHashes = Set(hashes)
+            
             let matches = try await friendRepository.findFriendsFromContacts()
             let existingIds = Set(friends.compactMap { $0.id })
             self.discoveredUsers = matches.filter { !existingIds.contains($0.id ?? "") }
@@ -116,6 +124,48 @@ public final class FriendsViewModel: ObservableObject {
             print("❌ Error syncing contacts: \(error.localizedDescription)")
             self.errorMessage = error.localizedDescription
         }
+    }
+    
+    // MARK: - QR Code Logic
+    
+    public func generateMyQRCode(from userId: String) {
+        let data = Data(userId.utf8)
+        let filter = CIFilter.qrCodeGenerator()
+        filter.setValue(data, forKey: "inputMessage")
+
+        if let outputImage = filter.outputImage {
+            let transform = CGAffineTransform(scaleX: 10, y: 10)
+            let scaledImage = outputImage.transformed(by: transform)
+            let context = CIContext()
+            if let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) {
+                self.qrImage = UIImage(cgImage: cgImage)
+            }
+        }
+    }
+    
+    public func handleScannedCode(_ code: String) async {
+        guard !isProcessing else { return }
+        isProcessing = true
+        showQRScanner = false
+        
+        // Assume code is a UserID for now
+        do {
+            // In a real app, we'd fetch the user profile for this ID first
+            // For now, let's just trigger a search or direct request
+            // This is a placeholder for the "Profile Card" deep-link logic
+            print("Scanned user ID: \(code)")
+            HapticManager.success()
+        } catch {
+            self.errorMessage = "Invalid QR code."
+        }
+        isProcessing = false
+    }
+    
+    // MARK: - Trust Logic
+    
+    public func isContactMatched(_ user: UserProfile) -> Bool {
+        guard let hash = user.hashedPhoneNumber else { return false }
+        return contactHashes.contains(hash)
     }
 
     /// Search for a user by phone number (privacy-safe via hash lookup)

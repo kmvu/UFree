@@ -133,12 +133,20 @@ struct MainAppView: View {
 
             // MARK: - Add Friends Tab
             NavigationStack {
-                FriendsView(friendRepository: friendRepository)
-                    .navigationTitle("Friends")
+                FriendsView(
+                    friendRepository: friendRepository,
+                    rootViewModel: rootViewModel
+                )
+                .navigationTitle("Friends")
             }
             .tabItem {
                 Label("Add Friends", systemImage: "person.badge.plus")
             }
+        }
+        .sheet(item: $rootViewModel.deepLinkProfileId) { userId in
+            // Profile Card View for Deep Links (Future implementation)
+            Text("Profile Card for User: \(userId)")
+                .presentationDetents([.medium])
         }
         .environment(\.notificationViewModel, notificationViewModel)
         .onOpenURL { url in
@@ -157,11 +165,10 @@ struct MainAppView: View {
         case .notification(let userId):
             // Navigate to notification center and highlight sender
             notificationViewModel.highlightedSenderId = userId
-            // Can also trigger sheet or navigation if needed
             
         case .profile(let userId):
-            // Navigate to friend profile (future implementation)
-            print("Navigate to profile: \(userId)")
+            // Trigger profile sheet via RootViewModel
+            rootViewModel.deepLinkProfileId = userId
             
         case .unknown:
             print("Unknown deep link: \(url)")

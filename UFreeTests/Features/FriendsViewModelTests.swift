@@ -103,10 +103,18 @@ final class FriendsViewModelTests: XCTestCase {
         sut.searchText = phoneNumber
         sut.searchResult = user
         
-        await sut.addFriend(user)
+        await sut.sendFriendRequest(to: user)
         
         XCTAssertTrue(sut.searchText.isEmpty)
         XCTAssertNil(sut.searchResult)
+    }
+    
+    func test_isContactMatched_returnsTrueForMatchedHash() {
+        let hash = "matched_hash"
+        sut.contactHashes = [hash]
+        let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: hash)
+        
+        XCTAssertTrue(sut.isContactMatched(user))
     }
 
     func test_acceptRequest_addsFriend() async {
@@ -148,12 +156,13 @@ final class FriendsViewModelTests: XCTestCase {
         let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123")
         
         // First call sets isProcessing
-        Task { await sut.sendFriendRequest(to: user) }
+        let task = Task { await sut.sendFriendRequest(to: user) }
         
         // Immediate second call should be ignored
         await sut.sendFriendRequest(to: user)
         
-        // This is a bit hard to test without custom mock delay, but we verify it doesn't crash
+        await task.value
+        
         XCTAssertTrue(true)
     }
 }

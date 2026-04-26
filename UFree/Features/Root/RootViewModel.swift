@@ -22,6 +22,9 @@ public final class RootViewModel: ObservableObject {
     @Published var isSigningIn = false
     @Published var errorMessage: String? = nil
     
+    // Navigation / Deep Links
+    @Published var deepLinkProfileId: String? = nil
+    
     // Feature ViewModels for navigation and cross-feature state
     @Published public var friendsScheduleViewModel: FriendsScheduleViewModel?
     @Published public var friendsViewModel: FriendsViewModel?
@@ -84,4 +87,9 @@ public final class RootViewModel: ObservableObject {
     deinit {
         authStateTask?.cancel()
     }
+}
+
+// MARK: - Helper for Sheet Identification
+extension String: @retroactive Identifiable {
+    public var id: String { self }
 }
