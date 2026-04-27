@@ -59,7 +59,7 @@ jobs:
           # API Keys
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT || secrets.ASC_KEY }} # Support both names for transition
           
           # Certificates
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
