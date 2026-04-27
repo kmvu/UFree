@@ -32,6 +32,13 @@ public final class FriendsViewModel: ObservableObject {
     @Published public var searchText: String = ""
     @Published public var searchResult: UserProfile?
     @Published public var isSearching = false
+    @Published public var scannedCode: String? = nil {
+        didSet {
+            if let code = scannedCode {
+                Task { await handleScannedCode(code) }
+            }
+        }
+    }
     
     // Friend requests (handshake)
     @Published public var incomingRequests: [FriendRequest] = []
@@ -148,16 +155,24 @@ public final class FriendsViewModel: ObservableObject {
         isProcessing = true
         showQRScanner = false
         
-        // Assume code is a UserID for now
+        // QR Code extracts the encoded User ID
+        // The app extracts the encoded user ID and automatically triggers 
+        // the same profile routing logic used by deep links.
         do {
-            // In a real app, we'd fetch the user profile for this ID first
-            // For now, let's just trigger a search or direct request
-            // This is a placeholder for the "Profile Card" deep-link logic
-            print("Scanned user ID: \(code)")
-            HapticManager.success()
-            AnalyticsManager.logFriendRequestSent(source: "qr_code")
+            // In this version, we fetch the profile associated with the scanned ID
+            // and present it or send a request.
+            if let user = try await friendRepository.findUserById(code) {
+                print("Scanned user: \(user.displayName)")
+                HapticManager.success()
+                
+                // Directly trigger the handshake request for this scanned user
+                await sendFriendRequest(to: user, source: "qr_code")
+                scannedCode = nil
+            } else {
+                self.errorMessage = "User not found."
+            }
         } catch {
-            self.errorMessage = "Invalid QR code."
+            self.errorMessage = "Invalid QR code: \(error.localizedDescription)"
         }
         isProcessing = false
     }

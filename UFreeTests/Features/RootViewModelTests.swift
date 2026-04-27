@@ -92,4 +92,24 @@ final class RootViewModelTests: XCTestCase {
         
         XCTAssertEqual(viewModel.currentUser?.id, user.id)
     }
+
+    // MARK: - Deep Links
+
+    func test_deepLinkNotification_setsProfileId() {
+        let expectation = XCTestExpectation(description: "Wait for property update")
+        
+        let cancellable = viewModel.$deepLinkProfileId
+            .dropFirst()
+            .sink { profileId in
+                if profileId == "test_user_id" {
+                    expectation.fulfill()
+                }
+            }
+        
+        NotificationCenter.default.post(name: .didReceiveProfileDeepLink, object: "test_user_id")
+        
+        wait(for: [expectation], timeout: 1.0)
+        XCTAssertEqual(viewModel.deepLinkProfileId, "test_user_id")
+        cancellable.cancel()
+    }
 }

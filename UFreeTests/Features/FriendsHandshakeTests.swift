@@ -30,6 +30,23 @@ final class FriendsHandshakeTests: XCTestCase {
         
         XCTAssertTrue(viewModel.discoveredUsers.isEmpty)
     }
+
+    func test_handleScannedCode_sendsRequest() async {
+        let user = UserProfile(id: "scanned_user", displayName: "Scanned", hashedPhoneNumber: "hash")
+        mockRepo.addUser(user)
+
+        await viewModel.handleScannedCode("scanned_user")
+
+        XCTAssertFalse(viewModel.showQRScanner)
+        XCTAssertNil(viewModel.errorMessage)
+    }
+
+    func test_handleScannedCode_userNotFound() async {
+        await viewModel.handleScannedCode("unknown_user")
+
+        XCTAssertFalse(viewModel.showQRScanner)
+        XCTAssertEqual(viewModel.errorMessage, "User not found.")
+    }
     
     // MARK: - Accept/Decline Request
     

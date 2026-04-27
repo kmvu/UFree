@@ -36,17 +36,18 @@ public struct FriendsView: View {
                 }
             }
             .sheet(isPresented: $viewModel.showQRScanner) {
-                // Future implementation: QR Scanner View
-                VStack {
-                    Text("Align QR Code within the frame").font(.headline)
-                    Rectangle().stroke(Color.green, lineWidth: 2)
-                        .frame(width: 250, height: 250)
-                        .overlay {
-                            Text("Scanner Placeholder")
+                QRScannerView(scannedCode: $viewModel.scannedCode)
+                    .ignoresSafeArea()
+                    .overlay(alignment: .topTrailing) {
+                        Button {
+                            viewModel.showQRScanner = false
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title)
+                                .foregroundColor(.white)
+                                .padding()
                         }
-                    Button("Cancel") { viewModel.showQRScanner = false }
-                        .padding()
-                }
+                    }
             }
             .sheet(isPresented: $viewModel.showMyQR) {
                 if let qrImage = viewModel.qrImage {
@@ -92,14 +93,24 @@ public struct FriendsView: View {
     @ViewBuilder
     private var qrShortcutSection: some View {
         Section {
-            Button {
-                HapticManager.medium()
-                if let userId = rootViewModel.currentUser?.id {
-                    viewModel.generateMyQRCode(from: userId)
-                    viewModel.showMyQR = true
+            HStack {
+                Button {
+                    HapticManager.medium()
+                    if let userId = rootViewModel.currentUser?.id {
+                        viewModel.generateMyQRCode(from: userId)
+                        viewModel.showMyQR = true
+                    }
+                } label: {
+                    Label("My Handshake QR", systemImage: "qrcode")
                 }
-            } label: {
-                Label("My Handshake QR", systemImage: "qrcode")
+                
+                Spacer()
+                
+                if let userId = rootViewModel.currentUser?.id {
+                    ShareLink(item: URL(string: "https://ufree.app/profile/\(userId)")!) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
             }
         }
     }

@@ -31,10 +31,21 @@ public final class RootViewModel: ObservableObject {
     
     private let authRepository: AuthRepository
     private var authStateTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
     
     public init(authRepository: AuthRepository) {
         self.authRepository = authRepository
         setupAuthStateListener()
+        setupDeepLinkObserver()
+    }
+
+    private func setupDeepLinkObserver() {
+        NotificationCenter.default.publisher(for: .didReceiveProfileDeepLink)
+            .compactMap { $0.object as? String }
+            .sink { [weak self] userId in
+                self?.deepLinkProfileId = userId
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Auth State Setup

@@ -101,7 +101,26 @@ struct UFreeApp: App {
                     container: container,
                     authRepository: authRepository
                 )
+                .onOpenURL { url in
+                    handleDeepLink(url)
+                }
             }
         }
     }
+
+    private func handleDeepLink(_ url: URL) {
+        // Universal Link format: https://ufree.app/profile/{userId}
+        guard url.host == "ufree.app" else { return }
+        let pathComponents = url.pathComponents
+        if pathComponents.count >= 3 && pathComponents[1] == "profile" {
+            let userId = pathComponents[2]
+            // We need to pass this to RootViewModel or similar
+            // In a real implementation, we'd use a shared coordinator or environment object
+            NotificationCenter.default.post(name: .didReceiveProfileDeepLink, object: userId)
+        }
+    }
+}
+
+extension Notification.Name {
+    static let didReceiveProfileDeepLink = Notification.Name("didReceiveProfileDeepLink")
 }

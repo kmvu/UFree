@@ -36,6 +36,10 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
         // Search by hashed phone number
         return allUsers.first { $0.hashedPhoneNumber == hashedNumber }
     }
+
+    public func findUserById(_ userId: String) async throws -> UserProfile? {
+        return allUsers.first { $0.id == userId }
+    }
     
     public func findFriendsFromContacts() async throws -> [UserProfile] {
         return discoveredUsers

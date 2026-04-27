@@ -20,6 +20,9 @@ public protocol FriendRepositoryProtocol {
     /// Finds a single user by their phone number (privacy-safe via hash lookup).
     func findUserByPhoneNumber(_ phoneNumber: String) async throws -> UserProfile?
     
+    /// Finds a single user by their document ID.
+    func findUserById(_ userId: String) async throws -> UserProfile?
+
     /// Adds a friend by user ID (direct add, for backward compatibility).
     func addFriend(userId: String) async throws
     
@@ -140,6 +143,11 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         try await db.collection("users").document(userId).updateData([
             "friendIds": FieldValue.arrayRemove([currentUserId])
         ])
+    }
+
+    func findUserById(_ userId: String) async throws -> UserProfile? {
+        let snapshot = try await db.collection("users").document(userId).getDocument()
+        return try? snapshot.data(as: UserProfile.self)
     }
     
     func findFriendsFromContacts() async throws -> [UserProfile] {
