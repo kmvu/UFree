@@ -11,6 +11,8 @@ import Foundation
 public class MockNotificationRepository: NotificationRepository {
     public var mockNotifications: [AppNotification]
     public var userIdsToFailFor: Set<String> = []  // Test hook: cause sendNudge to fail for these user IDs
+    public var shouldThrowRateLimit = false
+    public var simulatedDelay: UInt64 = 0 // Nanoseconds
     
     public init(notifications: [AppNotification] = []) {
         self.mockNotifications = notifications
@@ -30,6 +32,14 @@ public class MockNotificationRepository: NotificationRepository {
     }
     
     public func sendNudge(to userId: String) async throws {
+        if simulatedDelay > 0 {
+            try? await Task.sleep(nanoseconds: simulatedDelay)
+        }
+        
+        if shouldThrowRateLimit {
+            throw NSError(domain: "FirebaseError", code: 429, userInfo: [NSLocalizedDescriptionKey: "Quota exceeded (429)"])
+        }
+        
         // Test hook: fail if user ID is in failure set
         if userIdsToFailFor.contains(userId) {
             throw NSError(domain: "MockError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Simulated nudge failure"])
@@ -44,5 +54,9 @@ public class MockNotificationRepository: NotificationRepository {
             isRead: false
         )
         mockNotifications.insert(nudge, at: 0)
+    }
+    
+    public func updatePushToken(_ token: String) async throws {
+        // No-op for mock
     }
 }

@@ -15,7 +15,7 @@ public class FirebaseNotificationRepository: NotificationRepository {
     
     public init() {}
     
-    public func listenToNotifications() -> AsyncStream<[AppNotification]> {
+    public nonisolated func listenToNotifications() -> AsyncStream<[AppNotification]> {
         AsyncStream { continuation in
             guard let uid = auth.currentUser?.uid else {
                 continuation.finish()
@@ -65,5 +65,14 @@ public class FirebaseNotificationRepository: NotificationRepository {
         // Write to the RECIPIENT'S subcollection
         try db.collection("users").document(userId).collection("notifications")
             .addDocument(from: note)
+    }
+    
+    public func updatePushToken(_ token: String) async throws {
+        guard let uid = auth.currentUser?.uid else { return }
+        
+        try await db.collection("users").document(uid).updateData([
+            "apnsToken": token,
+            "lastTokenUpdate": FieldValue.serverTimestamp()
+        ])
     }
 }

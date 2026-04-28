@@ -36,6 +36,12 @@ public final class AppleContactsRepository: ContactsRepositoryProtocol {
     }
 
     public func fetchHashedContacts() async throws -> [String] {
+        return try await Task.detached(priority: .background) {
+            try await self.performHashedFetch()
+        }.value
+    }
+    
+    private func performHashedFetch() async throws -> [String] {
         // 1. Check Authorization (with retry for timing)
         var status = CNContactStore.authorizationStatus(for: .contacts)
         

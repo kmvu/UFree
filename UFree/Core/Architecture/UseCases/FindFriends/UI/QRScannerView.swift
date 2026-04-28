@@ -90,18 +90,23 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
         previewLayer.videoGravity = .resizeAspectFill
         view.layer.addSublayer(previewLayer)
 
-        // Add overlay frame
+        // Add overlay frame (consistent with 160pt QR + 12pt padding)
         let overlay = UIView()
-        overlay.layer.borderColor = UIColor.green.cgColor
-        overlay.layer.borderWidth = 2
+        overlay.layer.borderColor = UIColor.systemGreen.cgColor
+        overlay.layer.borderWidth = 3
+        overlay.layer.cornerRadius = 16
         overlay.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(overlay)
         
+        let standardPadding: CGFloat = 12
+        let qrImageSize: CGFloat = 160
+        let boxSize = qrImageSize + (standardPadding * 2) // 184pt
+        
         NSLayoutConstraint.activate([
             overlay.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            overlay.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 100),
-            overlay.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -100),
-            overlay.widthAnchor.constraint(equalTo: overlay.heightAnchor)
+            overlay.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            overlay.widthAnchor.constraint(equalToConstant: boxSize),
+            overlay.heightAnchor.constraint(equalToConstant: boxSize)
         ])
 
         DispatchQueue.global(qos: .background).async { [weak self] in

@@ -12,6 +12,7 @@ import Combine
 public class NotificationViewModel: ObservableObject {
     @Published public var notifications: [AppNotification] = []
     @Published public var highlightedSenderId: String?
+    @Published public var isProcessing: Bool = false
     
     // Computed property for the red badge
     public var unreadCount: Int {
@@ -43,6 +44,8 @@ public class NotificationViewModel: ObservableObject {
     }
     
     public func markRead(_ note: AppNotification) {
+        guard !note.isRead else { return }
+        
         // Optimistic UI update
         if let index = notifications.firstIndex(where: { $0.id == note.id }) {
             notifications[index].isRead = true
@@ -54,6 +57,10 @@ public class NotificationViewModel: ObservableObject {
     }
     
     public func sendNudge(to userId: String) async {
+        guard !isProcessing else { return }
+        isProcessing = true
+        defer { isProcessing = false }
+        
         do {
             try await repository.sendNudge(to: userId)
         } catch {

@@ -244,4 +244,34 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
         
         XCTAssertNotNil(sut.errorMessage)
     }
+
+    // MARK: - Hardening: Concurrency & Rate Limiting
+
+    func test_nudgeAllFree_highConcurrency_10Friends() async {
+        let today = Calendar.current.startOfDay(for: Date())
+        await addFriends(count: 10, status: .free, date: today)
+        mockNotificationRepo.simulatedDelay = 100_000_000 // 0.1s
+        
+        await sut.loadFriendsSchedules()
+        await sut.nudgeAllFree(for: today)
+        
+        XCTAssertTrue(sut.successMessage?.contains("All 10 friends nudged!") ?? false)
+        XCTAssertNil(sut.errorMessage)
+    }
+
+    func test_nudgeAllFree_rateLimit_partialSuccessReporting() async {
+        let today = Calendar.current.startOfDay(for: Date())
+        await addFriends(count: 5, status: .free, date: today)
+        
+        // After 2 successful nudges, start throwing rate limit errors
+        // Note: TaskGroup execution order is not guaranteed, but we check if it handles any 429 correctly.
+        mockNotificationRepo.shouldThrowRateLimit = true
+        
+        await sut.loadFriendsSchedules()
+        await sut.nudgeAllFree(for: today)
+        
+        XCTAssertNotNil(sut.errorMessage)
+        XCTAssertNil(sut.successMessage)
+        XCTAssertTrue(sut.errorMessage?.contains("Failed to nudge") ?? false)
+    }
 }

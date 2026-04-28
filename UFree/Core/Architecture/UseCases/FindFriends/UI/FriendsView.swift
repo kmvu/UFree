@@ -116,6 +116,9 @@ public struct FriendsView: View {
             .shadow(color: Color.accentColor.opacity(0.3), radius: 10, x: 0, y: 5)
         }
         .buttonStyle(InteractiveButtonStyle())
+        .simultaneousGesture(TapGesture().onEnded {
+            HapticManager.medium()
+        })
     }
 
     @ViewBuilder
