@@ -23,6 +23,7 @@ public final class FriendsViewModel: ObservableObject {
     // QR Code & Handshake
     @Published public var showQRScanner = false
     @Published public var showMyQR = false
+    @Published public var showMyQRCard = false // Managed within the Discovery Card flip
     @Published public var qrImage: UIImage? = nil
     
     // Privacy & Trust
@@ -153,26 +154,26 @@ public final class FriendsViewModel: ObservableObject {
     public func handleScannedCode(_ code: String) async {
         guard !isProcessing else { return }
         isProcessing = true
-        showQRScanner = false
         
         // QR Code extracts the encoded User ID
-        // The app extracts the encoded user ID and automatically triggers 
-        // the same profile routing logic used by deep links.
         do {
-            // In this version, we fetch the profile associated with the scanned ID
-            // and present it or send a request.
             if let user = try await friendRepository.findUserById(code) {
                 print("Scanned user: \(user.displayName)")
                 HapticManager.success()
                 
-                // Directly trigger the handshake request for this scanned user
+                // Automatically send request for now as per strategy
+                // Future: Show profile sheet
                 await sendFriendRequest(to: user, source: "qr_code")
+                
+                // Reset scanned code after success
                 scannedCode = nil
             } else {
                 self.errorMessage = "User not found."
+                scannedCode = nil
             }
         } catch {
             self.errorMessage = "Invalid QR code: \(error.localizedDescription)"
+            scannedCode = nil
         }
         isProcessing = false
     }

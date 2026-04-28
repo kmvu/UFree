@@ -18,52 +18,23 @@ public struct FriendsView: View {
 
     public var body: some View {
         NavigationStack {
-            List {
-                qrShortcutSection
-                incomingRequestsSection
-                myFriendsSection
-                addFriendsSection
+            ScrollView {
+                VStack(spacing: 24) {
+                    if let userId = rootViewModel.currentUser?.id {
+                        DiscoveryCardView(viewModel: viewModel, userId: userId)
+                        
+                        shareInviteLinkButton(userId: userId)
+                    }
+                    
+                    VStack(spacing: 12) {
+                        incomingRequestsSection
+                        myFriendsSection
+                        suggestedFromContactsSection
+                    }
+                }
+                .padding()
             }
             .navigationTitle("Friends")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        HapticManager.medium()
-                        viewModel.showQRScanner = true
-                    } label: {
-                        Image(systemName: "qrcode.viewfinder")
-                    }
-                }
-            }
-            .sheet(isPresented: $viewModel.showQRScanner) {
-                QRScannerView(scannedCode: $viewModel.scannedCode)
-                    .ignoresSafeArea()
-                    .overlay(alignment: .topTrailing) {
-                        Button {
-                            viewModel.showQRScanner = false
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title)
-                                .foregroundColor(.white)
-                                .padding()
-                        }
-                    }
-            }
-            .sheet(isPresented: $viewModel.showMyQR) {
-                if let qrImage = viewModel.qrImage {
-                    VStack(spacing: 20) {
-                        Text("Your UFree Handshake").font(.title2).bold()
-                        Image(uiImage: qrImage)
-                            .interpolation(.none)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 200, height: 200)
-                        Text("Friends can scan this to add you instantly").font(.caption).foregroundStyle(.secondary)
-                        Button("Done") { viewModel.showMyQR = false }.buttonStyle(.bordered)
-                    }
-                    .padding()
-                }
-            }
             .overlay { if viewModel.isLoading { ProgressView() } }
             .task {
                 viewModel.listenToRequests()
@@ -91,34 +62,33 @@ public struct FriendsView: View {
     }
 
     @ViewBuilder
-    private var qrShortcutSection: some View {
-        Section {
-            HStack {
-                Button {
-                    HapticManager.medium()
-                    if let userId = rootViewModel.currentUser?.id {
-                        viewModel.generateMyQRCode(from: userId)
-                        viewModel.showMyQR = true
-                    }
-                } label: {
-                    Label("My Handshake QR", systemImage: "qrcode")
-                }
-                
-                Spacer()
-                
-                if let userId = rootViewModel.currentUser?.id {
-                    ShareLink(item: URL(string: "https://ufree.app/profile/\(userId)")!) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                }
+    private func shareInviteLinkButton(userId: String) -> some View {
+        ShareLink(item: URL(string: "https://ufree.app/profile/\(userId)")!) {
+            VStack(spacing: 4) {
+                Text("Invite Anyone via Link")
+                    .font(.headline)
+                Text("Connect to see each other's schedules")
+                    .font(.caption)
+                    .opacity(0.8)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color.accentColor)
+            .foregroundColor(.white)
+            .cornerRadius(8)
         }
+        .buttonStyle(NoInteractionButtonStyle())
     }
 
     @ViewBuilder
     private var incomingRequestsSection: some View {
         if !viewModel.incomingRequests.isEmpty {
-            Section("Friend Requests") {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Friend Requests")
+                    .font(.subheadline).bold()
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                
                 ForEach(viewModel.incomingRequests) { request in
                     HStack(spacing: 12) {
                         Circle().fill(Color.green.opacity(0.2)).frame(width: 40, height: 40)
@@ -159,12 +129,20 @@ public struct FriendsView: View {
     @ViewBuilder
     private var myFriendsSection: some View {
         if !viewModel.friends.isEmpty {
-            Section("My Trusted Circle") {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("My Trusted Circle")
+                    .font(.subheadline).bold()
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                
                 ForEach(viewModel.friends) { friend in
                     friendRow(for: friend, isDiscovered: false)
-                        .swipeActions {
-                            Button("Remove", role: .destructive) {
+                        .padding(.horizontal)
+                        .contextMenu {
+                            Button(role: .destructive) {
                                 Task { await viewModel.removeFriend(friend) }
+                            } label: {
+                                Label("Remove Friend", systemImage: "person.badge.minus")
                             }
                         }
                 }
@@ -173,51 +151,68 @@ public struct FriendsView: View {
     }
 
     @ViewBuilder
-    private var addFriendsSection: some View {
-        Section {
-            // Search by Phone
-            HStack(spacing: 8) {
-                TextField("Find by Phone Number", text: $viewModel.searchText)
-                    .keyboardType(.phonePad)
-                    .submitLabel(.search)
-                    .onSubmit { Task { await viewModel.performPhoneSearch() } }
-                    .disabled(viewModel.isSearching)
+    private var suggestedFromContactsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Suggested from Contacts")
+                .font(.subheadline).bold()
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+                .padding(.top, 12)
+            
+            VStack(spacing: 8) {
+                // Search by Phone
+                HStack(spacing: 8) {
+                    TextField("Find by Phone Number", text: $viewModel.searchText)
+                        .keyboardType(.phonePad)
+                        .submitLabel(.search)
+                        .onSubmit { Task { await viewModel.performPhoneSearch() } }
+                        .disabled(viewModel.isSearching)
+                    
+                    Button(action: {
+                        HapticManager.medium()
+                        Task { await viewModel.performPhoneSearch() }
+                    }) {
+                        if viewModel.isSearching {
+                            ProgressView().frame(width: 20, height: 20)
+                        } else {
+                            Image(systemName: "magnifyingglass")
+                        }
+                    }
+                    .disabled(viewModel.searchText.isEmpty || viewModel.isSearching)
+                }
+                .padding(10)
+                .background(Color(uiColor: .secondarySystemBackground))
+                .cornerRadius(10)
                 
-                Button(action: {
-                    HapticManager.medium()
-                    Task { await viewModel.performPhoneSearch() }
-                }) {
-                    if viewModel.isSearching {
-                        ProgressView().frame(width: 20, height: 20)
-                    } else {
-                        Image(systemName: "magnifyingglass")
+                // Search result or empty state button
+                if let result = viewModel.searchResult {
+                    friendRow(for: result, isDiscovered: true, source: "manual")
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                } else if viewModel.discoveredUsers.isEmpty {
+                    Button(action: {
+                        Task { await viewModel.findFriendsFromContacts() }
+                    }) {
+                        Label("Sync Contacts", systemImage: "person.2.badge.gearshape")
+                            .font(.subheadline).bold()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.accentColor.opacity(0.1))
+                            .foregroundColor(.accentColor)
+                            .cornerRadius(8)
+                    }
+                } else {
+                    ForEach(viewModel.discoveredUsers) { user in
+                        friendRow(for: user, isDiscovered: true, source: "contact_sync")
                     }
                 }
-                .disabled(viewModel.searchText.isEmpty || viewModel.isSearching)
+                
+                Text("We hash your contacts securely. Raw phone numbers are never stored.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 4)
             }
-            .padding(.vertical, 4)
-            
-            // Search result or empty state button
-            if let result = viewModel.searchResult {
-                friendRow(for: result, isDiscovered: true, source: "manual")
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            } else if viewModel.discoveredUsers.isEmpty {
-                Button(action: {
-                    Task { await viewModel.findFriendsFromContacts() }
-                }) {
-                    Label("Sync Contacts", systemImage: "person.2.badge.gearshape")
-                        .foregroundColor(.accentColor)
-                }
-            } else {
-                ForEach(viewModel.discoveredUsers) { user in
-                    friendRow(for: user, isDiscovered: true, source: "contact_sync")
-                }
-            }
-        } header: {
-            Text("Add Friends")
-        } footer: {
-            Text("We hash your contacts securely. Raw phone numbers are never stored.")
-                .font(.caption2)
+            .padding(.horizontal)
         }
     }
 
