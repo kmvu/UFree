@@ -10,6 +10,7 @@ import SwiftUI
 public struct FriendsView: View {
     @StateObject private var viewModel: FriendsViewModel
     @ObservedObject var rootViewModel: RootViewModel
+    @FocusState private var isSearchFocused: Bool
 
     public init(friendRepository: FriendRepositoryProtocol, rootViewModel: RootViewModel) {
         self.rootViewModel = rootViewModel
@@ -18,21 +19,34 @@ public struct FriendsView: View {
 
     public var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    if let userId = rootViewModel.currentUser?.id {
-                        DiscoveryCardView(viewModel: viewModel, userId: userId)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 24) {
+                        if let userId = rootViewModel.currentUser?.id {
+                            DiscoveryCardView(viewModel: viewModel, userId: userId)
+                            
+                            shareInviteLinkButton(userId: userId)
+                        }
                         
-                        shareInviteLinkButton(userId: userId)
+                        VStack(spacing: 12) {
+                            incomingRequestsSection
+                            myFriendsSection
+                            suggestedFromContactsSection
+                                .id("bottomOfPage")
+                        }
                     }
-                    
-                    VStack(spacing: 12) {
-                        incomingRequestsSection
-                        myFriendsSection
-                        suggestedFromContactsSection
+                    .padding()
+                }
+                .onChange(of: isSearchFocused) { _, focused in
+                    if focused {
+                        // Small delay to allow keyboard to begin appearing and ScrollView to adjust
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                proxy.scrollTo("bottomOfPage", anchor: .bottom)
+                            }
+                        }
                     }
                 }
-                .padding()
             }
             .navigationTitle("Friends")
             .overlay { if viewModel.isLoading { ProgressView() } }
@@ -64,20 +78,44 @@ public struct FriendsView: View {
     @ViewBuilder
     private func shareInviteLinkButton(userId: String) -> some View {
         ShareLink(item: URL(string: "https://ufree.app/profile/\(userId)")!) {
-            VStack(spacing: 4) {
-                Text("Invite Anyone via Link")
-                    .font(.headline)
-                Text("Connect to see each other's schedules")
-                    .font(.caption)
-                    .opacity(0.8)
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.2))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: "link")
+                        .font(.title3)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Invite Anyone via Link")
+                        .font(.headline)
+                    Text("Connect to see each other's schedules")
+                        .font(.caption)
+                        .opacity(0.9)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "square.and.arrow.up")
+                    .font(.subheadline)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color.accentColor)
+            .background(
+                LinearGradient(
+                    colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .foregroundColor(.white)
-            .cornerRadius(8)
+            .cornerRadius(24)
+            .shadow(color: Color.accentColor.opacity(0.3), radius: 10, x: 0, y: 5)
         }
-        .buttonStyle(NoInteractionButtonStyle())
+        .buttonStyle(InteractiveButtonStyle())
     }
 
     @ViewBuilder
@@ -161,28 +199,39 @@ public struct FriendsView: View {
             
             VStack(spacing: 8) {
                 // Search by Phone
-                HStack(spacing: 8) {
+                HStack(spacing: 12) {
+                    Image(systemName: "phone.fill")
+                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                    
                     TextField("Find by Phone Number", text: $viewModel.searchText)
                         .keyboardType(.phonePad)
                         .submitLabel(.search)
+                        .focused($isSearchFocused)
                         .onSubmit { Task { await viewModel.performPhoneSearch() } }
                         .disabled(viewModel.isSearching)
                     
-                    Button(action: {
-                        HapticManager.medium()
-                        Task { await viewModel.performPhoneSearch() }
-                    }) {
-                        if viewModel.isSearching {
-                            ProgressView().frame(width: 20, height: 20)
-                        } else {
-                            Image(systemName: "magnifyingglass")
+                    if !viewModel.searchText.isEmpty {
+                        Button(action: {
+                            HapticManager.medium()
+                            Task { await viewModel.performPhoneSearch() }
+                        }) {
+                            if viewModel.isSearching {
+                                ProgressView().frame(width: 20, height: 20)
+                            } else {
+                                Image(systemName: "arrow.right.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.accentColor)
+                            }
                         }
+                        .disabled(viewModel.isSearching)
                     }
-                    .disabled(viewModel.searchText.isEmpty || viewModel.isSearching)
                 }
-                .padding(10)
+                .id("searchField")
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
                 .background(Color(uiColor: .secondarySystemBackground))
-                .cornerRadius(10)
+                .cornerRadius(16)
                 
                 // Search result or empty state button
                 if let result = viewModel.searchResult {
@@ -195,11 +244,12 @@ public struct FriendsView: View {
                         Label("Sync Contacts", systemImage: "person.2.badge.gearshape")
                             .font(.subheadline).bold()
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                            .padding(.vertical, 16)
                             .background(Color.accentColor.opacity(0.1))
                             .foregroundColor(.accentColor)
-                            .cornerRadius(8)
+                            .cornerRadius(20)
                     }
+                    .buttonStyle(InteractiveButtonStyle())
                 } else {
                     ForEach(viewModel.discoveredUsers) { user in
                         friendRow(for: user, isDiscovered: true, source: "contact_sync")

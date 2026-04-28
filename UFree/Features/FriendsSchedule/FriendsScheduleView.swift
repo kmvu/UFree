@@ -106,6 +106,8 @@ public struct FriendsScheduleView: View {
             }
             .padding(.vertical)
         }
+        .navigationTitle("Who's Free?")
+        .navigationBarTitleDisplayMode(.large)
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {

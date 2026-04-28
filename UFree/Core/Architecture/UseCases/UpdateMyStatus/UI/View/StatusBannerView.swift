@@ -45,6 +45,9 @@ struct StatusBannerView: View {
         }) {
             HStack(spacing: 16) {
                 Image(systemName: viewModel.currentStatus.iconName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
                     .font(.system(size: 26))
                     .foregroundColor(.white)
                     .id("icon-\(viewModel.currentStatus)")

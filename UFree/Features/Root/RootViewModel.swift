@@ -25,6 +25,14 @@ public final class RootViewModel: ObservableObject {
     // Navigation / Deep Links
     @Published var deepLinkProfileId: String? = nil
     
+    // Navigation Tabs
+    public enum Tab {
+        case schedule
+        case feed
+        case friends
+    }
+    @Published public var activeTab: Tab = .schedule
+    
     // Feature ViewModels for navigation and cross-feature state
     @Published public var friendsScheduleViewModel: FriendsScheduleViewModel?
     @Published public var friendsViewModel: FriendsViewModel?

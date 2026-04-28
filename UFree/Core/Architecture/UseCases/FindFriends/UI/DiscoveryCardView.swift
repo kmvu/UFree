@@ -15,16 +15,22 @@ struct DiscoveryCardView: View {
         ZStack {
             if viewModel.showMyQRCard {
                 myQRView
-                    .transition(.asymmetric(insertion: .flip, removal: .flip))
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
             } else {
                 scannerView
-                    .transition(.asymmetric(insertion: .flip, removal: .flip))
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .leading).combined(with: .opacity),
+                        removal: .move(edge: .trailing).combined(with: .opacity)
+                    ))
             }
         }
-        .frame(height: 250)
+        .frame(height: 330)
         .cornerRadius(20)
-        .shadow(radius: 5)
-        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: viewModel.showMyQRCard)
+        .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .animation(.easeInOut(duration: 0.4), value: viewModel.showMyQRCard)
     }
     
     private var scannerView: some View {
@@ -56,21 +62,28 @@ struct DiscoveryCardView: View {
         ZStack {
             Color(uiColor: .secondarySystemBackground)
             
-            VStack(spacing: 12) {
+            VStack(spacing: 0) {
+                Spacer(minLength: 24)
+                
                 if let qrImage = viewModel.qrImage {
                     Image(uiImage: qrImage)
                         .interpolation(.none)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 160, height: 160)
-                        .padding(10)
+                        .padding(12)
                         .background(Color.white)
-                        .cornerRadius(12)
+                        .cornerRadius(16)
+                        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
                 }
                 
                 Text("Your UFree Handshake")
                     .font(.caption)
+                    .fontWeight(.medium)
                     .foregroundStyle(.secondary)
+                    .padding(.top, 12)
+                
+                Spacer(minLength: 16)
                 
                 Button {
                     HapticManager.light()
@@ -78,37 +91,16 @@ struct DiscoveryCardView: View {
                 } label: {
                     Text("Scan Code")
                         .font(.subheadline).bold()
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 24)
                         .background(.ultraThinMaterial)
                         .cornerRadius(20)
                         .foregroundColor(.primary)
                 }
+                
+                Spacer(minLength: 24)
             }
             .padding()
         }
-    }
-}
-
-extension AnyTransition {
-    static var flip: AnyTransition {
-        .modifier(
-            active: FlipModifier(pct: 180),
-            identity: FlipModifier(pct: 0)
-        )
-    }
-}
-
-struct FlipModifier: AnimatableModifier {
-    var pct: Double
-    
-    var animatableData: Double {
-        get { pct }
-        set { pct = newValue }
-    }
-    
-    func body(content: Content) -> some View {
-        content
-            .rotation3DEffect(Angle(degrees: pct), axis: (x: 0, y: 1, z: 0))
     }
 }

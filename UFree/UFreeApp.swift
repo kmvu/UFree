@@ -104,6 +104,10 @@ struct UFreeApp: App {
                 .onOpenURL { url in
                     handleDeepLink(url)
                 }
+                .onAppear {
+                    // This allows dismissing keyboard by tapping anywhere outside
+                    UIApplication.shared.addTapGestureRecognizerToWindow()
+                }
             }
         }
     }
@@ -123,4 +127,23 @@ struct UFreeApp: App {
 
 extension Notification.Name {
     static let didReceiveProfileDeepLink = Notification.Name("didReceiveProfileDeepLink")
+}
+
+// MARK: - Keyboard Dismissal Helper
+extension UIApplication {
+    func addTapGestureRecognizerToWindow() {
+        guard let windowScene = connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else { return }
+        let tapGesture = UITapGestureRecognizer(target: window, action: #selector(UIView.endEditing))
+        tapGesture.requiresExclusiveTouchType = false
+        tapGesture.cancelsTouchesInView = false
+        tapGesture.delegate = self
+        window.addGestureRecognizer(tapGesture)
+    }
+}
+
+extension UIApplication: UIGestureRecognizerDelegate {
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
 }

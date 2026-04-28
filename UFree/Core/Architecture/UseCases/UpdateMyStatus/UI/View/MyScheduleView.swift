@@ -263,15 +263,19 @@ public struct MyScheduleView: View {
                     .multilineTextAlignment(.center)
             }
 
-            Button(action: {}) {
+            Button(action: {
+                rootViewModel.activeTab = .friends
+            }) {
                 Text("Find Friends")
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(12)
-                    .background(Color.purple)
-                    .cornerRadius(8)
+                    .background(Color.accentColor)
+                    .cornerRadius(20)
+                    .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
             }
+            .buttonStyle(InteractiveButtonStyle())
             .padding()
 
             Spacer()

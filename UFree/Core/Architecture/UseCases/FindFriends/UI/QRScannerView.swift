@@ -99,9 +99,9 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
         
         NSLayoutConstraint.activate([
             overlay.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            overlay.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            overlay.widthAnchor.constraint(equalToConstant: 250),
-            overlay.heightAnchor.constraint(equalToConstant: 250)
+            overlay.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 100),
+            overlay.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -100),
+            overlay.widthAnchor.constraint(equalTo: overlay.heightAnchor)
         ])
 
         DispatchQueue.global(qos: .background).async { [weak self] in

@@ -112,14 +112,16 @@ struct MainAppView: View {
     @ObservedObject var notificationViewModel: NotificationViewModel
 
     var body: some View {
-        TabView {
+        TabView(selection: $rootViewModel.activeTab) {
             // MARK: - Schedule Tab
             NavigationStack {
                 ScheduleContainer(container: container, rootViewModel: rootViewModel)
+                    .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
                 Label("Schedule", systemImage: "calendar")
             }
+            .tag(RootViewModel.Tab.schedule)
 
             // MARK: - Friends Feed Tab
             NavigationStack {
@@ -130,6 +132,7 @@ struct MainAppView: View {
             .tabItem {
                 Label("Feed", systemImage: "person.2.fill")
             }
+            .tag(RootViewModel.Tab.feed)
 
             // MARK: - Add Friends Tab
             NavigationStack {
@@ -138,10 +141,12 @@ struct MainAppView: View {
                     rootViewModel: rootViewModel
                 )
                 .navigationTitle("Friends")
+                .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
                 Label("Add Friends", systemImage: "person.badge.plus")
             }
+            .tag(RootViewModel.Tab.friends)
         }
         .sheet(item: $rootViewModel.deepLinkProfileId) { userId in
             // Profile Card View for Deep Links
