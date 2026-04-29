@@ -47,14 +47,23 @@ With the heavy use of `AsyncStream` for real-time listeners, we must guarantee t
 - [ ] **UI Callbacks**: Audit all `observeIncomingRequests` implementations to ensure data processing and UI updates are explicitly isolated to the `@MainActor`.
 - [ ] **Background Tasks**: Verify that intensive operations (like contact hashing) are performed on background threads but report results back to the main thread.
 
-## 4. APNs Roadmap (Background Reliability)
+## 4. APNs Roadmap & Quota Resilience
 
-Currently, real-time listeners only function when the app is foregrounded. This creates an "Active-App Inconvenience."
+This section outlines the strategy for implementing background notifications and maintaining service stability during viral spikes or quota exhaustion.
 
-### Next Steps:
-- [ ] **Decouple Listeners**: Refactor `NotificationRepository` to allow for a hybrid approach (Foreground Listeners + Background Push Notifications).
-- [ ] **Deep-Link Integration**: Ensure that clicking a push notification correctly triggers the deep-link flow for friend requests even if the app was terminated.
-- [ ] **Infrastructure Setup**: Prepare the `AppDelegate` or `AppScene` for APNs registration (to be implemented in a future sprint).
+### Phase 1: APNs Implementation (Sprint 5)
+- [ ] **FCM Bridge Implementation**: Update `AppDelegate` to handle remote registration and save tokens to `UserProfile`.
+- [ ] **The Hybrid Listener Strategy**: Refactor `NotificationViewModel` to detach Firestore listeners the moment the app enters the background, relying on APNs for background delivery.
+- [ ] **Security-First Payloads**: Ensure push payloads use generic messages (e.g., "👋 Someone sent you a Nudge!") to maintain the privacy-first architecture.
+- [ ] **Contextual Permissions**: Only trigger the APNs permission prompt after a successful friend handshake or sending a first Nudge.
+
+### Phase 2: Quota Resilience (Bonus Improvements)
+- [ ] **Friend Discovery Quota Exhaustion**:
+    - *Risk*: Intensive contact-sync reads (50k/day free tier) could be exhausted.
+    - *Backup*: If Firestore rejects reads due to quota, gracefully disable Contact Sync and fall back to "The In-Person Handshake" (QR codes and Universal Links).
+- [ ] **Batch Nudging Overload Protection**:
+    - *Risk*: Parallel nudges to 10+ friends could trigger Cloud Function or write limits.
+    - *Backup*: Harden `FriendsScheduleViewModel` with rate-limiting, tactile warnings via `HapticManager`, and clear success/failure reporting with optimistic state rollbacks.
 
 ---
 *Note: This plan was generated on 2026-04-27 based on the UFree Architectural Audit.*

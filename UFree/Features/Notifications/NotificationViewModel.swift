@@ -21,11 +21,15 @@ public class NotificationViewModel: ObservableObject {
     
     private let repository: NotificationRepository
     private var task: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
     
     public init(repository: NotificationRepository) {
         self.repository = repository
         
-        // Start listening immediately upon init (or call this from onAppear)
+        // Setup lifecycle observers for Hybrid Listener strategy
+        setupLifecycleObservers()
+        
+        // Start listening if initialized in foreground
         startListening()
     }
     
@@ -33,7 +37,37 @@ public class NotificationViewModel: ObservableObject {
         task?.cancel()
     }
     
+    private func setupLifecycleObservers() {
+        // Detach listener when backgrounding to save database reads
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .sink { [weak self] _ in
+                self?.stopListening()
+            }
+            .store(in: &cancellables)
+            
+        // Re-attach when returning to foreground
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+            .sink { [weak self] _ in
+                self?.startListening()
+            }
+            .store(in: &cancellables)
+            
+        // Listen for FCM token updates
+        NotificationCenter.default.publisher(for: .didReceiveFCMToken)
+            .sink { [weak self] notification in
+                if let token = notification.userInfo?["token"] as? String {
+                    Task { [weak self] in
+                        try? await self?.repository.updatePushToken(token)
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
     public func startListening() {
+        // Ensure we don't start multiple listeners
+        stopListening()
+        
         task = Task {
             for await notes in repository.listenToNotifications() {
                 withAnimation {
@@ -41,6 +75,11 @@ public class NotificationViewModel: ObservableObject {
                 }
             }
         }
+    }
+    
+    public func stopListening() {
+        task?.cancel()
+        task = nil
     }
     
     public func markRead(_ note: AppNotification) {
@@ -63,8 +102,26 @@ public class NotificationViewModel: ObservableObject {
         
         do {
             try await repository.sendNudge(to: userId)
+            
+            // Contextual Permission Prompt: Request APNs permission after first successful interaction
+            requestPermissions()
         } catch {
             print("Error sending nudge: \(error)")
+        }
+    }
+    
+    /// Triggers the system notification permission dialog.
+    /// This is called contextually after a user sends a nudge or accepts a friend request.
+    public func requestPermissions() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            if granted {
+                print("Notification permission granted.")
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            } else if let error = error {
+                print("Notification permission error: \(error)")
+            }
         }
     }
 }

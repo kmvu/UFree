@@ -287,8 +287,21 @@ public final class FriendsViewModel: ObservableObject {
                 )
                 friends.append(newFriend)
             }
+            
+            // Contextual Permission Prompt: Request APNs permission after first handshake
+            requestNotificationPermissions()
         } catch {
             self.errorMessage = "Failed to accept request."
+        }
+    }
+    
+    private func requestNotificationPermissions() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
+            if granted {
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            }
         }
     }
     

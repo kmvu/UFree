@@ -64,7 +64,7 @@ final class StatusBannerViewModel: ObservableObject {
     }
 
     func setStatus(_ status: UserStatus) {
-        guard !isProcessing else { return }
+        guard !isProcessing && isExpanded else { return }
         
         isProcessing = true
         currentStatus = status
@@ -88,8 +88,12 @@ final class StatusBannerViewModel: ObservableObject {
         }
         
         // Close drawer after selection
-        withAnimation(.spring()) {
+        if NSClassFromString("XCTestCase") != nil {
             isExpanded = false
+        } else {
+            withAnimation(.spring()) {
+                isExpanded = false
+            }
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -98,8 +102,12 @@ final class StatusBannerViewModel: ObservableObject {
     }
 
     func toggleExpansion() {
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+        if NSClassFromString("XCTestCase") != nil {
             isExpanded.toggle()
+        } else {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                isExpanded.toggle()
+            }
         }
     }
 }

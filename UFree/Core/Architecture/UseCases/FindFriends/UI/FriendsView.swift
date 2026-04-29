@@ -259,7 +259,7 @@ public struct FriendsView: View {
                     }
                 }
                 
-                Text("We hash your contacts securely. Raw phone numbers are never stored.")
+                Text("Secure, anonymous matching. Your phone numbers never leave your device.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

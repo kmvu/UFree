@@ -15,6 +15,7 @@ struct StatusBannerView: View {
         VStack(spacing: 0) {
             if viewModel.isExpanded {
                 expandedView
+                    .allowsHitTesting(viewModel.isExpanded)
             } else {
                 collapsedView
             }

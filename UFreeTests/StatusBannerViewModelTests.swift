@@ -30,6 +30,7 @@ final class StatusBannerViewModelTests: XCTestCase {
     }
 
     func test_setStatus_updatesStatus_immediately() async {
+        viewModel.toggleExpansion()
         viewModel.setStatus(.free)
 
         // Status should update immediately, not after delay
@@ -37,12 +38,14 @@ final class StatusBannerViewModelTests: XCTestCase {
     }
 
     func test_setStatus_sets_any_status() async {
+        viewModel.toggleExpansion()
         viewModel.setStatus(.morning)
         XCTAssertEqual(viewModel.currentStatus, .morning)
         
         // Wait for processing to complete
         try? await Task.sleep(nanoseconds: 350_000_000)
         
+        viewModel.toggleExpansion() // Re-expand after previous selection closed it
         viewModel.setStatus(.afternoon)
         XCTAssertEqual(viewModel.currentStatus, .afternoon)
     }
@@ -57,6 +60,7 @@ final class StatusBannerViewModelTests: XCTestCase {
 
     func test_rapidTaps_ignored_while_processing() async {
         // First set
+        viewModel.toggleExpansion()
         viewModel.setStatus(.free)
         XCTAssertTrue(viewModel.isProcessing)
 
@@ -73,6 +77,7 @@ final class StatusBannerViewModelTests: XCTestCase {
     }
 
     func test_processingState_betweenTaps() async {
+        viewModel.toggleExpansion()
         viewModel.setStatus(.free)
 
         // Should be processing immediately after tap
