@@ -7,13 +7,13 @@ This document outlines the strategic plan for hardening the UFree iOS applicatio
 All interactive components must prevent rapid-tap edge cases to avoid duplicate network requests or inconsistent UI states.
 
 ### Audit Checklist:
-- [ ] **FriendsViewModel**: 
+- [x] **FriendsViewModel**: 
     - `findFriendsInContacts()`: Prevent multiple simultaneous contact-hashing background tasks.
     - `acceptFriendRequest()` / `declineFriendRequest()`: Guard against multiple taps on the deep-link bottom sheet.
-- [ ] **QR Scanner UI**:
-    - `processScannedCode()`: Prevent firing multiple friend request handshakes if a code is detected multiple times in rapid succession.
-- [ ] **NotificationCenterView**:
-    - `markAsRead()`: Ensure single-action processing for individual and batch operations.
+- [x] **QR Scanner UI**:
+    - `handleScannedCode()`: Prevent firing multiple friend request handshakes if a code is detected multiple times in rapid succession.
+- [x] **NotificationCenterView**:
+    - `markRead()`: Ensure single-action processing for individual operations.
 
 ### Standard Implementation:
 ```swift
@@ -32,11 +32,11 @@ func handleAction() async {
 The codebase utilizes parallel execution for performance (e.g., Batch Nudging). These must be covered by rigorous unit tests.
 
 ### Test Requirements:
-- [ ] **Batch Nudging Race Conditions**:
-    - Write tests in `FriendsScheduleViewModelTests` that trigger parallel nudges to 10+ friends simultaneously and assert UI stability.
-- [ ] **Firebase Rate-Limit Simulation**:
+- [x] **Batch Nudging Race Conditions**:
+    - Write tests in `FriendsScheduleViewModelBatchNudgeTests` that trigger parallel nudges to 10+ friends simultaneously and assert UI stability.
+- [x] **Firebase Rate-Limit Simulation**:
     - Simulate `NotificationRepository` errors (e.g., status 429) during batch operations and verify that the ViewModel correctly identifies which nudges failed.
-- [ ] **State Rollbacks**:
+- [x] **State Rollbacks**:
     - Ensure that if a network request fails, the local UI state (optimistic updates) is reverted to the previous known-good state without flickering.
 
 ## 3. Thread Safety & @MainActor Isolation
@@ -51,11 +51,11 @@ With the heavy use of `AsyncStream` for real-time listeners, we must guarantee t
 
 This section outlines the strategy for implementing background notifications and maintaining service stability during viral spikes or quota exhaustion.
 
-### Phase 1: APNs Implementation (Sprint 5)
-- [ ] **FCM Bridge Implementation**: Update `AppDelegate` to handle remote registration and save tokens to `UserProfile`.
-- [ ] **The Hybrid Listener Strategy**: Refactor `NotificationViewModel` to detach Firestore listeners the moment the app enters the background, relying on APNs for background delivery.
+### Phase 1: APNs Implementation (Sprint 6.1)
+- [x] **FCM Bridge Implementation**: Update `AppDelegate` to handle remote registration and broadcast tokens.
+- [x] **The Hybrid Listener Strategy**: Refactor `NotificationViewModel` to detach Firestore listeners the moment the app enters the background.
 - [ ] **Security-First Payloads**: Ensure push payloads use generic messages (e.g., "👋 Someone sent you a Nudge!") to maintain the privacy-first architecture.
-- [ ] **Contextual Permissions**: Only trigger the APNs permission prompt after a successful friend handshake or sending a first Nudge.
+- [x] **Contextual Permissions**: Only trigger the APNs permission prompt after a successful friend handshake or sending a first Nudge.
 
 ### Phase 2: Quota Resilience (Bonus Improvements)
 - [ ] **Friend Discovery Quota Exhaustion**:

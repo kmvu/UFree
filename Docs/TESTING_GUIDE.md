@@ -1,6 +1,6 @@
 # UFree Testing Guide
 
-**Status:** ✅ Production Ready | **Tests:** 195+ | **Coverage:** 85%+ | **Quality:** Zero flaky, zero memory leaks
+**Status:** ✅ Production Ready | **Tests:** 245+ | **Coverage:** 85%+ | **Quality:** Zero flaky, zero memory leaks
 
 ---
 
@@ -57,7 +57,7 @@ For testing multi-user flows without SMS codes:
 | **Auth** | `UserTests.swift`, `MockAuthRepositoryTests.swift` |
 | **Domain** | `AvailabilityStatusTests.swift`, `DayAvailabilityTests.swift`, `UserScheduleTests.swift` |
 | **Data** | `FirestoreDayDTOTests.swift`, `PersistentDayAvailabilityTests.swift`, `SwiftDataAvailabilityRepositoryTests.swift`, `FriendRepositoryTests.swift` |
-| **Features** | `FriendsViewModelTests.swift`, `FriendsHandshakeTests.swift`, `MyScheduleViewModelTests.swift`, `StatusBannerViewModelTests.swift`, `NotificationViewModelTests.swift` |
+| **Features** | `FriendsViewModelTests.swift`, `FriendsHandshakeTests.swift`, `MyScheduleViewModelTests.swift`, `StatusBannerViewModelTests.swift`, `NotificationViewModelTests.swift`, `FriendsScheduleViewModelBatchNudgeTests.swift` |
 
 ---
 
@@ -78,4 +78,4 @@ Unit tests auto-detect and use in-memory SwiftData containers for 100x speed and
 
 ---
 
-**Last Updated:** April 26, 2026 | **Sprint:** 6.5 | **Status:** ✅ Ready to Ship
+**Last Updated:** April 29, 2026 | **Sprint:** 6.5 | **Status:** ✅ Ready to Ship

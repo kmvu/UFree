@@ -349,6 +349,44 @@ users/{auth_uid}
 
 ---
 
-**Last Updated:** January 29, 2026 | **Total Sprints:** 6+ | **Tests:** 195+ | **Status:** Production Ready ✅
+## Sprint 6.1: Push Notifications & Analytics ✅
 
-**Next Phase:** Push Notifications (APNs) - Background delivery with deep links
+**Theme:** Background Awareness & User Behavior
+
+- **Push Notifications (APNs)**
+  - Firebase Cloud Messaging (FCM) bridge implemented
+  - Hybrid Listener strategy: Firestore listeners detach in background to save battery/quota
+  - Contextual permission prompts (after first friend handshake or nudge)
+  - Profile deep-linking from push payloads
+
+- **Analytics & Observability**
+  - `AnalyticsManager` for tracking core funnels (onboarding, discovery, engagement)
+  - Firebase Crashlytics enabled for production monitoring
+  - Performance tracking for parallel operations
+
+---
+
+## Sprint 6.5: Group Engagement & Heatmap ✅
+
+**Theme:** Power-User Features & Performance Hardening
+
+- **Availability Heatmap**
+  - "Who's free" badge count on day filters
+  - Instant visual summary of group availability
+  - Optimized status filtering for large friend lists
+
+- **Batch Nudging**
+  - `nudgeAllFree(for:)` feature: Nudge all available friends with one tap
+  - Parallel processing using `TaskGroup` for high-performance delivery
+  - Success/Failure count reporting with granular error handling
+
+- **Architectural Hardening**
+  - Universal `isProcessing` guards on all interactive ViewModels
+  - Rapid-tap protection for QR scanning and friend requests
+  - 50+ new unit tests specifically for concurrency and edge cases
+
+---
+
+**Last Updated:** April 29, 2026 | **Total Sprints:** 6.5 | **Tests:** 245+ | **Status:** Production Ready ✅
+
+**Next Phase:** Group Chat & Shared Calendars
