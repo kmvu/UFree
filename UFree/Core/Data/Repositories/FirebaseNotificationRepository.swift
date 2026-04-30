@@ -71,7 +71,7 @@ public class FirebaseNotificationRepository: NotificationRepository {
         guard let uid = auth.currentUser?.uid else { return }
         
         try await db.collection("users").document(uid).updateData([
-            "apnsToken": token,
+            "fcmToken": token,
             "lastTokenUpdate": FieldValue.serverTimestamp()
         ])
     }

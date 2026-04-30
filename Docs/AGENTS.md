@@ -113,17 +113,23 @@ build_app(
 ### Universal Links Setup
 
 **In Xcode:**
-1. Add "Associated Domains" capability
-2. Add: `applinks:ufree.app`
-3. Add to Info.plist: `com.apple.developer.associated-domains`
+1. Add "Associated Domains" capability to the app target.
+2. Ensure `UFree/UFree.entitlements` contains:
+   ```xml
+   <key>com.apple.developer.associated-domains</key>
+   <array>
+       <string>applinks:ufree.app</string>
+   </array>
+   ```
+3. Verify `CODE_SIGN_ENTITLEMENTS` in Build Settings points to `UFree/UFree.entitlements`.
 
-**Server (.well-known/apple-app-site-association):**
+**Server side (host at https://ufree.app/.well-known/apple-app-site-association):**
 ```json
 {
   "applinks": {
     "apps": [],
     "details": [{
-      "appID": "TEAM_ID.com.khangvu.UFree",
+      "appID": "SNUXAG727V.com.khangvu.UFree",
       "paths": ["/notification/*", "/profile/*"]
     }]
   }

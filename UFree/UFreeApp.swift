@@ -165,7 +165,9 @@ struct UFreeApp: App {
                     authRepository: authRepository
                 )
                 .onOpenURL { url in
-                    handleDeepLink(url)
+                    // Universal Links (AASA) are handled by handleUniversalLink inside MainAppView
+                    // via the .onOpenURL attached there.
+                    // If we want to handle them at the RootView level, we'd do it here.
                 }
                 .onAppear {
                     // This allows dismissing keyboard by tapping anywhere outside

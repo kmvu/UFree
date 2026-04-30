@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "SNUXAG727V.com.khangvu.UFree",
+        "paths": [
+          "/notification/*",
+          "/profile/*"
+        ]
+      }
+    ]
+  }
+}

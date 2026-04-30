@@ -39,14 +39,14 @@ public class NotificationViewModel: ObservableObject {
     
     private func setupLifecycleObservers() {
         // Detach listener when backgrounding to save database reads
-        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+        NotificationCenter.default.publisher(for: UIScene.didEnterBackgroundNotification)
             .sink { [weak self] _ in
                 self?.stopListening()
             }
             .store(in: &cancellables)
             
-        // Re-attach when returning to foreground
-        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+        // Re-attach when returning to active
+        NotificationCenter.default.publisher(for: UIScene.didActivateNotification)
             .sink { [weak self] _ in
                 self?.startListening()
             }
