@@ -127,6 +127,7 @@ public final class FriendsScheduleViewModel: ObservableObject {
 
         do {
             try await notificationRepository.sendNudge(to: userId)
+            AnalyticsManager.logNudgeSent(isBatch: false)
             HapticManager.success()
         } catch {
             self.errorMessage = "Failed to send nudge: \(error.localizedDescription)"
@@ -193,6 +194,13 @@ public final class FriendsScheduleViewModel: ObservableObject {
 
             // Set success message with count
             let totalCount = freeFriendIds.count
+            
+            // Log analytics if any nudges succeeded
+            if successCount > 0 {
+                AnalyticsManager.logNudgeSent(isBatch: true)
+                AnalyticsManager.logBatchNudge(recipientCount: successCount)
+            }
+            
             if successCount == totalCount {
                 // All succeeded
                 let friendWord = totalCount == 1 ? "friend" : "friends"

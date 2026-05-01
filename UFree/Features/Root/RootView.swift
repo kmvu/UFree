@@ -182,6 +182,7 @@ struct MainAppView: View {
     /// Handles incoming Universal Links (App Site Association)
     /// Example: https://ufree.app/notification/user123
     private func handleUniversalLink(_ url: URL) {
+        AnalyticsManager.logLinkOpened(url: url.absoluteString)
         let deepLink = DeepLink.parse(url)
         
         switch deepLink {
