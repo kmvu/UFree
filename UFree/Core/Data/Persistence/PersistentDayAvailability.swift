@@ -41,7 +41,7 @@ extension DayAvailability {
         PersistentDayAvailability(
             id: id,
             date: date,
-            statusValue: status.rawValue,
+            statusValue: overallStatus.rawValue,
             note: note
         )
     }
