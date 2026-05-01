@@ -31,6 +31,9 @@ enum AnalyticsEvent {
     
     /// User opened the app
     case appLaunched
+
+    /// User opened a universal link or deep link
+    case linkOpened(url: String)
 }
 
 // MARK: - Analytics Manager
@@ -79,6 +82,12 @@ struct AnalyticsManager {
             Analytics.logEvent("app_launched", parameters: [
                 "timestamp": Date().timeIntervalSince1970
             ])
+
+        case .linkOpened(let url):
+            Analytics.logEvent("link_opened", parameters: [
+                "url": url,
+                "timestamp": Date().timeIntervalSince1970
+            ])
         }
     }
     
@@ -109,10 +118,15 @@ extension AnalyticsManager {
         ])
     }
     
-    /// Log "Phone Search Success" - Tests if blind-index search works
+    /// Log \"Phone Search Success\" - Tests if blind-index search works
     static func logPhoneSearchSuccess(friendName: String? = nil) {
         Analytics.logEvent("phone_search_success", parameters: [
             "timestamp": Date().timeIntervalSince1970
         ])
+    }
+
+    /// Log "Link Opened" - Tracks universal link engagement
+    static func logLinkOpened(url: String) {
+        AnalyticsManager.log(.linkOpened(url: url))
     }
 }
