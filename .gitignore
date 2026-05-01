@@ -48,3 +48,5 @@ fastlane/Keys/*.p8
 .ruby-version
 report.xml
 build.log
+.firebaserc
+.firebase/hosting.cHVibGlj.cache

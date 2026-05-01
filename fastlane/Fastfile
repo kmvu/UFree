@@ -231,10 +231,10 @@ platform :ios do
   lane :sync_certs do
     puts "🔐 Syncing certificates with match..."
     api_key = setup_api_key
-    
+
     match(
       type: "appstore",
-      readonly: true,
+      readonly: false,
       skip_confirmation: true,
       api_key: api_key
     )
