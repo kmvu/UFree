@@ -94,5 +94,58 @@ final class DayAvailabilityTests: XCTestCase {
         XCTAssertEqual(decoded.status, original.status)
         XCTAssertNil(decoded.note)
     }
+    
+    // MARK: - TimeBlock Tests
+    
+    func test_overallStatus_withMultipleTimeBlocks() {
+        let date = Date()
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        let afternoon = Calendar.current.date(byAdding: .hour, value: 12, to: startOfDay)!
+        let evening = Calendar.current.date(byAdding: .hour, value: 18, to: startOfDay)!
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
+        
+        let blocks = [
+            TimeBlock(startTime: startOfDay, endTime: afternoon, status: .busy),
+            TimeBlock(startTime: afternoon, endTime: evening, status: .free),
+            TimeBlock(startTime: evening, endTime: endOfDay, status: .busy)
+        ]
+        
+        let day = DayAvailability(date: date, timeBlocks: blocks)
+        
+        // Since it contains at least one 'free' block, overallStatus should be 'free' based on our logic
+        XCTAssertEqual(day.overallStatus, .free)
+    }
+    
+    func test_overallStatus_withOnlyBusyBlocks() {
+        let date = Date()
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        let afternoon = Calendar.current.date(byAdding: .hour, value: 12, to: startOfDay)!
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
+        
+        let blocks = [
+            TimeBlock(startTime: startOfDay, endTime: afternoon, status: .busy),
+            TimeBlock(startTime: afternoon, endTime: endOfDay, status: .busy)
+        ]
+        
+        let day = DayAvailability(date: date, timeBlocks: blocks)
+        
+        XCTAssertEqual(day.overallStatus, .busy)
+    }
+    
+    func test_statusSetter_replacesTimeBlocks() {
+        let date = Date()
+        var day = DayAvailability(date: date, timeBlocks: [
+            TimeBlock(startTime: date, endTime: date.addingTimeInterval(3600), status: .busy)
+        ])
+        
+        XCTAssertEqual(day.timeBlocks.count, 1)
+        
+        day.status = .free
+        
+        XCTAssertEqual(day.timeBlocks.count, 1)
+        XCTAssertEqual(day.timeBlocks[0].status, .free)
+        XCTAssertEqual(day.overallStatus, .free)
+    }
+
 }
 

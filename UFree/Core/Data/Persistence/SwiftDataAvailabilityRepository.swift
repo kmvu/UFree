@@ -58,21 +58,21 @@ public final class SwiftDataAvailabilityRepository: AvailabilityRepository {
         
         if let existing = try context.fetch(descriptor).first {
             // Update existing record
-            existing.statusValue = day.status.rawValue
+            existing.statusValue = day.overallStatus.rawValue
             existing.note = day.note
             try context.save()
-            print("✅ SwiftData Updated: \(day.date.formatted()) is now \(day.status.displayName)")
+            print("✅ SwiftData Updated: \(day.date.formatted()) is now \(day.overallStatus.displayName)")
         } else {
             // Insert new record
             let newPersistent = PersistentDayAvailability(
                 id: day.id,
                 date: day.date,
-                statusValue: day.status.rawValue,
+                statusValue: day.overallStatus.rawValue,
                 note: day.note
             )
             context.insert(newPersistent)
             try context.save()
-            print("✅ SwiftData Inserted: \(day.date.formatted()) as \(day.status.displayName)")
+            print("✅ SwiftData Inserted: \(day.date.formatted()) as \(day.overallStatus.displayName)")
         }
     }
 

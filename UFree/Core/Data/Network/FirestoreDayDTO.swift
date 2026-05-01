@@ -23,7 +23,7 @@ struct FirestoreDayDTO: Codable {
         return [
             "id": day.id.uuidString,
             "dateString": formatter.string(from: day.date),
-            "status": day.status.rawValue,
+            "status": day.overallStatus.rawValue,
             "note": day.note as Any,
             "updatedAt": FieldValue.serverTimestamp(), // Let server set the time
         ]
