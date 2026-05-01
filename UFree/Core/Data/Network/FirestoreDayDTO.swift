@@ -11,9 +11,35 @@ import FirebaseFirestore
 struct FirestoreDayDTO: Codable {
     let id: String           // The original UUID string
     let dateString: String   // YYYY-MM-DD (Used for sorting/querying)
-    let status: Int          // 0=Busy, 1=Free, etc.
+    let status: Int          // Calculated overall status (for legacy/querying)
     let note: String?
+    let timeBlocks: [FirestoreTimeBlockDTO]?
     let updatedAt: Date?     // Server timestamp
+
+    struct FirestoreTimeBlockDTO: Codable {
+        let id: String
+        let startTime: Date
+        let endTime: Date
+        let status: Int
+        
+        static func fromDomain(_ block: TimeBlock) -> [String: Any] {
+            return [
+                "id": block.id.uuidString,
+                "startTime": block.startTime,
+                "endTime": block.endTime,
+                "status": block.status.rawValue
+            ]
+        }
+        
+        func toDomain() -> TimeBlock {
+            return TimeBlock(
+                id: UUID(uuidString: id) ?? UUID(),
+                startTime: startTime,
+                endTime: endTime,
+                status: AvailabilityStatus(rawValue: status) ?? .busy
+            )
+        }
+    }
 
     // MARK: - Mappers
 
@@ -25,6 +51,7 @@ struct FirestoreDayDTO: Codable {
             "dateString": formatter.string(from: day.date),
             "status": day.overallStatus.rawValue,
             "note": day.note as Any,
+            "timeBlocks": day.timeBlocks.map { FirestoreTimeBlockDTO.fromDomain($0) },
             "updatedAt": FieldValue.serverTimestamp(), // Let server set the time
         ]
     }
@@ -34,12 +61,22 @@ struct FirestoreDayDTO: Codable {
         // We try to restore the UUID, or generate a new one if missing
         let uuid = UUID(uuidString: id) ?? UUID()
 
-        return DayAvailability(
-            id: uuid,
-            date: originalDate,
-            status: AvailabilityStatus(rawValue: status) ?? .unknown,
-            note: note
-        )
+        if let timeBlocks = timeBlocks, !timeBlocks.isEmpty {
+            return DayAvailability(
+                id: uuid,
+                date: originalDate,
+                timeBlocks: timeBlocks.map { $0.toDomain() },
+                note: note
+            )
+        } else {
+            // Fallback for legacy data without timeBlocks
+            return DayAvailability(
+                id: uuid,
+                date: originalDate,
+                status: AvailabilityStatus(rawValue: status) ?? .unknown,
+                note: note
+            )
+        }
     }
 }
 

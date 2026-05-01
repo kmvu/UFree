@@ -89,6 +89,7 @@ final class FirestoreDayDTOTests: XCTestCase {
             dateString: DateFormatter.yyyyMMdd.string(from: date),
             status: 1, // free
             note: "Test note",
+            timeBlocks: nil,
             updatedAt: Date()
         )
         
@@ -96,7 +97,7 @@ final class FirestoreDayDTOTests: XCTestCase {
         let domain = dto.toDomain(originalDate: date)
         
         // Assert
-        XCTAssertEqual(domain.status, .free)
+        XCTAssertEqual(domain.status, AvailabilityStatus.free)
         XCTAssertEqual(domain.note, "Test note")
         XCTAssertEqual(domain.date, date)
     }
@@ -110,6 +111,7 @@ final class FirestoreDayDTOTests: XCTestCase {
             dateString: DateFormatter.yyyyMMdd.string(from: date),
             status: 0,
             note: nil,
+            timeBlocks: nil,
             updatedAt: nil
         )
         
@@ -128,6 +130,7 @@ final class FirestoreDayDTOTests: XCTestCase {
             dateString: DateFormatter.yyyyMMdd.string(from: date),
             status: 0,
             note: nil,
+            timeBlocks: nil,
             updatedAt: nil
         )
         
@@ -149,6 +152,7 @@ final class FirestoreDayDTOTests: XCTestCase {
             dateString: DateFormatter.yyyyMMdd.string(from: date),
             status: 999, // Invalid status
             note: nil,
+            timeBlocks: nil,
             updatedAt: nil
         )
         
@@ -156,7 +160,7 @@ final class FirestoreDayDTOTests: XCTestCase {
         let domain = dto.toDomain(originalDate: date)
         
         // Assert
-        XCTAssertEqual(domain.status, .unknown)
+        XCTAssertEqual(domain.status, AvailabilityStatus.unknown)
     }
     
     func test_toDomain_allStatusValuesRoundTrip() {
@@ -177,6 +181,7 @@ final class FirestoreDayDTOTests: XCTestCase {
                 dateString: DateFormatter.yyyyMMdd.string(from: date),
                 status: statusInt,
                 note: nil,
+                timeBlocks: nil,
                 updatedAt: nil
             )
             let domain = dto.toDomain(originalDate: date)
@@ -201,6 +206,7 @@ final class FirestoreDayDTOTests: XCTestCase {
             dateString: encodedData["dateString"] as! String,
             status: encodedData["status"] as! Int,
             note: encodedData["note"] as? String,
+            timeBlocks: nil,
             updatedAt: encodedData["updatedAt"] as? Date
         )
         let decodedDay = dto.toDomain(originalDate: originalDay.date)
@@ -236,5 +242,40 @@ final class FirestoreDayDTOTests: XCTestCase {
         
         // Assert
         XCTAssertEqual(reformattedString, dateString)
+    }
+    
+    func test_multiBlockRoundTrip() {
+        let now = Date()
+        let block1 = TimeBlock(startTime: now, endTime: now.addingTimeInterval(3600), status: .free)
+        let block2 = TimeBlock(startTime: now.addingTimeInterval(3600), endTime: now.addingTimeInterval(7200), status: .busy)
+        let original = DayAvailability(id: UUID(), date: now, timeBlocks: [block1, block2], note: "Multi block")
+        
+        let encoded = FirestoreDayDTO.fromDomain(original)
+        
+        // Simulate decoding
+        let blocksData = encoded["timeBlocks"] as! [[String: Any]]
+        let blocks = blocksData.map { data in
+            FirestoreDayDTO.FirestoreTimeBlockDTO(
+                id: data["id"] as! String,
+                startTime: data["startTime"] as! Date,
+                endTime: data["endTime"] as! Date,
+                status: data["status"] as! Int
+            )
+        }
+        
+        let dto = FirestoreDayDTO(
+            id: encoded["id"] as! String,
+            dateString: encoded["dateString"] as! String,
+            status: encoded["status"] as! Int,
+            note: encoded["note"] as? String,
+            timeBlocks: blocks,
+            updatedAt: nil
+        )
+        
+        let restored = dto.toDomain(originalDate: now)
+        
+        XCTAssertEqual(restored.timeBlocks.count, 2)
+        XCTAssertEqual(restored.timeBlocks[0].status, .free)
+        XCTAssertEqual(restored.timeBlocks[1].status, .busy)
     }
 }

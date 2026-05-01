@@ -32,6 +32,41 @@ final class UpdateMyStatusUseCaseTests: XCTestCase {
         XCTAssertEqual(spy.updatedDay?.status, day.status)
     }
     
+    func test_execute_withOverlappingBlocks_throwsError() async {
+        let now = Date()
+        let block1 = TimeBlock(startTime: now, endTime: now.addingTimeInterval(3600), status: .free)
+        let block2 = TimeBlock(startTime: now.addingTimeInterval(1800), endTime: now.addingTimeInterval(5400), status: .busy)
+        
+        let day = DayAvailability(date: now, timeBlocks: [block1, block2])
+        
+        do {
+            try await sut.execute(day: day)
+            XCTFail("Should throw overlappingTimeBlocks error")
+        } catch let UpdateMyStatusUseCaseError.overlappingTimeBlocks(b1, b2) {
+            XCTAssertTrue((b1 == block1.id && b2 == block2.id) || (b1 == block2.id && b2 == block1.id))
+            XCTAssertEqual(spy.updateCallCount, 0)
+        } catch {
+            XCTFail("Wrong error: \(error)")
+        }
+    }
+    
+    func test_execute_withInvalidTimeRange_throwsError() async {
+        let now = Date()
+        let block = TimeBlock(startTime: now.addingTimeInterval(3600), endTime: now, status: .free)
+        
+        let day = DayAvailability(date: now, timeBlocks: [block])
+        
+        do {
+            try await sut.execute(day: day)
+            XCTFail("Should throw invalidTimeRange error")
+        } catch let UpdateMyStatusUseCaseError.invalidTimeRange(blockId) {
+            XCTAssertEqual(blockId, block.id)
+            XCTAssertEqual(spy.updateCallCount, 0)
+        } catch {
+            XCTFail("Wrong error: \(error)")
+        }
+    }
+    
     // MARK: - Date Validation Tests
     
     func test_execute_rejectsPastDates() async {

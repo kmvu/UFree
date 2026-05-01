@@ -58,21 +58,33 @@ public final class SwiftDataAvailabilityRepository: AvailabilityRepository {
         
         if let existing = try context.fetch(descriptor).first {
             // Update existing record
-            existing.statusValue = day.overallStatus.rawValue
             existing.note = day.note
+            
+            // Re-map time blocks
+            // Note: Simplest way to update relationships in SwiftData is to clear and re-insert
+            // if we don't have stable IDs for nested objects, but here we do have IDs in TimeBlock.
+            
+            // Delete old ones
+            existing.persistentTimeBlocks.forEach { context.delete($0) }
+            
+            // Add new ones
+            existing.persistentTimeBlocks = day.timeBlocks.map { block in
+                PersistentTimeBlock(
+                    id: block.id,
+                    startTime: block.startTime,
+                    endTime: block.endTime,
+                    statusValue: block.status.rawValue
+                )
+            }
+            
             try context.save()
-            print("✅ SwiftData Updated: \(day.date.formatted()) is now \(day.overallStatus.displayName)")
+            print("✅ SwiftData Updated: \(day.date.formatted()) with \(day.timeBlocks.count) blocks")
         } else {
             // Insert new record
-            let newPersistent = PersistentDayAvailability(
-                id: day.id,
-                date: day.date,
-                statusValue: day.overallStatus.rawValue,
-                note: day.note
-            )
+            let newPersistent = day.toPersistent()
             context.insert(newPersistent)
             try context.save()
-            print("✅ SwiftData Inserted: \(day.date.formatted()) as \(day.overallStatus.displayName)")
+            print("✅ SwiftData Inserted: \(day.date.formatted()) with \(day.timeBlocks.count) blocks")
         }
     }
 

@@ -11,16 +11,44 @@ import SwiftData
 /// SwiftData persistence model for DayAvailability
 /// Decoupled from Domain layer - allows schema evolution without affecting business logic
 @Model
+final class PersistentTimeBlock {
+    @Attribute(.unique) var id: UUID
+    var startTime: Date
+    var endTime: Date
+    var statusValue: Int
+    var day: PersistentDayAvailability?
+
+    init(id: UUID, startTime: Date, endTime: Date, statusValue: Int) {
+        self.id = id
+        self.startTime = startTime
+        self.endTime = endTime
+        self.statusValue = statusValue
+    }
+
+    func toDomain() -> TimeBlock {
+        TimeBlock(
+            id: id,
+            startTime: startTime,
+            endTime: endTime,
+            status: AvailabilityStatus(rawValue: statusValue) ?? .busy
+        )
+    }
+}
+
+/// SwiftData persistence model for DayAvailability
+/// Decoupled from Domain layer - allows schema evolution without affecting business logic
+@Model
 final class PersistentDayAvailability {
     @Attribute(.unique) var id: UUID
     var date: Date
-    var statusValue: Int
     var note: String?
+    
+    @Relationship(deleteRule: .cascade, inverse: \PersistentTimeBlock.day)
+    var persistentTimeBlocks: [PersistentTimeBlock] = []
 
-    init(id: UUID, date: Date, statusValue: Int, note: String? = nil) {
+    init(id: UUID, date: Date, note: String? = nil) {
         self.id = id
         self.date = date
-        self.statusValue = statusValue
         self.note = note
     }
     
@@ -29,7 +57,7 @@ final class PersistentDayAvailability {
         DayAvailability(
             id: id,
             date: date,
-            status: AvailabilityStatus(rawValue: statusValue) ?? .busy,
+            timeBlocks: persistentTimeBlocks.map { $0.toDomain() },
             note: note
         )
     }
@@ -38,11 +66,19 @@ final class PersistentDayAvailability {
 extension DayAvailability {
     /// Maps domain entity to persistence model
     func toPersistent() -> PersistentDayAvailability {
-        PersistentDayAvailability(
+        let persistent = PersistentDayAvailability(
             id: id,
             date: date,
-            statusValue: overallStatus.rawValue,
             note: note
         )
+        persistent.persistentTimeBlocks = timeBlocks.map { block in
+            PersistentTimeBlock(
+                id: block.id,
+                startTime: block.startTime,
+                endTime: block.endTime,
+                statusValue: block.status.rawValue
+            )
+        }
+        return persistent
     }
 }

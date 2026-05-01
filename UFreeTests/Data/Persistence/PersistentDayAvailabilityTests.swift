@@ -20,15 +20,14 @@ final class PersistentDayAvailabilityTests: XCTestCase {
         let sut = PersistentDayAvailability(
             id: id,
             date: date,
-            statusValue: AvailabilityStatus.free.rawValue,
             note: note
         )
         
-        assertPersistentDay(sut, matchesId: id, date: date, statusValue: 1, note: note)
+        assertPersistentDay(sut, matchesId: id, date: date, note: note)
     }
 
     func test_init_withoutNote_setsNoteToNil() {
-        let sut = makePersistentDay(statusValue: 0, note: nil)
+        let sut = makePersistentDay(note: nil)
         XCTAssertNil(sut.note)
     }
 
@@ -37,21 +36,16 @@ final class PersistentDayAvailabilityTests: XCTestCase {
     func test_toDomain_convertsToPersistentModel() {
         let id = UUID()
         let date = Date()
-        let persistent = makePersistentDay(id: id, date: date, status: .free, note: "Dinner")
+        let persistent = makePersistentDay(id: id, date: date, note: "Dinner")
+        let blockId = UUID()
+        let block = PersistentTimeBlock(id: blockId, startTime: date, endTime: date.addingTimeInterval(3600), statusValue: AvailabilityStatus.free.rawValue)
+        persistent.persistentTimeBlocks = [block]
         
         let domain = persistent.toDomain()
         
         assertDomainDay(domain, matchesId: id, date: date, status: .free, note: "Dinner")
-    }
-
-    func test_toDomain_withBusyStatus_convertsCorrectly() {
-        let persistent = makePersistentDay(status: .busy)
-        XCTAssertEqual(persistent.toDomain().status, .busy)
-    }
-
-    func test_toDomain_withInvalidStatusValue_defaultsToBusy() {
-        let persistent = PersistentDayAvailability(id: UUID(), date: Date(), statusValue: 999)
-        XCTAssertEqual(persistent.toDomain().status, .busy)
+        XCTAssertEqual(domain.timeBlocks.count, 1)
+        XCTAssertEqual(domain.timeBlocks[0].id, blockId)
     }
 
     // MARK: - Persistence Conversion Tests
@@ -61,50 +55,38 @@ final class PersistentDayAvailabilityTests: XCTestCase {
         
         let persistent = domain.toPersistent()
         
-        assertPersistentDay(persistent, status: .busy, note: "Meeting")
-    }
-
-    func test_toPersistent_withoutNote_convertsCorrectly() {
-        let domain = makeDomainDay(status: .eveningOnly, note: nil)
-        let persistent = domain.toPersistent()
-        
-        XCTAssertEqual(persistent.statusValue, AvailabilityStatus.eveningOnly.rawValue)
-        XCTAssertNil(persistent.note)
+        assertPersistentDay(persistent, note: "Meeting")
+        XCTAssertEqual(persistent.persistentTimeBlocks.count, 1)
+        XCTAssertEqual(persistent.persistentTimeBlocks[0].statusValue, AvailabilityStatus.busy.rawValue)
     }
 
     // MARK: - Round-trip Conversion Tests
 
     func test_roundTripConversion_preservesAllData() {
-        let original = makeDomainDay(status: .free, note: "Lunch available")
+        let now = Date()
+        let block1 = TimeBlock(startTime: now, endTime: now.addingTimeInterval(3600), status: .free)
+        let block2 = TimeBlock(startTime: now.addingTimeInterval(3600), endTime: now.addingTimeInterval(7200), status: .busy)
+        let original = DayAvailability(id: UUID(), date: now, timeBlocks: [block1, block2], note: "Multi block")
         
         let persistent = original.toPersistent()
         let restored = persistent.toDomain()
         
-        assertDomainDay(restored, matchesId: original.id, date: original.date, 
-                       status: original.status, note: original.note)
+        assertDomainDay(restored, matchesId: original.id, date: original.date, note: original.note)
+        XCTAssertEqual(restored.timeBlocks.count, 2)
+        XCTAssertEqual(restored.timeBlocks[0].status, .free)
+        XCTAssertEqual(restored.timeBlocks[1].status, .busy)
     }
 
-    func test_roundTripConversion_allStatusValues() {
-        for status in [AvailabilityStatus.busy, .free, .morningOnly, .afternoonOnly, .eveningOnly] {
-            let original = makeDomainDay(status: status)
-            let restored = original.toPersistent().toDomain()
-            XCTAssertEqual(restored.status, status, "Status \(status) not preserved")
-        }
-    }
-    
     // MARK: - Helpers
     
     private func makePersistentDay(
         id: UUID = UUID(),
         date: Date = Date(),
-        status: AvailabilityStatus = .busy,
-        statusValue: Int? = nil,
         note: String? = nil
     ) -> PersistentDayAvailability {
         PersistentDayAvailability(
             id: id,
             date: date,
-            statusValue: statusValue ?? status.rawValue,
             note: note
         )
     }
@@ -122,8 +104,6 @@ final class PersistentDayAvailabilityTests: XCTestCase {
         _ persistent: PersistentDayAvailability,
         matchesId id: UUID? = nil,
         date: Date? = nil,
-        statusValue: Int? = nil,
-        status: AvailabilityStatus? = nil,
         note: String? = nil
     ) {
         if let id = id {
@@ -131,11 +111,6 @@ final class PersistentDayAvailabilityTests: XCTestCase {
         }
         if let date = date {
             XCTAssertEqual(persistent.date, date)
-        }
-        if let statusValue = statusValue {
-            XCTAssertEqual(persistent.statusValue, statusValue)
-        } else if let status = status {
-            XCTAssertEqual(persistent.statusValue, status.rawValue)
         }
         if let note = note {
             XCTAssertEqual(persistent.note, note)

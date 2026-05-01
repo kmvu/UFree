@@ -18,7 +18,8 @@ final class DayAvailabilityTests: XCTestCase {
         let day = DayAvailability(date: date)
         
         XCTAssertEqual(day.date.timeIntervalSince1970, date.timeIntervalSince1970, accuracy: 0.001)
-        XCTAssertEqual(day.status, .busy)
+        // Note: New logic defaults to a single busy block covering the whole day.
+        XCTAssertEqual(day.status, AvailabilityStatus.busy)
         XCTAssertNil(day.note)
         XCTAssertNotNil(day.id)
     }

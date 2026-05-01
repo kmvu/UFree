@@ -13,11 +13,21 @@ public struct DayAvailability: Identifiable, Codable {
     public var timeBlocks: [TimeBlock]
     public var note: String?
 
-    public init(id: UUID = UUID(), date: Date, timeBlocks: [TimeBlock] = [], note: String? = nil) {
+    public init(id: UUID = UUID(), date: Date, timeBlocks: [TimeBlock]? = nil, note: String? = nil) {
         self.id = id
         self.date = date
-        self.timeBlocks = timeBlocks
         self.note = note
+        
+        if let timeBlocks = timeBlocks {
+            self.timeBlocks = timeBlocks
+        } else {
+            // Default to a single busy block covering the whole day
+            let startOfDay = Calendar.current.startOfDay(for: date)
+            let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? date
+            self.timeBlocks = [
+                TimeBlock(startTime: startOfDay, endTime: endOfDay, status: .busy)
+            ]
+        }
     }
 
     /// Backwards compatibility initializer
