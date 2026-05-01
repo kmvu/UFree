@@ -11,6 +11,7 @@ public struct MyScheduleView: View {
     @StateObject private var viewModel: MyScheduleViewModel
     @ObservedObject var rootViewModel: RootViewModel
     @State private var isLoaded = false
+    @State private var selectedDayForSheet: DayAvailability?
 
     public init(viewModel: MyScheduleViewModel, rootViewModel: RootViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -71,6 +72,12 @@ public struct MyScheduleView: View {
                 isLoaded = true
             }
         }
+        .sheet(item: $selectedDayForSheet) { day in
+            DayDetailsBottomSheet(day: day) { updatedDay in
+                viewModel.updateStatus(for: updatedDay)
+            }
+            .presentationDetents([.medium, .large])
+        }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
                 viewModel.errorMessage = nil
@@ -110,8 +117,14 @@ public struct MyScheduleView: View {
                                 withAnimation(.spring()) {
                                     viewModel.selectedDate = day.date
                                 }
+                                HapticManager.light()
+                                selectedDayForSheet = day
                             }
                         )
+                        .onLongPressGesture {
+                            HapticManager.medium()
+                            selectedDayForSheet = day
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -243,7 +256,13 @@ public struct MyScheduleView: View {
             return []
         }
         
-        return friendSchedules.filter { $0.status(for: selectedDate) == .free }
+        return friendSchedules.filter { friendSchedule in
+            // Check if friend has any "free" block on that day
+            if let dayStatus = friendSchedule.userSchedule.weeklyStatus.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) {
+                return dayStatus.timeBlocks.contains { $0.status == .free }
+            }
+            return false
+        }
     }
 
     private var emptyStateSection: some View {

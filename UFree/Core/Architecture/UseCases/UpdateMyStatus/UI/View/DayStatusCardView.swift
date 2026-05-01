@@ -43,6 +43,12 @@ struct DayStatusCardView: View {
                 .font(.system(size: 10, weight: .black))
                 .foregroundColor(isSelected ? .white.opacity(0.9) : color)
                 .textCase(.uppercase)
+
+            // Segmented Pill
+            segmentedPill
+                .frame(height: 6)
+                .padding(.horizontal, 4)
+                .padding(.top, 4)
         }
         .padding(.vertical, 16)
         .padding(.horizontal, 12)
@@ -71,7 +77,34 @@ struct DayStatusCardView: View {
         }
     }
 
+    private var segmentedPill: some View {
+        GeometryReader { geometry in
+            HStack(spacing: 2) {
+                if day.timeBlocks.isEmpty {
+                    Capsule()
+                        .fill(Color.gray.opacity(0.3))
+                } else {
+                    let totalSeconds = day.timeBlocks.reduce(0) { $0 + $1.endTime.timeIntervalSince($1.startTime) }
+
+                    ForEach(day.timeBlocks) { block in
+                        let width = CGFloat(block.endTime.timeIntervalSince(block.startTime) / totalSeconds) * (geometry.size.width - CGFloat((day.timeBlocks.count - 1) * 2))
+                        
+                        Capsule()
+                            .fill(isSelected ? .white : block.status.displayColor)
+                            .opacity(isSelected ? 0.6 : 1.0)
+                            .frame(width: max(width, 4))
+                    }
+                }
+            }
+        }
+    }
+
     private func iconFor(_ status: AvailabilityStatus) -> String {
+        // If there's any free block, show bolt
+        if day.timeBlocks.contains(where: { $0.status == .free }) {
+            return "bolt.fill"
+        }
+        
         switch status {
         case .free: return "bolt.fill"
         case .busy: return "cup.and.saucer.fill"
