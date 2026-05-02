@@ -56,7 +56,7 @@ struct DayFilterButtonView: View {
                     if isSelected {
                         Color.accentColor
                     } else {
-                        Color.white
+                        Color(UIColor.secondarySystemGroupedBackground)
                     }
                 }
             )
@@ -64,7 +64,7 @@ struct DayFilterButtonView: View {
             .shadow(color: isSelected ? Color.accentColor.opacity(0.3) : Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
             .overlay(
                 RoundedRectangle(cornerRadius: 24)
-                    .stroke(isSelected ? Color.clear : Color.gray.opacity(0.1), lineWidth: 1)
+                    .stroke(isSelected ? Color.clear : Color.gray.opacity(0.2), lineWidth: 1)
             )
         }
         .buttonStyle(NoInteractionButtonStyle())

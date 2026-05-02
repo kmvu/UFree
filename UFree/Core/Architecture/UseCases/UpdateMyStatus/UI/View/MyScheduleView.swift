@@ -187,7 +187,7 @@ public struct MyScheduleView: View {
                                             .font(.system(size: 18, weight: .bold))
                                             .foregroundColor(.accentColor)
                                     }
-                                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                                    .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 2))
                                 }
                                 
                                 if freeFriendsForSelectedDate.count > 5 {
@@ -200,7 +200,7 @@ public struct MyScheduleView: View {
                                             .font(.caption)
                                             .fontWeight(.bold)
                                     }
-                                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                                    .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 2))
                                 }
                             }
                             .padding(.leading, 10)

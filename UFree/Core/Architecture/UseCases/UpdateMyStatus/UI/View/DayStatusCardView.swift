@@ -61,14 +61,14 @@ struct DayStatusCardView: View {
                         endPoint: .bottomTrailing
                     )
                 } else {
-                    Color.white
+                    Color(UIColor.secondarySystemGroupedBackground)
                 }
             }
         )
         .cornerRadius(24)
         .overlay(
             RoundedRectangle(cornerRadius: 24)
-                .stroke(isSelected ? Color.clear : Color.gray.opacity(0.1), lineWidth: 1)
+                .stroke(isSelected ? Color.clear : Color.gray.opacity(0.2), lineWidth: 1)
         )
         .shadow(color: isSelected ? color.opacity(0.3) : Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
         .onTapGesture {
