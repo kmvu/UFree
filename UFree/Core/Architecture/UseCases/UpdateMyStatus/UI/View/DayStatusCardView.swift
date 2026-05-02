@@ -79,7 +79,7 @@ struct DayStatusCardView: View {
 
     private var segmentedIndicator: some View {
         HStack(spacing: 2) {
-            if isFullDayFree() {
+            if isFullDayFree() && day.status != .mixed {
                 Capsule()
                     .fill(isSelected ? .white : Color(hex: "6dd69c"))
                     .opacity(isSelected ? 0.8 : 1.0)

@@ -9,6 +9,7 @@ import SwiftUI
 
 public struct FriendsScheduleView: View {
     @ObservedObject var viewModel: FriendsScheduleViewModel
+    @ObservedObject var rootViewModel: RootViewModel
 
     // Display next 5 days
     private var daysToShow: [Date] {
@@ -16,8 +17,9 @@ public struct FriendsScheduleView: View {
         return (0..<5).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: today) }
     }
 
-    public init(viewModel: FriendsScheduleViewModel) {
+    public init(viewModel: FriendsScheduleViewModel, rootViewModel: RootViewModel) {
         self.viewModel = viewModel
+        self.rootViewModel = rootViewModel
     }
 
     public var body: some View {
@@ -92,11 +94,10 @@ public struct FriendsScheduleView: View {
                     ProgressView()
                         .padding()
                 } else if viewModel.friendSchedules.isEmpty {
-                    ContentUnavailableView(
-                        "No Friends Yet",
-                        systemImage: "person.2.slash",
-                        description: Text("Add friends to see who's available")
-                    )
+                    OnboardingCardView {
+                        rootViewModel.activeTab = .friends
+                    }
+                    .padding(.top, 40)
                 } else {
                     // List is always in the hierarchy when not loading
                     ForEach(viewModel.friendSchedules) { friendDisplay in
@@ -251,5 +252,8 @@ private struct FriendStatusPill: View {
         notificationRepository: mockNotificationRepo
     )
 
-    return FriendsScheduleView(viewModel: viewModel)
+    return FriendsScheduleView(
+        viewModel: viewModel,
+        rootViewModel: RootViewModel(authRepository: MockAuthRepository())
+    )
 }

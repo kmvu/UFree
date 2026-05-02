@@ -2,48 +2,28 @@
 
 ## Project Overview & Architecture
 - **App:** UFree (iOS Mobile App).
-- **Core Features:** Social Graph, Nudges, In-App Notification Center.
-- **Data Flow:** UI → ViewModel → CompositeRepository → SwiftData (instant) + Firestore (background).
-- **Notifications:** Rely exclusively on in-app state/Firestore. Do NOT implement APNs at this stage.
+- [cite_start]**Data Flow:** UI → ViewModel → CompositeRepository → SwiftData (instant) + Firestore (background)[cite: 712].
+- [cite_start]**APNs**: Implement background notifications using the FCM bridge and Hybrid Listener strategy [cite: 659-664].
 
-## Code Style & Standards
-- **UI:** SwiftUI ONLY (No UIKit).
-- **Concurrency:** Use `async/await` (No Combine). Ensure all UI components and ViewModels are marked with `@MainActor`.
-- **State Management:** Use `@Published` for ViewModel state.
-- **Protection:** All interactive ViewModels must use `guard !isProcessing` rapid-tap protection.
-
-## File Organization
-- **Domain Models:** `UFree/Core/Domain/`
-- **Repositories:** `UFree/Core/Data/` (Use Protocol-based repos for testability).
-- **ViewModels & Views:** `UFree/Features/*/`
-- **Tests:** `UFreeTests/`
+## Performance & Caching
+- [cite_start]**Optimization Goal**: Maintain <5s cold starts by reusing established caches[cite: 302].
+- **Mandatory Flags**: For any build/test, always include:
+  - [cite_start]`derived_data_path: "./fastlane/builds/DerivedData"` 
+  - [cite_start]`-skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache` 
 
 ## Testing Protocol
-- **Rule:** Run tests ONLY if code logic changes. Skip tests for docs/comments.
-- **Pattern:** Arrange-Act-Assert.
-- **Naming:** `test_[method]_[expectedBehavior]()`
-- **Execution Command:** To validate your changes, use this exact command:
-  `xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | grep -E '(PASS|FAIL|passed|failed|warning)'`
-
-## Deployment & Fastlane
-- **Tooling:** Fastlane is the source of truth.
-- **Commands:** You are authorized to run `fastlane tests`, `fastlane alpha`, and `fastlane beta` via the terminal to verify builds or deploy.
-- **Debugging:** If you encounter Ruby/OpenSSL errors or CI crashes, read the terminal output and fix the Swift concurrency issues or scripts directly.
-
-## Git Commit Convention
-- When asked to commit, you MUST analyze the git diff and format the commit message using this exact pattern: `(TYPE) brief description in mostly lowercase`
-- **DO NOT** use standard conventional commit syntax (e.g., `feat: message`).
-- **Valid Types:** (FEAT), (FIX), (CHORE), (REFACTOR), (TEST), (DOCS).
-- **Examples:**
-  - `(FEAT) add app icon with single size`
-  - `(FIX) crashes on unit test CI for main actor`
-
-## Agent Behavior
-- **Pacing:** Execute one logical feature or fix at a time to respect API limits.
-- **Verification:** Always aim to verify your changes compile successfully before finalizing the task.
+- [cite_start]**Source of Truth**: Use `bundle exec fastlane tests` for all pre-flight checks.
+- [cite_start]**Selective Execution**: For UI tweaks, run targeted tests for the specific component before running the full suite.
+- [cite_start]**Efficiency**: Only run tests if logic changes; skip for documentation or comments.
 
 ## Terminal & API Limit Protections
-- **The Token Explosion Rule:** You are operating under strict API token limits. Massive terminal logs will cause you to hang and timeout.
-- **Suppress Output:** Whenever running `fastlane`, `xcodebuild`, `pod install`, or any build commands, you MUST use quiet flags or pipe the output. 
-- **Read Errors Smartly:** Never print or read full build logs directly in the terminal. If a build fails and you need to investigate, pipe the output to a temporary `.log` file, and then use `tail -n 50 build.log` or `grep -A 10 "error:" build.log` to read only the relevant failure details.
-- **The "Two Strike" Rule:** If a terminal command fails twice in a row, DO NOT attempt a third time. Stop the loop immediately, explain the error to the user, and wait for human guidance.
+- **The Token Explosion Rule**: Massive logs cause hangs. [cite_start]Never read full logs in the terminal[cite: 726, 731].
+- **Silent Operator Protocol**: 
+  1. [cite_start]Pipe all build/test output to `build.log`.
+  2. [cite_start]Use `tail` or `grep` to verify success or triage specific errors.
+  3. [cite_start]Do not print progress bars or verbose output[cite: 728].
+- [cite_start]**The "Two Strike" Rule**: If a command fails twice, stop and wait for human guidance[cite: 731, 732].
+
+## Git Commit Convention
+- [cite_start]Pattern: `(TYPE) brief description in mostly lowercase`[cite: 723].
+- [cite_start]Valid Types: (FEAT), (FIX), (CHORE), (REFACTOR), (TEST), (DOCS)[cite: 724].

@@ -134,102 +134,112 @@ public struct MyScheduleView: View {
     }
 
     private var whosFreOnFilterSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(discoveryTitle)
-                    .font(.headline)
-                
-                if freeFriendsForSelectedDate.count > 0 {
-                    let count = freeFriendsForSelectedDate.count
-                    Text("\(count) \(count == 1 ? "friend is" : "friends are") free to hang out")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                } else {
-                    Text("No friends marked as free for this day yet")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding(.horizontal)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(viewModel.weeklySchedule) { day in
-                        DayFilterButtonView(
-                            date: day.date,
-                            isSelected: rootViewModel.friendsScheduleViewModel?.selectedDate.map { Calendar.current.isDate($0, inSameDayAs: day.date) } ?? false,
-                            freeCount: rootViewModel.friendsScheduleViewModel?.freeFriendCount(for: day.date, friendsSchedules: rootViewModel.friendsScheduleViewModel?.friendSchedules ?? []) ?? 0,
-                            action: {
-                                withAnimation(.spring()) {
-                                    rootViewModel.friendsScheduleViewModel?.toggleDate(day.date)
-                                }
-                            }
-                        )
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 4)
-            }
-            
-            // Discovery Results
-            if !freeFriendsForSelectedDate.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: -10) {
-                                ForEach(freeFriendsForSelectedDate.prefix(5)) { friend in
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color.accentColor.opacity(0.1))
-                                            .frame(width: 44, height: 44)
-                                        
-                                        Text(friend.displayName.prefix(1).uppercased())
-                                            .font(.system(size: 18, weight: .bold))
-                                            .foregroundColor(.accentColor)
-                                    }
-                                    .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 2))
-                                }
-                                
-                                if freeFriendsForSelectedDate.count > 5 {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color(.systemGray5))
-                                            .frame(width: 44, height: 44)
-                                        
-                                        Text("+\(freeFriendsForSelectedDate.count - 5)")
-                                            .font(.caption)
-                                            .fontWeight(.bold)
-                                    }
-                                    .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 2))
-                                }
-                            }
-                            .padding(.leading, 10)
-                        }
+        Group {
+            if let friendSchedules = rootViewModel.friendsScheduleViewModel?.friendSchedules, !friendSchedules.isEmpty {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(discoveryTitle)
+                            .font(.headline)
                         
-                        Spacer()
-                        
-                        Button(action: {
-                            if let date = rootViewModel.friendsScheduleViewModel?.selectedDate {
-                                Task {
-                                    await rootViewModel.friendsScheduleViewModel?.nudgeAllFree(for: date)
-                                }
-                            }
-                        }) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "hand.wave.fill")
-                                Text("Nudge All")
-                            }
-                            .font(.system(size: 14, weight: .bold))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.accentColor)
-                            .foregroundColor(.white)
-                            .clipShape(Capsule())
+                        if freeFriendsForSelectedDate.count > 0 {
+                            let count = freeFriendsForSelectedDate.count
+                            Text("\(count) \(count == 1 ? "friend is" : "friends are") free to hang out")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("No friends marked as free for this day yet")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                         }
                     }
                     .padding(.horizontal)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(viewModel.weeklySchedule) { day in
+                                DayFilterButtonView(
+                                    date: day.date,
+                                    isSelected: rootViewModel.friendsScheduleViewModel?.selectedDate.map { Calendar.current.isDate($0, inSameDayAs: day.date) } ?? false,
+                                    freeCount: rootViewModel.friendsScheduleViewModel?.freeFriendCount(for: day.date, friendsSchedules: rootViewModel.friendsScheduleViewModel?.friendSchedules ?? []) ?? 0,
+                                    action: {
+                                        withAnimation(.spring()) {
+                                            rootViewModel.friendsScheduleViewModel?.toggleDate(day.date)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 4)
+                    }
+                    
+                    // Discovery Results
+                    if !freeFriendsForSelectedDate.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: -10) {
+                                        ForEach(freeFriendsForSelectedDate.prefix(5)) { friend in
+                                            ZStack {
+                                                Circle()
+                                                    .fill(Color.accentColor.opacity(0.1))
+                                                    .frame(width: 44, height: 44)
+                                                
+                                                Text(friend.displayName.prefix(1).uppercased())
+                                                    .font(.system(size: 18, weight: .bold))
+                                                    .foregroundColor(.accentColor)
+                                            }
+                                            .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 2))
+                                        }
+                                        
+                                        if freeFriendsForSelectedDate.count > 5 {
+                                            ZStack {
+                                                Circle()
+                                                    .fill(Color(.systemGray5))
+                                                    .frame(width: 44, height: 44)
+                                                
+                                                Text("+\(freeFriendsForSelectedDate.count - 5)")
+                                                    .font(.caption)
+                                                    .fontWeight(.bold)
+                                            }
+                                            .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 2))
+                                        }
+                                    }
+                                    .padding(.leading, 10)
+                                }
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    if let date = rootViewModel.friendsScheduleViewModel?.selectedDate {
+                                        Task {
+                                            await rootViewModel.friendsScheduleViewModel?.nudgeAllFree(for: date)
+                                        }
+                                    }
+                                }) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "hand.wave.fill")
+                                        Text("Nudge All")
+                                    }
+                                    .font(.system(size: 14, weight: .bold))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(Color.accentColor)
+                                    .foregroundColor(.white)
+                                    .clipShape(Capsule())
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                OnboardingCardView {
+                    rootViewModel.activeTab = .friends
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 24)
             }
         }
     }

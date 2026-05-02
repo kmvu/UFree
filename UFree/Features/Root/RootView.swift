@@ -125,9 +125,12 @@ struct MainAppView: View {
 
             // MARK: - Friends Feed Tab
             NavigationStack {
-                FriendsScheduleView(viewModel: friendsScheduleViewModel)
-                    .navigationTitle("Who's Free?")
-                    .navigationBarTitleDisplayMode(.large)
+                FriendsScheduleView(
+                    viewModel: friendsScheduleViewModel,
+                    rootViewModel: rootViewModel
+                )
+                .navigationTitle("Who's Free?")
+                .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
                 Label("Feed", systemImage: "person.2.fill")
