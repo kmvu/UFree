@@ -30,7 +30,7 @@ final class PersistentTimeBlock {
             id: id,
             startTime: startTime,
             endTime: endTime,
-            status: AvailabilityStatus(rawValue: statusValue) ?? .busy
+            status: AvailabilityStatus(rawValue: statusValue) ?? .unknown
         )
     }
 }
@@ -82,3 +82,4 @@ extension DayAvailability {
         return persistent
     }
 }
+

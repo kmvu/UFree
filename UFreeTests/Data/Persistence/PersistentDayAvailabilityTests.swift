@@ -34,8 +34,10 @@ final class PersistentDayAvailabilityTests: XCTestCase {
     // MARK: - Domain Conversion Tests
 
     func test_toDomain_convertsToPersistentModel() {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: Date())
+        let date = calendar.date(bySettingHour: 2, minute: 0, second: 0, of: startOfDay)! // 2 AM to ensure outside quick-fill windows
         let id = UUID()
-        let date = Date()
         let persistent = makePersistentDay(id: id, date: date, note: "Dinner")
         let blockId = UUID()
         let block = PersistentTimeBlock(id: blockId, startTime: date, endTime: date.addingTimeInterval(3600), statusValue: AvailabilityStatus.free.rawValue)
@@ -138,3 +140,4 @@ final class PersistentDayAvailabilityTests: XCTestCase {
         }
     }
 }
+
