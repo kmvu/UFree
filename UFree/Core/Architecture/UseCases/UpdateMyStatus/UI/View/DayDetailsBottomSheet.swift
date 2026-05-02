@@ -65,19 +65,19 @@ struct DayDetailsBottomSheet: View {
                     Section(header: Text("Quick Fills")) {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
-                                QuickFillButton(title: "Morning", icon: "sunrise.fill", color: .orange) {
+                                QuickFillButton(title: "Morning", icon: "sunrise.fill", color: .orange, isSelected: isQuickFillActive(startHour: 9, endHour: 12)) {
                                     applyQuickFill(startHour: 9, endHour: 12)
                                     scrollToWindows(proxy)
                                 }
                                 .frame(width: 100)
                                 
-                                QuickFillButton(title: "Afternoon", icon: "sun.max.fill", color: .yellow) {
+                                QuickFillButton(title: "Afternoon", icon: "sun.max.fill", color: .yellow, isSelected: isQuickFillActive(startHour: 12, endHour: 17)) {
                                     applyQuickFill(startHour: 12, endHour: 17)
                                     scrollToWindows(proxy)
                                 }
                                 .frame(width: 100)
                                 
-                                QuickFillButton(title: "Evening", icon: "moon.stars.fill", color: .purple) {
+                                QuickFillButton(title: "Evening", icon: "moon.stars.fill", color: .purple, isSelected: isQuickFillActive(startHour: 17, endHour: 22)) {
                                     applyQuickFill(startHour: 17, endHour: 22)
                                     scrollToWindows(proxy)
                                 }
@@ -160,9 +160,44 @@ struct DayDetailsBottomSheet: View {
         let qStart = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: startOfDay)!
         let qEnd = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: startOfDay)!
         
-        let newBlock = TimeBlock(startTime: qStart, endTime: qEnd, status: .free)
-        mergeAndAddBlock(newBlock)
-        HapticManager.success()
+        if isQuickFillActive(startHour: startHour, endHour: endHour) {
+            subtractFreeRange(startTime: qStart, endTime: qEnd)
+            HapticManager.light()
+        } else {
+            let newBlock = TimeBlock(startTime: qStart, endTime: qEnd, status: .free)
+            mergeAndAddBlock(newBlock)
+            HapticManager.success()
+        }
+    }
+    
+    private func subtractFreeRange(startTime: Date, endTime: Date) {
+        var freeBlocks = editedBlocks.filter { $0.status == .free }
+        var resultBlocks: [TimeBlock] = []
+        
+        for block in freeBlocks {
+            if block.endTime <= startTime || block.startTime >= endTime {
+                // No overlap
+                resultBlocks.append(block)
+            } else {
+                // Overlap exists - we might need to split or truncate
+                if block.startTime < startTime {
+                    // Left part remains
+                    resultBlocks.append(TimeBlock(startTime: block.startTime, endTime: startTime, status: .free))
+                }
+                
+                if block.endTime > endTime {
+                    // Right part remains
+                    resultBlocks.append(TimeBlock(startTime: endTime, endTime: block.endTime, status: .free))
+                }
+            }
+        }
+        
+        var finalBlocks = editedBlocks.filter { $0.status != .free }
+        finalBlocks.append(contentsOf: resultBlocks)
+        
+        withAnimation {
+            self.editedBlocks = finalBlocks
+        }
     }
     
     private func mergeAndAddBlock(_ newBlock: TimeBlock) {
@@ -175,7 +210,6 @@ struct DayDetailsBottomSheet: View {
         var merged: [TimeBlock] = []
         for block in freeBlocks {
             if let last = merged.last, block.startTime <= last.endTime {
-                // Overlap or adjacency detected, merge them
                 let newEndTime = max(last.endTime, block.endTime)
                 merged[merged.count - 1].endTime = newEndTime
             } else {
@@ -183,8 +217,11 @@ struct DayDetailsBottomSheet: View {
             }
         }
         
+        var finalBlocks = editedBlocks.filter { $0.status != .free }
+        finalBlocks.append(contentsOf: merged)
+        
         withAnimation {
-            self.editedBlocks = merged
+            self.editedBlocks = finalBlocks
         }
     }
     
@@ -193,9 +230,19 @@ struct DayDetailsBottomSheet: View {
             editedBlocks.removeAll { $0.id == block.id }
         }
     }
+
+    private func isQuickFillActive(startHour: Int, endHour: Int) -> Bool {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: day.date)
+        let qStart = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: startOfDay)!
+        let qEnd = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: startOfDay)!
+        
+        return editedBlocks.contains { block in
+            block.status == .free && block.startTime <= qStart && block.endTime >= qEnd
+        }
+    }
     
     private func saveAndDismiss() {
-        // Ensure 24-hour coverage by filling gaps with Busy blocks
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: day.date)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
@@ -206,7 +253,6 @@ struct DayDetailsBottomSheet: View {
         var currentTime = startOfDay
         
         for freeBlock in freeBlocks {
-            // Fill gap before free block with busy
             if freeBlock.startTime > currentTime {
                 finalBlocks.append(TimeBlock(startTime: currentTime, endTime: freeBlock.startTime, status: .busy))
             }
@@ -214,7 +260,6 @@ struct DayDetailsBottomSheet: View {
             currentTime = freeBlock.endTime
         }
         
-        // Fill remaining time after last free block with busy
         if currentTime < endOfDay {
             finalBlocks.append(TimeBlock(startTime: currentTime, endTime: endOfDay, status: .busy))
         }
@@ -239,10 +284,6 @@ struct DatePickerRow: View {
                 .labelsHidden()
         }
         .contentShape(Rectangle())
-        .onTapGesture {
-            // Tapping the row doesn't automatically focus the DatePicker numbers
-            // but in a List/Form this layout is the most accessible for tapping the picker itself
-        }
     }
 }
 
@@ -250,6 +291,7 @@ struct QuickFillButton: View {
     let title: String
     let icon: String
     let color: Color
+    let isSelected: Bool
     let action: () -> Void
     
     var body: some View {
@@ -261,11 +303,15 @@ struct QuickFillButton: View {
                     .font(.caption2)
                     .fontWeight(.bold)
             }
-            .foregroundColor(.white)
+            .foregroundColor(isSelected ? .white : color)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .background(color)
+            .background(isSelected ? color : color.opacity(0.1))
             .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(color, lineWidth: isSelected ? 0 : 2)
+            )
         }
     }
 }

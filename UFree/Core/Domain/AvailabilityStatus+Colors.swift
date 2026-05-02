@@ -12,7 +12,7 @@ extension AvailabilityStatus {
     var displayColor: Color {
         switch self {
         case .free:
-            return .green
+            return Color(hex: "6dd69c")
         case .busy:
             return .gray
         case .morningOnly:
@@ -23,6 +23,8 @@ extension AvailabilityStatus {
             return .purple
         case .unknown:
             return Color(red: 0.7, green: 0.7, blue: 0.7) // Light gray for unknown
+        case .mixed:
+            return .blue // Distinct color for mixed status
         }
     }
 }

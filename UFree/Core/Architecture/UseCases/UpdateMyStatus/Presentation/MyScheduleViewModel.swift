@@ -65,17 +65,17 @@ public final class MyScheduleViewModel: ObservableObject {
     }
     
     public func updateStatus(for day: DayAvailability) {
-        guard let index = weeklySchedule.firstIndex(where: { $0.id == day.id }) else { return }
+        guard let index = weeklySchedule.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: day.date) }) else { return }
         
-        let oldStatus = weeklySchedule[index].status
-        weeklySchedule[index].status = day.status
+        let oldDay = weeklySchedule[index]
+        weeklySchedule[index] = day
         
         Task {
             do {
                 try await updateUseCase.execute(day: day)
             } catch {
                 await MainActor.run {
-                    weeklySchedule[index].status = oldStatus
+                    weeklySchedule[index] = oldDay
                     errorMessage = "Failed to update status: \(error.localizedDescription)"
                 }
             }
@@ -111,6 +111,7 @@ public final class MyScheduleViewModel: ObservableObject {
         case .morningOnly: return .afternoonOnly
         case .afternoonOnly: return .eveningOnly
         case .eveningOnly: return .busy
+        case .mixed: return .busy
         case .unknown: return .busy  // Unknown defaults to busy when cycling
         }
     }

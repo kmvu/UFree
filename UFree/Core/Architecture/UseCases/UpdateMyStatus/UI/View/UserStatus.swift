@@ -13,6 +13,7 @@ enum UserStatus: String, CaseIterable {
     case afternoon
     case evening
     case busy
+    case mixed
     case checkSchedule
 
     var title: String {
@@ -22,6 +23,7 @@ enum UserStatus: String, CaseIterable {
         case .afternoon: return "Free in Afternoon"
         case .evening: return "Free in Evening"
         case .busy: return "Busy Right Now"
+        case .mixed: return "Mixed Availability"
         case .checkSchedule: return "Check My Schedule"
         }
     }
@@ -37,6 +39,7 @@ enum UserStatus: String, CaseIterable {
         case .afternoon: return "sun.max.fill"
         case .evening: return "moon.stars.fill"
         case .busy: return "cup.and.saucer.fill"
+        case .mixed: return "list.bullet.rectangle.portrait"
         case .checkSchedule: return "calendar"
         }
     }
@@ -53,6 +56,8 @@ enum UserStatus: String, CaseIterable {
             return [Color(hex: "A18CD1"), Color(hex: "FBC2EB")]
         case .busy:
             return [Color(hex: "7da0c2"), Color(hex: "637d96")]
+        case .mixed:
+            return [Color(hex: "8180f9"), Color(hex: "637d96")] // Blend of blue and gray
         case .checkSchedule:
             return [Color(hex: "8180f9"), Color(hex: "6e6df0")]
         }

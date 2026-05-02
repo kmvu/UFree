@@ -59,6 +59,7 @@ final class StatusBannerViewModel: ObservableObject {
         case .afternoonOnly: currentStatus = .afternoon
         case .eveningOnly: currentStatus = .evening
         case .busy: currentStatus = .busy
+        case .mixed: currentStatus = .mixed
         case .unknown: currentStatus = .checkSchedule
         }
     }
@@ -80,6 +81,7 @@ final class StatusBannerViewModel: ObservableObject {
                 case .afternoon: updatedDay.status = .afternoonOnly
                 case .evening: updatedDay.status = .eveningOnly
                 case .busy: updatedDay.status = .busy
+                case .mixed: updatedDay.status = .mixed
                 case .checkSchedule: updatedDay.status = .busy
                 }
                 

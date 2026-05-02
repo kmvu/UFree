@@ -121,11 +121,6 @@ final class UpdateMyStatusUseCaseTests: XCTestCase {
     
     // MARK: - Test Helpers
     
-    /// Test spy for AvailabilityRepository
-    /// Uses a class (not actor) because:
-    /// - Test mocks don't need concurrent safety (tests run sequentially)
-    /// - Easier property access from test assertions
-    /// - No risk of actual concurrent access in test environment
     private final class AvailabilityRepositorySpy: AvailabilityRepository {
         private(set) var updateCallCount = 0
         private(set) var updatedDay: DayAvailability?

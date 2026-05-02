@@ -50,35 +50,98 @@ public struct DayAvailability: Identifiable, Codable {
             return .unknown
         }
         
-        // If there's only one block, return its status
-        if timeBlocks.count == 1 {
-            return timeBlocks[0].status
+        let freeBlocks = timeBlocks.filter { $0.status == .free }.sorted { $0.startTime < $1.startTime }
+        
+        if freeBlocks.isEmpty {
+            return .busy
         }
         
-        // Logic for multiple blocks:
-        // If they are all the same, return that.
-        let statuses = Set(timeBlocks.map { $0.status })
-        if statuses.count == 1, let status = statuses.first {
-            return status
-        }
-        
-        // If mixed, prioritize 'free' for overall visibility.
-        if timeBlocks.contains(where: { $0.status == .free }) {
+        // Check if all blocks are free
+        if timeBlocks.allSatisfy({ $0.status == .free }) {
             return .free
         }
         
-        return timeBlocks.first?.status ?? .busy
+        // Determine if it matches a specific window
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        
+        // Define windows (consistent with UI)
+        let activeStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
+        let morningEnd = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfDay)!
+        let afternoonEnd = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: startOfDay)!
+        let activeEnd = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: startOfDay)!
+        
+        let totalFreeStart = freeBlocks.map { $0.startTime }.min()!
+        let totalFreeEnd = freeBlocks.map { $0.endTime }.max()!
+        
+        // If core active hours are fully covered, it's considered .free
+        if totalFreeStart <= activeStart && totalFreeEnd >= activeEnd {
+            // Check for gaps within active hours
+            var currentEnd = freeBlocks.first!.endTime
+            var hasGap = false
+            for i in 1..<freeBlocks.count {
+                if freeBlocks[i].startTime > currentEnd && freeBlocks[i].startTime < activeEnd {
+                    hasGap = true
+                    break
+                }
+                currentEnd = max(currentEnd, freeBlocks[i].endTime)
+            }
+            if !hasGap { return .free }
+        }
+        
+        // If free time is exactly within one of the quick fill windows
+        if totalFreeStart >= activeStart && totalFreeEnd <= morningEnd {
+            return .morningOnly
+        } else if totalFreeStart >= morningEnd && totalFreeEnd <= afternoonEnd {
+            return .afternoonOnly
+        } else if totalFreeStart >= afternoonEnd && totalFreeEnd <= activeEnd {
+            return .eveningOnly
+        }
+        
+        // If none of the specific windows match, it's mixed
+        return .mixed
     }
 
     /// Alias for overallStatus to maintain backward compatibility with existing code
     public var status: AvailabilityStatus {
         get { overallStatus }
         set {
-            let startOfDay = Calendar.current.startOfDay(for: date)
-            let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? date
-            self.timeBlocks = [
-                TimeBlock(startTime: startOfDay, endTime: endOfDay, status: newValue)
-            ]
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: date)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? date
+            
+            switch newValue {
+            case .free:
+                self.timeBlocks = [TimeBlock(startTime: startOfDay, endTime: endOfDay, status: .free)]
+            case .busy:
+                self.timeBlocks = [TimeBlock(startTime: startOfDay, endTime: endOfDay, status: .busy)]
+            case .morningOnly:
+                let mStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
+                let mEnd = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfDay)!
+                self.timeBlocks = [
+                    TimeBlock(startTime: startOfDay, endTime: mStart, status: .busy),
+                    TimeBlock(startTime: mStart, endTime: mEnd, status: .free),
+                    TimeBlock(startTime: mEnd, endTime: endOfDay, status: .busy)
+                ]
+            case .afternoonOnly:
+                let aStart = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfDay)!
+                let aEnd = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: startOfDay)!
+                self.timeBlocks = [
+                    TimeBlock(startTime: startOfDay, endTime: aStart, status: .busy),
+                    TimeBlock(startTime: aStart, endTime: aEnd, status: .free),
+                    TimeBlock(startTime: aEnd, endTime: endOfDay, status: .busy)
+                ]
+            case .eveningOnly:
+                let eStart = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: startOfDay)!
+                let eEnd = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: startOfDay)!
+                self.timeBlocks = [
+                    TimeBlock(startTime: startOfDay, endTime: eStart, status: .busy),
+                    TimeBlock(startTime: eStart, endTime: eEnd, status: .free),
+                    TimeBlock(startTime: eEnd, endTime: endOfDay, status: .busy)
+                ]
+            default:
+                self.timeBlocks = [TimeBlock(startTime: startOfDay, endTime: endOfDay, status: newValue)]
+            }
         }
     }
 }

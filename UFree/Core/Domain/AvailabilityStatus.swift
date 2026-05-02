@@ -14,6 +14,7 @@ public enum AvailabilityStatus: Int, Codable, CaseIterable {
     case afternoonOnly = 3
     case eveningOnly = 4
     case unknown = 5  // For days not yet set in Firestore
+    case mixed = 6    // For days with multiple blocks having different statuses
     
     public var displayName: String {
         switch self {
@@ -23,6 +24,7 @@ public enum AvailabilityStatus: Int, Codable, CaseIterable {
         case .afternoonOnly: return "Afternoon"
         case .eveningOnly: return "Evening"
         case .unknown: return "Unknown"
+        case .mixed: return "Mixed"
         }
     }
 }

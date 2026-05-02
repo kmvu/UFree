@@ -98,26 +98,98 @@ final class DayAvailabilityTests: XCTestCase {
     
     // MARK: - TimeBlock Tests
     
-    func test_overallStatus_withMultipleTimeBlocks() {
+    func test_overallStatus_withMultipleDistinctStatuses_returnsMixed() {
         let date = Date()
-        let startOfDay = Calendar.current.startOfDay(for: date)
-        let afternoon = Calendar.current.date(byAdding: .hour, value: 12, to: startOfDay)!
-        let evening = Calendar.current.date(byAdding: .hour, value: 18, to: startOfDay)!
-        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        
+        // 9 AM to 5 PM (covers Morning and Afternoon) -> Mixed
+        let morningStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
+        let afternoonEnd = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: startOfDay)!
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
         
         let blocks = [
-            TimeBlock(startTime: startOfDay, endTime: afternoon, status: .busy),
-            TimeBlock(startTime: afternoon, endTime: evening, status: .free),
-            TimeBlock(startTime: evening, endTime: endOfDay, status: .busy)
+            TimeBlock(startTime: startOfDay, endTime: morningStart, status: .busy),
+            TimeBlock(startTime: morningStart, endTime: afternoonEnd, status: .free),
+            TimeBlock(startTime: afternoonEnd, endTime: endOfDay, status: .busy)
         ]
         
         let day = DayAvailability(date: date, timeBlocks: blocks)
         
-        // Since it contains at least one 'free' block, overallStatus should be 'free' based on our logic
+        XCTAssertEqual(day.overallStatus, .mixed)
+    }
+    
+    func test_overallStatus_detectsMorningOnly() {
+        let date = Date()
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let morningStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
+        let morningEnd = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfDay)!
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        
+        let blocks = [
+            TimeBlock(startTime: startOfDay, endTime: morningStart, status: .busy),
+            TimeBlock(startTime: morningStart, endTime: morningEnd, status: .free),
+            TimeBlock(startTime: morningEnd, endTime: endOfDay, status: .busy)
+        ]
+        
+        let day = DayAvailability(date: date, timeBlocks: blocks)
+        XCTAssertEqual(day.overallStatus, .morningOnly)
+    }
+    
+    func test_overallStatus_detectsAfternoonOnly() {
+        let date = Date()
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let afternoonStart = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfDay)!
+        let afternoonEnd = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: startOfDay)!
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        
+        let blocks = [
+            TimeBlock(startTime: startOfDay, endTime: afternoonStart, status: .busy),
+            TimeBlock(startTime: afternoonStart, endTime: afternoonEnd, status: .free),
+            TimeBlock(startTime: afternoonEnd, endTime: endOfDay, status: .busy)
+        ]
+        
+        let day = DayAvailability(date: date, timeBlocks: blocks)
+        XCTAssertEqual(day.overallStatus, .afternoonOnly)
+    }
+    
+    func test_overallStatus_detectsEveningOnly() {
+        let date = Date()
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let eveningStart = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: startOfDay)!
+        let eveningEnd = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: startOfDay)!
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        
+        let blocks = [
+            TimeBlock(startTime: startOfDay, endTime: eveningStart, status: .busy),
+            TimeBlock(startTime: eveningStart, endTime: eveningEnd, status: .free),
+            TimeBlock(startTime: eveningEnd, endTime: endOfDay, status: .busy)
+        ]
+        
+        let day = DayAvailability(date: date, timeBlocks: blocks)
+        XCTAssertEqual(day.overallStatus, .eveningOnly)
+    }
+    
+    func test_overallStatus_withAllSameStatuses_returnsThatStatus() {
+        let date = Date()
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        let noon = Calendar.current.date(byAdding: .hour, value: 12, to: startOfDay)!
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay)!
+        
+        let blocks = [
+            TimeBlock(startTime: startOfDay, endTime: noon, status: .free),
+            TimeBlock(startTime: noon, endTime: endOfDay, status: .free)
+        ]
+        
+        let day = DayAvailability(date: date, timeBlocks: blocks)
+        
         XCTAssertEqual(day.overallStatus, .free)
     }
     
-    func test_overallStatus_withOnlyBusyBlocks() {
+    func test_overallStatus_withOnlyBusyBlocks_returnsBusy() {
         let date = Date()
         let startOfDay = Calendar.current.startOfDay(for: date)
         let afternoon = Calendar.current.date(byAdding: .hour, value: 12, to: startOfDay)!
@@ -147,6 +219,33 @@ final class DayAvailabilityTests: XCTestCase {
         XCTAssertEqual(day.timeBlocks[0].status, .free)
         XCTAssertEqual(day.overallStatus, .free)
     }
-
+    
+    func test_statusSetter_createsCorrectBlocksForMorningOnly() {
+        let date = Date()
+        var day = DayAvailability(date: date)
+        
+        day.status = .morningOnly
+        
+        XCTAssertEqual(day.overallStatus, .morningOnly)
+        // Should have 3 blocks: Busy(0-9), Free(9-12), Busy(12-24)
+        XCTAssertEqual(day.timeBlocks.count, 3)
+        XCTAssertEqual(day.timeBlocks[1].status, .free)
+    }
+    
+    func test_overallStatus_detectsFreeForCoreActiveHours() {
+        let date = Date()
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let activeStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
+        let activeEnd = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: startOfDay)!
+        
+        let blocks = [
+            TimeBlock(startTime: startOfDay, endTime: activeStart, status: .busy),
+            TimeBlock(startTime: activeStart, endTime: activeEnd, status: .free),
+            TimeBlock(startTime: activeEnd, endTime: calendar.date(byAdding: .day, value: 1, to: startOfDay)!, status: .busy)
+        ]
+        
+        let day = DayAvailability(date: date, timeBlocks: blocks)
+        XCTAssertEqual(day.overallStatus, .free)
+    }
 }
-
