@@ -10,9 +10,9 @@ import XCTest
 
 final class AvailabilityStatusTests: XCTestCase {
     
-    func test_allCases_hasSixCases() {
+    func test_allCases_hasSevenCases() {
         let allCases = AvailabilityStatus.allCases
-        XCTAssertEqual(allCases.count, 6) // busy, free, morningOnly, afternoonOnly, eveningOnly, unknown
+        XCTAssertEqual(allCases.count, 7) // busy, free, morningOnly, afternoonOnly, eveningOnly, mixed, unknown
     }
     
     func test_rawValues_matchExpectedIntValues() {
@@ -21,7 +21,8 @@ final class AvailabilityStatusTests: XCTestCase {
         XCTAssertEqual(AvailabilityStatus.morningOnly.rawValue, 2)
         XCTAssertEqual(AvailabilityStatus.afternoonOnly.rawValue, 3)
         XCTAssertEqual(AvailabilityStatus.eveningOnly.rawValue, 4)
-        XCTAssertEqual(AvailabilityStatus.unknown.rawValue, 5)
+        XCTAssertEqual(AvailabilityStatus.mixed.rawValue, 5)
+        XCTAssertEqual(AvailabilityStatus.unknown.rawValue, 6)
     }
     
     func test_displayName_returnsCorrectStrings() {
@@ -30,11 +31,12 @@ final class AvailabilityStatusTests: XCTestCase {
         XCTAssertEqual(AvailabilityStatus.morningOnly.displayName, "Morning")
         XCTAssertEqual(AvailabilityStatus.afternoonOnly.displayName, "Afternoon")
         XCTAssertEqual(AvailabilityStatus.eveningOnly.displayName, "Evening")
+        XCTAssertEqual(AvailabilityStatus.mixed.displayName, "Mixed")
         XCTAssertEqual(AvailabilityStatus.unknown.displayName, "Unknown")
     }
     
     func test_codable_encodesAndDecodesCorrectly() throws {
-        let statuses: [AvailabilityStatus] = [.busy, .free, .morningOnly, .afternoonOnly, .eveningOnly, .unknown]
+        let statuses: [AvailabilityStatus] = [.busy, .free, .morningOnly, .afternoonOnly, .eveningOnly, .mixed, .unknown]
         
         for status in statuses {
             let encoded = try JSONEncoder().encode(status)
@@ -49,8 +51,8 @@ final class AvailabilityStatusTests: XCTestCase {
         XCTAssertEqual(AvailabilityStatus(rawValue: 2), .morningOnly)
         XCTAssertEqual(AvailabilityStatus(rawValue: 3), .afternoonOnly)
         XCTAssertEqual(AvailabilityStatus(rawValue: 4), .eveningOnly)
-        XCTAssertEqual(AvailabilityStatus(rawValue: 5), .unknown)
+        XCTAssertEqual(AvailabilityStatus(rawValue: 5), .mixed)
+        XCTAssertEqual(AvailabilityStatus(rawValue: 6), .unknown)
         XCTAssertNil(AvailabilityStatus(rawValue: 99))
     }
 }
-

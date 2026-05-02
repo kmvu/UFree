@@ -35,13 +35,8 @@ public struct DayAvailability: Identifiable, Codable {
         self.id = id
         self.date = date
         self.note = note
-        
-        // Create a default time block covering the whole day
-        let startOfDay = Calendar.current.startOfDay(for: date)
-        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? date
-        self.timeBlocks = [
-            TimeBlock(startTime: startOfDay, endTime: endOfDay, status: status)
-        ]
+        self.timeBlocks = [] // Temporary
+        self.status = status // Use the setter logic
     }
 
     /// Computed property for backward compatibility
@@ -50,15 +45,15 @@ public struct DayAvailability: Identifiable, Codable {
             return .unknown
         }
         
+        // If there is only one block and it's an aggregate status, return it directly
+        if timeBlocks.count == 1 && timeBlocks[0].status != .free && timeBlocks[0].status != .busy {
+            return timeBlocks[0].status
+        }
+        
         let freeBlocks = timeBlocks.filter { $0.status == .free }.sorted { $0.startTime < $1.startTime }
         
         if freeBlocks.isEmpty {
             return .busy
-        }
-        
-        // Check if all blocks are free
-        if timeBlocks.allSatisfy({ $0.status == .free }) {
-            return .free
         }
         
         // Determine if it matches a specific window
@@ -68,33 +63,60 @@ public struct DayAvailability: Identifiable, Codable {
         // Define windows (consistent with UI)
         let activeStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
         let morningEnd = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfDay)!
+        let afternoonStart = morningEnd
         let afternoonEnd = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: startOfDay)!
+        let eveningStart = afternoonEnd
         let activeEnd = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: startOfDay)!
         
         let totalFreeStart = freeBlocks.map { $0.startTime }.min()!
         let totalFreeEnd = freeBlocks.map { $0.endTime }.max()!
-        
-        // If core active hours are fully covered, it's considered .free
-        if totalFreeStart <= activeStart && totalFreeEnd >= activeEnd {
-            // Check for gaps within active hours
-            var currentEnd = freeBlocks.first!.endTime
-            var hasGap = false
-            for i in 1..<freeBlocks.count {
-                if freeBlocks[i].startTime > currentEnd && freeBlocks[i].startTime < activeEnd {
-                    hasGap = true
-                    break
-                }
-                currentEnd = max(currentEnd, freeBlocks[i].endTime)
-            }
-            if !hasGap { return .free }
+
+        // Helper to check if a date is at or before another, ignoring seconds
+        func isAtOrBefore(_ d1: Date, _ d2: Date) -> Bool {
+            return calendar.compare(d1, to: d2, toGranularity: .minute) != .orderedDescending
         }
         
-        // If free time is exactly within one of the quick fill windows
-        if totalFreeStart >= activeStart && totalFreeEnd <= morningEnd {
+        // Helper to check if a date is at or after another, ignoring seconds
+        func isAtOrAfter(_ d1: Date, _ d2: Date) -> Bool {
+            return calendar.compare(d1, to: d2, toGranularity: .minute) != .orderedAscending
+        }
+
+        // If core active hours are fully covered, it's considered .free
+        // We must ensure the start is at or before activeStart AND end is at or after activeEnd
+        // AND there are no gaps between activeStart and activeEnd.
+        if isAtOrBefore(totalFreeStart, activeStart) && isAtOrAfter(totalFreeEnd, activeEnd) {
+            let sortedFree = freeBlocks.sorted { $0.startTime < $1.startTime }
+            
+            // Re-verify start/end with sorted blocks to be safe
+            if isAtOrBefore(sortedFree.first!.startTime, activeStart) && isAtOrAfter(sortedFree.last!.endTime, activeEnd) {
+                var currentEnd = sortedFree.first!.endTime
+                var hasGap = false
+                for i in 1..<sortedFree.count {
+                    // If this block starts after currentEnd, there's a gap
+                    // Check if this gap starts before activeEnd and ends after activeStart
+                    if calendar.compare(sortedFree[i].startTime, to: currentEnd, toGranularity: .minute) == .orderedDescending {
+                        if calendar.compare(sortedFree[i].startTime, to: activeEnd, toGranularity: .minute) == .orderedAscending &&
+                           calendar.compare(currentEnd, to: activeStart, toGranularity: .minute) == .orderedDescending {
+                            hasGap = true
+                            break
+                        }
+                    }
+                    currentEnd = max(currentEnd, sortedFree[i].endTime)
+                }
+                if !hasGap { return .free }
+            }
+        }
+        
+        // If free time falls within one of the quick fill windows
+        func isWithinWindow(start: Date, end: Date) -> Bool {
+            return isAtOrAfter(totalFreeStart, start) && isAtOrBefore(totalFreeEnd, end)
+        }
+
+        if isWithinWindow(start: activeStart, end: morningEnd) {
             return .morningOnly
-        } else if totalFreeStart >= morningEnd && totalFreeEnd <= afternoonEnd {
+        } else if isWithinWindow(start: afternoonStart, end: afternoonEnd) {
             return .afternoonOnly
-        } else if totalFreeStart >= afternoonEnd && totalFreeEnd <= activeEnd {
+        } else if isWithinWindow(start: eveningStart, end: activeEnd) {
             return .eveningOnly
         }
         

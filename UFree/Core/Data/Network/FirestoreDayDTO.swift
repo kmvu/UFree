@@ -36,7 +36,7 @@ struct FirestoreDayDTO: Codable {
                 id: UUID(uuidString: id) ?? UUID(),
                 startTime: startTime,
                 endTime: endTime,
-                status: AvailabilityStatus(rawValue: status) ?? .busy
+                status: AvailabilityStatus(rawValue: status) ?? .unknown
             )
         }
     }
@@ -49,7 +49,7 @@ struct FirestoreDayDTO: Codable {
         return [
             "id": day.id.uuidString,
             "dateString": formatter.string(from: day.date),
-            "status": day.overallStatus.rawValue,
+            "status": day.status.rawValue,
             "note": day.note as Any,
             "timeBlocks": day.timeBlocks.map { FirestoreTimeBlockDTO.fromDomain($0) },
             "updatedAt": FieldValue.serverTimestamp(), // Let server set the time

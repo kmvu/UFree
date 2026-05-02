@@ -248,4 +248,51 @@ final class DayAvailabilityTests: XCTestCase {
         let day = DayAvailability(date: date, timeBlocks: blocks)
         XCTAssertEqual(day.overallStatus, .free)
     }
+    
+    func test_overallStatus_detectsMixedForGapInActiveHours() {
+        let date = Date()
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let activeStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
+        let gapStart = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfDay)!
+        let gapEnd = calendar.date(bySettingHour: 13, minute: 0, second: 0, of: startOfDay)!
+        let activeEnd = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: startOfDay)!
+        
+        let blocks = [
+            TimeBlock(startTime: activeStart, endTime: gapStart, status: .free),
+            TimeBlock(startTime: gapStart, endTime: gapEnd, status: .busy),
+            TimeBlock(startTime: gapEnd, endTime: activeEnd, status: .free)
+        ]
+        
+        let day = DayAvailability(date: date, timeBlocks: blocks)
+        XCTAssertEqual(day.overallStatus, .mixed)
+    }
+    
+    func test_overallStatus_detectsMorningOnly_forSmallWindowWithinRange() {
+        let date = Date()
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let freeStart = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: startOfDay)!
+        let freeEnd = calendar.date(bySettingHour: 11, minute: 0, second: 0, of: startOfDay)!
+        
+        let blocks = [
+            TimeBlock(startTime: freeStart, endTime: freeEnd, status: .free)
+        ]
+        
+        let day = DayAvailability(date: date, timeBlocks: blocks)
+        XCTAssertEqual(day.overallStatus, .morningOnly) // Falls within Morning (9-12)
+    }
+
+    func test_statusSetter_createsCorrectBlocksForAfternoonAndEvening() {
+        let date = Date()
+        var day = DayAvailability(date: date)
+        
+        day.status = .afternoonOnly
+        XCTAssertEqual(day.overallStatus, .afternoonOnly)
+        XCTAssertEqual(day.timeBlocks.filter { $0.status == .free }.count, 1)
+        
+        day.status = .eveningOnly
+        XCTAssertEqual(day.overallStatus, .eveningOnly)
+        XCTAssertEqual(day.timeBlocks.filter { $0.status == .free }.count, 1)
+    }
 }

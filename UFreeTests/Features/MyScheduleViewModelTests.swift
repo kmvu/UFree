@@ -47,11 +47,52 @@ final class MyScheduleViewModelTests: XCTestCase {
         let day = sut.weeklySchedule[0]
         XCTAssertEqual(day.status, .busy)
         
+        // Busy -> Free
         sut.toggleStatus(for: day)
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(sut.weeklySchedule[0].status, .free)
         
+        // Free -> MorningOnly
+        sut.toggleStatus(for: sut.weeklySchedule[0])
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(sut.weeklySchedule[0].status, .morningOnly)
+        
+        // MorningOnly -> AfternoonOnly
+        sut.toggleStatus(for: sut.weeklySchedule[0])
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(sut.weeklySchedule[0].status, .afternoonOnly)
+        
+        // AfternoonOnly -> EveningOnly
+        sut.toggleStatus(for: sut.weeklySchedule[0])
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(sut.weeklySchedule[0].status, .eveningOnly)
+        
+        // EveningOnly -> Busy
+        sut.toggleStatus(for: sut.weeklySchedule[0])
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(sut.weeklySchedule[0].status, .busy)
+    }
+    
+    func test_toggleStatus_fromMixed_cyclesToBusy() async {
+        // Create a mixed day
+        let date = Date()
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        // 11 AM - 1 PM is "Mixed" because it spans Morning (9-12) and Afternoon (12-17)
+        let blocks = [
+            TimeBlock(startTime: calendar.date(bySettingHour: 11, minute: 0, second: 0, of: startOfDay)!,
+                      endTime: calendar.date(bySettingHour: 13, minute: 0, second: 0, of: startOfDay)!,
+                      status: .free)
+        ]
+        let mixedDay = DayAvailability(date: date, timeBlocks: blocks)
+        XCTAssertEqual(mixedDay.status, .mixed)
+        
+        sut.weeklySchedule[0] = mixedDay
+        
+        sut.toggleStatus(for: mixedDay)
         try? await Task.sleep(nanoseconds: 100_000_000)
         
-        XCTAssertEqual(sut.weeklySchedule[0].status, .free)
+        XCTAssertEqual(sut.weeklySchedule[0].status, .busy)
     }
     
     // MARK: - Spies

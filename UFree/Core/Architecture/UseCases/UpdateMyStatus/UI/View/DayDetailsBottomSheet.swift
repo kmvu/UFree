@@ -43,8 +43,27 @@ struct DayDetailsBottomSheet: View {
             ScrollViewReader { proxy in
                 List {
                     Section(header: Text("Add Free Time")) {
-                        DatePickerRow(title: "Start", selection: $startTime)
-                        DatePickerRow(title: "End", selection: $endTime)
+                        VStack(spacing: 16) {
+                            DatePickerRow(title: "Starts", icon: "clock", selection: $startTime)
+                            
+                            Divider()
+                                .padding(.leading, 32)
+                            
+                            DatePickerRow(title: "Ends", icon: "clock.fill", selection: $endTime)
+                            
+                            if startTime >= endTime {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                    Text("End time must be after start time")
+                                }
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.leading, 32)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                            }
+                        }
+                        .padding(.vertical, 8)
                         
                         Button(action: {
                             addCustomBlock()
@@ -58,8 +77,8 @@ struct DayDetailsBottomSheet: View {
                             }
                         }
                         .disabled(startTime >= endTime)
-                        .listRowBackground(Color.accentColor.opacity(0.1))
-                        .foregroundColor(.accentColor)
+                        .listRowBackground(startTime >= endTime ? Color.gray.opacity(0.05) : Color.accentColor.opacity(0.1))
+                        .foregroundColor(startTime >= endTime ? .gray : .accentColor)
                     }
                     
                     Section(header: Text("Quick Fills")) {
@@ -274,16 +293,26 @@ struct DayDetailsBottomSheet: View {
 
 struct DatePickerRow: View {
     let title: String
+    let icon: String
     @Binding var selection: Date
     
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(.accentColor)
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 20)
+            
             Text(title)
+                .font(.body)
+            
             Spacer()
-            DatePicker(title, selection: $selection, displayedComponents: .hourAndMinute)
+            
+            DatePicker("", selection: $selection, displayedComponents: .hourAndMinute)
                 .labelsHidden()
+                .datePickerStyle(.compact)
+                .environment(\.locale, Locale(identifier: "en_US_POSIX")) // Force 12h/24h based on locale but usually ensures AM/PM in US
         }
-        .contentShape(Rectangle())
     }
 }
 
@@ -296,21 +325,23 @@ struct QuickFillButton: View {
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.body)
+                    .font(.system(size: 18))
                 Text(title)
                     .font(.caption2)
                     .fontWeight(.bold)
             }
             .foregroundColor(isSelected ? .white : color)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(isSelected ? color : color.opacity(0.1))
-            .cornerRadius(10)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(isSelected ? color : color.opacity(0.1))
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(color, lineWidth: isSelected ? 0 : 2)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(color, lineWidth: isSelected ? 0 : 1.5)
             )
         }
     }

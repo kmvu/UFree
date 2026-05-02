@@ -69,7 +69,8 @@ final class FirestoreDayDTOTests: XCTestCase {
             (.morningOnly, 2),
             (.afternoonOnly, 3),
             (.eveningOnly, 4),
-            (.unknown, 5),
+            (.mixed, 5),
+            (.unknown, 6),
         ]
         
         for (status, expectedRawValue) in statuses {
@@ -172,7 +173,8 @@ final class FirestoreDayDTOTests: XCTestCase {
             (2, .morningOnly),
             (3, .afternoonOnly),
             (4, .eveningOnly),
-            (5, .unknown),
+            (5, .mixed),
+            (6, .unknown),
         ]
         
         for (statusInt, expectedStatus) in statuses {

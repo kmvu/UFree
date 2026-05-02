@@ -13,8 +13,8 @@ public enum AvailabilityStatus: Int, Codable, CaseIterable {
     case morningOnly = 2
     case afternoonOnly = 3
     case eveningOnly = 4
-    case unknown = 5  // For days not yet set in Firestore
-    case mixed = 6    // For days with multiple blocks having different statuses
+    case mixed = 5    // For days with multiple blocks having different statuses
+    case unknown = 6  // For days not yet set in Firestore
     
     public var displayName: String {
         switch self {

@@ -43,7 +43,7 @@ final class PersistentDayAvailabilityTests: XCTestCase {
         
         let domain = persistent.toDomain()
         
-        assertDomainDay(domain, matchesId: id, date: date, status: .free, note: "Dinner")
+        assertDomainDay(domain, matchesId: id, date: date, status: .mixed, note: "Dinner")
         XCTAssertEqual(domain.timeBlocks.count, 1)
         XCTAssertEqual(domain.timeBlocks[0].id, blockId)
     }
