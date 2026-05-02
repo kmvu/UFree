@@ -33,7 +33,7 @@ final class PersistentDayAvailabilityTests: XCTestCase {
 
     // MARK: - Domain Conversion Tests
 
-    func test_toDomain_convertsToPersistentModel() {
+    func test_toDomain_convertsFromPersistentModel() {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: Date())
         let date = calendar.date(bySettingHour: 2, minute: 0, second: 0, of: startOfDay)! // 2 AM to ensure outside quick-fill windows

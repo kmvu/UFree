@@ -7,6 +7,47 @@
 
 import Foundation
 
+fileprivate struct QuickFillWindows {
+    static let morningStartHour: Int = 9
+    static let morningEndHour: Int = 12
+    static let afternoonEndHour: Int = 17
+    static let activeEndHour: Int = 22
+
+    struct Boundaries {
+        let startOfDay: Date
+        let endOfDay: Date
+        let activeStart: Date      // 09:00
+        let morningEnd: Date       // 12:00
+        let afternoonStart: Date   // 12:00
+        let afternoonEnd: Date     // 17:00
+        let eveningStart: Date     // 17:00
+        let activeEnd: Date        // 22:00
+    }
+
+    static func boundaries(for date: Date, calendar: Calendar = .current) -> Boundaries {
+        let startOfDay = calendar.startOfDay(for: date)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? date
+
+        let activeStart = calendar.date(bySettingHour: morningStartHour, minute: 0, second: 0, of: startOfDay)!
+        let morningEnd = calendar.date(bySettingHour: morningEndHour, minute: 0, second: 0, of: startOfDay)!
+        let afternoonStart = morningEnd
+        let afternoonEnd = calendar.date(bySettingHour: afternoonEndHour, minute: 0, second: 0, of: startOfDay)!
+        let eveningStart = afternoonEnd
+        let activeEnd = calendar.date(bySettingHour: activeEndHour, minute: 0, second: 0, of: startOfDay)!
+
+        return Boundaries(
+            startOfDay: startOfDay,
+            endOfDay: endOfDay,
+            activeStart: activeStart,
+            morningEnd: morningEnd,
+            afternoonStart: afternoonStart,
+            afternoonEnd: afternoonEnd,
+            eveningStart: eveningStart,
+            activeEnd: activeEnd
+        )
+    }
+}
+
 public struct DayAvailability: Identifiable, Codable {
     public let id: UUID
     public let date: Date
@@ -56,17 +97,15 @@ public struct DayAvailability: Identifiable, Codable {
             return .busy
         }
         
-        // Determine if it matches a specific window
         let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: date)
-        
-        // Define windows (consistent with UI)
-        let activeStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
-        let morningEnd = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfDay)!
-        let afternoonStart = morningEnd
-        let afternoonEnd = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: startOfDay)!
-        let eveningStart = afternoonEnd
-        let activeEnd = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: startOfDay)!
+        let b = QuickFillWindows.boundaries(for: date, calendar: calendar)
+        let startOfDay = b.startOfDay
+        let activeStart = b.activeStart
+        let morningEnd = b.morningEnd
+        let afternoonStart = b.afternoonStart
+        let afternoonEnd = b.afternoonEnd
+        let eveningStart = b.eveningStart
+        let activeEnd = b.activeEnd
         
         let totalFreeStart = freeBlocks.map { $0.startTime }.min()!
         let totalFreeEnd = freeBlocks.map { $0.endTime }.max()!
@@ -129,8 +168,9 @@ public struct DayAvailability: Identifiable, Codable {
         get { overallStatus }
         set {
             let calendar = Calendar.current
-            let startOfDay = calendar.startOfDay(for: date)
-            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? date
+            let b = QuickFillWindows.boundaries(for: date, calendar: calendar)
+            let startOfDay = b.startOfDay
+            let endOfDay = b.endOfDay
             
             switch newValue {
             case .free:
@@ -138,24 +178,24 @@ public struct DayAvailability: Identifiable, Codable {
             case .busy:
                 self.timeBlocks = [TimeBlock(startTime: startOfDay, endTime: endOfDay, status: .busy)]
             case .morningOnly:
-                let mStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
-                let mEnd = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfDay)!
+                let mStart = b.activeStart
+                let mEnd = b.morningEnd
                 self.timeBlocks = [
                     TimeBlock(startTime: startOfDay, endTime: mStart, status: .busy),
                     TimeBlock(startTime: mStart, endTime: mEnd, status: .free),
                     TimeBlock(startTime: mEnd, endTime: endOfDay, status: .busy)
                 ]
             case .afternoonOnly:
-                let aStart = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfDay)!
-                let aEnd = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: startOfDay)!
+                let aStart = b.afternoonStart
+                let aEnd = b.afternoonEnd
                 self.timeBlocks = [
                     TimeBlock(startTime: startOfDay, endTime: aStart, status: .busy),
                     TimeBlock(startTime: aStart, endTime: aEnd, status: .free),
                     TimeBlock(startTime: aEnd, endTime: endOfDay, status: .busy)
                 ]
             case .eveningOnly:
-                let eStart = calendar.date(bySettingHour: 17, minute: 0, second: 0, of: startOfDay)!
-                let eEnd = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: startOfDay)!
+                let eStart = b.eveningStart
+                let eEnd = b.activeEnd
                 self.timeBlocks = [
                     TimeBlock(startTime: startOfDay, endTime: eStart, status: .busy),
                     TimeBlock(startTime: eStart, endTime: eEnd, status: .free),
