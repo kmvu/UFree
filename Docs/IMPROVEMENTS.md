@@ -44,8 +44,8 @@ The codebase utilizes parallel execution for performance (e.g., Batch Nudging). 
 With the heavy use of `AsyncStream` for real-time listeners, we must guarantee thread safety.
 
 ### Protocols:
-- [ ] **UI Callbacks**: Audit all `observeIncomingRequests` implementations to ensure data processing and UI updates are explicitly isolated to the `@MainActor`.
-- [ ] **Background Tasks**: Verify that intensive operations (like contact hashing) are performed on background threads but report results back to the main thread.
+- [x] **UI Callbacks**: Audit all `observeIncomingRequests` implementations to ensure data processing and UI updates are explicitly isolated to the `@MainActor`.
+- [x] **Background Tasks**: Verify that intensive operations (like contact hashing) are performed on background threads but report results back to the main thread.
 
 ## 4. APNs Roadmap & Quota Resilience
 
@@ -54,14 +54,14 @@ This section outlines the strategy for implementing background notifications and
 ### Phase 1: APNs Implementation (Sprint 6.1)
 - [x] **FCM Bridge Implementation**: Update `AppDelegate` to handle remote registration and broadcast tokens.
 - [x] **The Hybrid Listener Strategy**: Refactor `NotificationViewModel` to detach Firestore listeners the moment the app enters the background.
-- [ ] **Security-First Payloads**: Ensure push payloads use generic messages (e.g., "👋 Someone sent you a Nudge!") to maintain the privacy-first architecture.
+- [x] **Security-First Payloads**: Ensure push payloads use generic messages (e.g., "👋 Someone sent you a Nudge!") to maintain the privacy-first architecture.
 - [x] **Contextual Permissions**: Only trigger the APNs permission prompt after a successful friend handshake or sending a first Nudge.
 
 ### Phase 2: Quota Resilience (Bonus Improvements)
-- [ ] **Friend Discovery Quota Exhaustion**:
+- [x] **Friend Discovery Quota Exhaustion**:
     - *Risk*: Intensive contact-sync reads (50k/day free tier) could be exhausted.
     - *Backup*: If Firestore rejects reads due to quota, gracefully disable Contact Sync and fall back to "The In-Person Handshake" (QR codes and Universal Links).
-- [ ] **Batch Nudging Overload Protection**:
+- [x] **Batch Nudging Overload Protection**:
     - *Risk*: Parallel nudges to 10+ friends could trigger Cloud Function or write limits.
     - *Backup*: Harden `FriendsScheduleViewModel` with rate-limiting, tactile warnings via `HapticManager`, and clear success/failure reporting with optimistic state rollbacks.
 

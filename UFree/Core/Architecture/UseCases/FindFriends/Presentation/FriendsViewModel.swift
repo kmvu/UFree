@@ -117,13 +117,20 @@ public final class FriendsViewModel: ObservableObject {
 
         // Step 2: Fetch and Hash contacts in background
         do {
-            // Local hashes for "Trust Badge" logic
-            let hashes = try await contactsRepository.fetchHashedContacts()
+            // Use Task.detached to move heavy hashing off the @MainActor
+            let (hashes, matches) = try await Task.detached(priority: .userInitiated) { [friendRepository, contactsRepository] in
+                let hashes = try await contactsRepository.fetchHashedContacts()
+                let matches = try await friendRepository.findFriendsFromContacts()
+                return (hashes, matches)
+            }.value
+
+            // Back on @MainActor to update UI state
             self.contactHashes = Set(hashes)
-            
-            let matches = try await friendRepository.findFriendsFromContacts()
             let existingIds = Set(friends.compactMap { $0.id })
-            self.discoveredUsers = matches.filter { !existingIds.contains($0.id ?? "") }
+            
+            withAnimation {
+                self.discoveredUsers = matches.filter { !existingIds.contains($0.id ?? "") }
+            }
 
             if self.discoveredUsers.isEmpty {
                 self.errorMessage = "No friends found in your contacts."

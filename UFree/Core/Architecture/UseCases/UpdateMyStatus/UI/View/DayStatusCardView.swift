@@ -79,7 +79,18 @@ struct DayStatusCardView: View {
 
     private var segmentedIndicator: some View {
         HStack(spacing: 2) {
-            if isFullDayFree() && day.status != .mixed {
+            if day.status == .mixed {
+                // Split-color pill for mixed status
+                HStack(spacing: 0) {
+                    Rectangle()
+                        .fill(isSelected ? .white : Color(hex: "6dd69c"))
+                        .opacity(isSelected ? 0.8 : 1.0)
+                    Rectangle()
+                        .fill(isSelected ? .white : Color.gray.opacity(0.3))
+                        .opacity(isSelected ? 0.4 : 1.0)
+                }
+                .clipShape(Capsule())
+            } else if isFullDayFree() {
                 Capsule()
                     .fill(isSelected ? .white : Color(hex: "6dd69c"))
                     .opacity(isSelected ? 0.8 : 1.0)
@@ -177,7 +188,7 @@ struct DayStatusCardView: View {
         case .morningOnly: return [Color(hex: "FFD97D"), Color(hex: "FFB347")]
         case .afternoonOnly: return [Color(hex: "FF9A8B"), Color(hex: "FF6A88")]
         case .eveningOnly: return [Color(hex: "A18CD1"), Color(hex: "FBC2EB")]
-        case .mixed: return [Color(hex: "8180f9"), Color(hex: "637d96")]
+        case .mixed: return [Color(hex: "6dd69c"), Color(hex: "7da0c2")] // Green to Muted Blue gradient
         case .unknown: return [Color(hex: "8180f9"), Color(hex: "6e6df0")]
         }
     }

@@ -112,7 +112,13 @@ public final class FriendsScheduleViewModel: ObservableObject {
             }
 
         } catch {
-            self.errorMessage = "Failed to load friends' schedules: \(error.localizedDescription)"
+            // Quota Resilience: Handle Firestore Quota Exhaustion (code 8)
+            let nsError = error as NSError
+            if nsError.domain == "FirestoreErrorDomain" && nsError.code == 8 {
+                errorMessage = "Quota exhausted. Discovery functions are currently limited."
+            } else {
+                self.errorMessage = "Failed to load friends' schedules: \(error.localizedDescription)"
+            }
             print("❌ Error loading friends schedules: \(error)")
         }
     }

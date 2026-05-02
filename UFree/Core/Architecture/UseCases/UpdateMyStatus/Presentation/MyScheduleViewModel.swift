@@ -60,7 +60,13 @@ public final class MyScheduleViewModel: ObservableObject {
                 }
             }
         } catch {
-            errorMessage = "Failed to load schedule: \(error.localizedDescription)"
+            // Quota Resilience: Handle Firestore Quota Exhaustion (code 8)
+            let nsError = error as NSError
+            if nsError.domain == "FirestoreErrorDomain" && nsError.code == 8 {
+                errorMessage = "Quota exhausted. Please use 'The In-Person Handshake' (QR codes) for today."
+            } else {
+                errorMessage = "Failed to load schedule: \(error.localizedDescription)"
+            }
         }
     }
     
