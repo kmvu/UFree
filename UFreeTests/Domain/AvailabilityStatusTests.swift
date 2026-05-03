@@ -28,9 +28,9 @@ final class AvailabilityStatusTests: XCTestCase {
     func test_displayName_returnsCorrectStrings() {
         XCTAssertEqual(AvailabilityStatus.busy.displayName, "Busy")
         XCTAssertEqual(AvailabilityStatus.free.displayName, "Free")
-        XCTAssertEqual(AvailabilityStatus.morningOnly.displayName, "Morning")
-        XCTAssertEqual(AvailabilityStatus.afternoonOnly.displayName, "Afternoon")
-        XCTAssertEqual(AvailabilityStatus.eveningOnly.displayName, "Evening")
+        XCTAssertEqual(AvailabilityStatus.morningOnly.displayName, "Free\nMorning")
+        XCTAssertEqual(AvailabilityStatus.afternoonOnly.displayName, "Free\nAfternoon")
+        XCTAssertEqual(AvailabilityStatus.eveningOnly.displayName, "Free\nEvening")
         XCTAssertEqual(AvailabilityStatus.mixed.displayName, "Mixed")
         XCTAssertEqual(AvailabilityStatus.unknown.displayName, "Unknown")
     }

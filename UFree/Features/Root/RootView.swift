@@ -102,6 +102,7 @@ struct RootView: View {
 // MARK: - Main App View (after login)
 
 struct MainAppView: View {
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     let container: ModelContainer
     let authRepository: AuthRepository
     @ObservedObject var rootViewModel: RootViewModel
@@ -112,6 +113,46 @@ struct MainAppView: View {
     @ObservedObject var notificationViewModel: NotificationViewModel
 
     var body: some View {
+        Group {
+            if horizontalSizeClass == .regular {
+                adaptiveSidebarLayout
+            } else {
+                tabBarLayout
+            }
+        }
+        .sheet(item: $rootViewModel.deepLinkProfileId) { userId in
+            // Profile Card View for Deep Links
+            VStack(spacing: 20) {
+                Circle().fill(Color.blue.opacity(0.1)).frame(width: 80, height: 80)
+                    .overlay { Image(systemName: "person.fill").font(.system(size: 40)).foregroundColor(.blue) }
+                
+                Text("Connect on UFree").font(.headline)
+                Text("User ID: \(userId)").font(.caption).foregroundStyle(.secondary)
+                
+                Button("Send Friend Request") {
+                    let placeholderUser = UserProfile(id: userId, displayName: "UFree User", hashedPhoneNumber: "")
+                    Task {
+                        await friendsViewModel.sendFriendRequest(to: placeholderUser, source: "deep_link")
+                        rootViewModel.deepLinkProfileId = nil
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                
+                Button("Cancel") { rootViewModel.deepLinkProfileId = nil }.foregroundStyle(.secondary)
+            }
+            .padding()
+            .presentationDetents([.medium])
+        }
+        .environment(\.notificationViewModel, notificationViewModel)
+        .onOpenURL { url in
+            handleUniversalLink(url)
+        }
+    }
+
+    // MARK: - Layouts
+
+    @ViewBuilder
+    private var tabBarLayout: some View {
         TabView(selection: $rootViewModel.activeTab) {
             // MARK: - Schedule Tab
             NavigationStack {
@@ -151,32 +192,49 @@ struct MainAppView: View {
             }
             .tag(RootViewModel.Tab.friends)
         }
-        .sheet(item: $rootViewModel.deepLinkProfileId) { userId in
-            // Profile Card View for Deep Links
-            VStack(spacing: 20) {
-                Circle().fill(Color.blue.opacity(0.1)).frame(width: 80, height: 80)
-                    .overlay { Image(systemName: "person.fill").font(.system(size: 40)).foregroundColor(.blue) }
-                
-                Text("Connect on UFree").font(.headline)
-                Text("User ID: \(userId)").font(.caption).foregroundStyle(.secondary)
-                
-                Button("Send Friend Request") {
-                    let placeholderUser = UserProfile(id: userId, displayName: "UFree User", hashedPhoneNumber: "")
-                    Task {
-                        await friendsViewModel.sendFriendRequest(to: placeholderUser, source: "deep_link")
-                        rootViewModel.deepLinkProfileId = nil
-                    }
+    }
+
+    @ViewBuilder
+    private var adaptiveSidebarLayout: some View {
+        NavigationSplitView {
+            List(selection: Binding(
+                get: { rootViewModel.activeTab },
+                set: { if let newValue = $0 { rootViewModel.activeTab = newValue } }
+            )) {
+                NavigationLink(value: RootViewModel.Tab.schedule) {
+                    Label("Schedule", systemImage: "calendar")
                 }
-                .buttonStyle(.borderedProminent)
-                
-                Button("Cancel") { rootViewModel.deepLinkProfileId = nil }.foregroundStyle(.secondary)
+                NavigationLink(value: RootViewModel.Tab.feed) {
+                    Label("Feed", systemImage: "person.2.fill")
+                }
+                NavigationLink(value: RootViewModel.Tab.friends) {
+                    Label("Add Friends", systemImage: "person.badge.plus")
+                }
             }
-            .padding()
-            .presentationDetents([.medium])
-        }
-        .environment(\.notificationViewModel, notificationViewModel)
-        .onOpenURL { url in
-            handleUniversalLink(url)
+            .navigationTitle("UFree")
+        } detail: {
+            switch rootViewModel.activeTab {
+            case .schedule:
+                NavigationStack {
+                    ScheduleContainer(container: container, rootViewModel: rootViewModel)
+                }
+            case .feed:
+                NavigationStack {
+                    FriendsScheduleView(
+                        viewModel: friendsScheduleViewModel,
+                        rootViewModel: rootViewModel
+                    )
+                    .navigationTitle("Who's Free?")
+                }
+            case .friends:
+                NavigationStack {
+                    FriendsView(
+                        friendRepository: friendRepository,
+                        rootViewModel: rootViewModel
+                    )
+                    .navigationTitle("Friends")
+                }
+            }
         }
     }
     

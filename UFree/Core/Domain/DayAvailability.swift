@@ -87,12 +87,10 @@ public struct DayAvailability: Identifiable, Codable {
         }
         
         // If there is only one block and it's a specific quick-fill window, return it directly.
-        // We exclude .mixed here because a single block should not be .mixed;
-        // it should be calculated based on the actual free/busy periods.
         if timeBlocks.count == 1 {
             let status = timeBlocks[0].status
-            // Return aggregate statuses directly, except for .mixed which we want to recalculate
-            if status == .morningOnly || status == .afternoonOnly || status == .eveningOnly || status == .unknown {
+            // Return aggregate statuses directly. Mixed is allowed as a placeholder for legacy data.
+            if status == .morningOnly || status == .afternoonOnly || status == .eveningOnly || status == .unknown || status == .mixed {
                 return status
             }
         }
@@ -216,13 +214,13 @@ public struct DayAvailability: Identifiable, Codable {
                     TimeBlock(startTime: eStart, endTime: eEnd, status: .free),
                     TimeBlock(startTime: eEnd, endTime: endOfDay, status: .busy)
                 ]
-            case .mixed, .unknown:
-                // For mixed or unknown, if we're setting it via this property, 
-                // we default to a single busy block. Real mixed status 
-                // should be set via timeBlocks directly.
-                self.timeBlocks = [TimeBlock(startTime: startOfDay, endTime: endOfDay, status: .busy)]
+            case .mixed:
+                // For legacy mixed status without blocks, we use a single mixed block as placeholder
+                self.timeBlocks = [TimeBlock(startTime: startOfDay, endTime: endOfDay, status: .mixed)]
+            case .unknown:
+                // Unknown means no availability data yet
+                self.timeBlocks = []
             }
         }
     }
 }
-

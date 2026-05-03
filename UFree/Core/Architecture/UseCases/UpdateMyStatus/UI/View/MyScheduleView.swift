@@ -8,6 +8,7 @@
 import SwiftUI
 
 public struct MyScheduleView: View {
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @StateObject private var viewModel: MyScheduleViewModel
     @ObservedObject var rootViewModel: RootViewModel
     @State private var isLoaded = false
@@ -72,12 +73,11 @@ public struct MyScheduleView: View {
                 isLoaded = true
             }
         }
-        .sheet(item: $selectedDayForSheet) { day in
+        .modifier(AdaptiveSheetModifier(item: $selectedDayForSheet) { day in
             DayDetailsBottomSheet(day: day) { updatedDay in
                 viewModel.updateStatus(for: updatedDay)
             }
-            .presentationDetents([.medium, .large])
-        }
+        })
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
                 viewModel.errorMessage = nil
@@ -106,30 +106,44 @@ public struct MyScheduleView: View {
                 .font(.headline)
                 .padding(.horizontal)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+            if horizontalSizeClass == .regular {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 16)], spacing: 16) {
                     ForEach(viewModel.weeklySchedule) { day in
-                        DayStatusCardView(
-                            day: day,
-                            isSelected: Calendar.current.isDate(day.date, inSameDayAs: viewModel.selectedDate),
-                            color: day.status.displayColor,
-                            onTap: {
-                                withAnimation(.spring()) {
-                                    viewModel.selectedDate = day.date
-                                }
-                                HapticManager.light()
-                                selectedDayForSheet = day
-                            }
-                        )
-                        .onLongPressGesture {
-                            HapticManager.medium()
-                            selectedDayForSheet = day
-                        }
+                        dayCard(for: day)
                     }
                 }
                 .padding(.horizontal)
-                .padding(.vertical, 8)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(viewModel.weeklySchedule) { day in
+                            dayCard(for: day)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func dayCard(for day: DayAvailability) -> some View {
+        DayStatusCardView(
+            day: day,
+            isSelected: Calendar.current.isDate(day.date, inSameDayAs: viewModel.selectedDate),
+            color: day.status.displayColor,
+            onTap: {
+                withAnimation(.spring()) {
+                    viewModel.selectedDate = day.date
+                }
+                HapticManager.light()
+                selectedDayForSheet = day
+            }
+        )
+        .onLongPressGesture {
+            HapticManager.medium()
+            selectedDayForSheet = day
         }
     }
 
@@ -310,6 +324,28 @@ public struct MyScheduleView: View {
             Spacer()
         }
         .padding()
+    }
+}
+
+// MARK: - Adaptive Presentation Modifier
+
+struct AdaptiveSheetModifier<Item: Identifiable, SheetContent: View>: ViewModifier {
+    @Binding var item: Item?
+    let content: (Item) -> SheetContent
+
+    func body(content: Content) -> some View {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            content
+                .popover(item: $item) { value in
+                    self.content(value)
+                }
+        } else {
+            content
+                .sheet(item: $item) { value in
+                    self.content(value)
+                        .presentationDetents([.medium, .large])
+                }
+        }
     }
 }
 
