@@ -39,10 +39,11 @@ struct DayStatusCardView: View {
             .padding(.vertical, 4)
 
             // Status Text
-            Text(day.status.displayName)
+            Text(day.status == .mixed ? (day.earliestFreeBlockInfo ?? day.status.displayName) : day.status.displayName)
                 .font(.system(size: 10, weight: .black))
                 .foregroundColor(isSelected ? .white.opacity(0.9) : color)
                 .textCase(.uppercase)
+                .multilineTextAlignment(.center) // Ensure alignment for line breaks
 
             // Segmented Indicator
             segmentedIndicator
@@ -78,82 +79,42 @@ struct DayStatusCardView: View {
     }
 
     private var segmentedIndicator: some View {
-        HStack(spacing: 2) {
-            if day.status == .mixed {
-                // Split-color pill for mixed status
-                HStack(spacing: 0) {
-                    Rectangle()
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                // Background track
+                Capsule()
+                    .fill(isSelected ? Color.white.opacity(0.2) : Color.gray.opacity(0.1))
+
+                if day.status == .free {
+                    // Full green line for complete free status
+                    Capsule()
                         .fill(isSelected ? .white : Color(hex: "6dd69c"))
                         .opacity(isSelected ? 0.8 : 1.0)
-                    Rectangle()
-                        .fill(isSelected ? .white : Color.gray.opacity(0.3))
-                        .opacity(isSelected ? 0.4 : 1.0)
+                } else {
+                    HStack(spacing: 0) {
+                        ForEach(day.timeBlocks) { block in
+                            Rectangle()
+                                .fill(isSelected ? .white : block.status.displayColor)
+                                .opacity(isSelected ? (block.status == .free ? 0.8 : 0.2) : 1.0)
+                                .frame(width: calculateWidth(for: block, totalWidth: geometry.size.width))
+                        }
+                    }
+                    .clipShape(Capsule())
                 }
-                .clipShape(Capsule())
-            } else if isFullDayFree() {
-                Capsule()
-                    .fill(isSelected ? .white : Color(hex: "6dd69c"))
-                    .opacity(isSelected ? 0.8 : 1.0)
-            } else {
-                // Morning (9AM - 12PM)
-                segment(for: 9, to: 12)
-                
-                // Afternoon (12PM - 5PM)
-                segment(for: 12, to: 17)
-                
-                // Evening (5PM - 10PM)
-                segment(for: 17, to: 22)
             }
         }
     }
-    
-    private func segment(for startHour: Int, to endHour: Int) -> some View {
-        let isFree = statusForWindowIsFree(startHour: startHour, endHour: endHour)
-        return Capsule()
-            .fill(isSelected ? .white : (isFree ? Color(hex: "6dd69c") : Color.gray.opacity(0.3)))
-            .opacity(isSelected ? (isFree ? 0.8 : 0.2) : 1.0)
-    }
-    
-    private func isFullDayFree() -> Bool {
-        if day.status == .free { return true }
-        
+
+    private func calculateWidth(for block: TimeBlock, totalWidth: CGFloat) -> CGFloat {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: day.date)
-        
-        // Core active hours: 9 AM to 10 PM
-        let activeStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
-        let activeEnd = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: startOfDay)!
-        
-        // Check if the entire active period is covered by free blocks
-        let freeBlocks = day.timeBlocks.filter { $0.status == .free }.sorted { $0.startTime < $1.startTime }
-        guard !freeBlocks.isEmpty else { return false }
-        
-        if freeBlocks.first!.startTime > activeStart || freeBlocks.last!.endTime < activeEnd {
-            return false
-        }
-        
-        // Check for gaps within the active period
-        var currentEnd = freeBlocks.first!.endTime
-        for i in 1..<freeBlocks.count {
-            if freeBlocks[i].startTime > currentEnd {
-                return false // Gap found
-            }
-            currentEnd = max(currentEnd, freeBlocks[i].endTime)
-        }
-        
-        return true
-    }
-    
-    private func statusForWindowIsFree(startHour: Int, endHour: Int) -> Bool {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: day.date)
-        let windowStart = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: startOfDay)!
-        let windowEnd = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: startOfDay)!
-        
-        // If any part of a free block overlaps this window significantly (at least 30 mins or entire window)
-        return day.timeBlocks.contains(where: { block in
-            block.status == .free && block.startTime < windowEnd && block.endTime > windowStart
-        })
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? day.date.addingTimeInterval(24 * 60 * 60)
+        let totalDuration = endOfDay.timeIntervalSince(startOfDay)
+        let blockDuration = block.endTime.timeIntervalSince(block.startTime)
+
+        // Ensure we don't divide by zero and handle negative durations gracefully
+        guard totalDuration > 0 else { return 0 }
+        return (CGFloat(max(0, blockDuration)) / CGFloat(totalDuration)) * totalWidth
     }
 
     private func iconFor(_ status: AvailabilityStatus) -> String {

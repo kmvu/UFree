@@ -16,16 +16,20 @@ enum UserStatus: String, CaseIterable {
     case mixed
     case checkSchedule
 
-    var title: String {
+    func title(customMixed: String? = nil) -> String {
         switch self {
         case .free: return "I'm Free Now!"
         case .morning: return "Free in Morning"
         case .afternoon: return "Free in Afternoon"
         case .evening: return "Free in Evening"
         case .busy: return "Busy Right Now"
-        case .mixed: return "Mixed Availability"
+        case .mixed: return customMixed ?? "Mixed Availability"
         case .checkSchedule: return "Check My Schedule"
         }
+    }
+
+    var title: String {
+        return title()
     }
 
     var subtitle: String {

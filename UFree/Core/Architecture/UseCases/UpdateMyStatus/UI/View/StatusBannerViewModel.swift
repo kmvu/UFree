@@ -12,6 +12,7 @@ import SwiftUI
 @MainActor
 final class StatusBannerViewModel: ObservableObject {
     @Published var currentStatus: UserStatus = .checkSchedule
+    @Published var customMixedTitle: String? = nil
     @Published var isProcessing: Bool = false
     @Published var isExpanded: Bool = false
     @Published var selectedDate: Date = Date()
@@ -47,20 +48,37 @@ final class StatusBannerViewModel: ObservableObject {
     }
     
     private func updateStatusFromSchedule(_ schedule: [DayAvailability]) {
-        guard let dayStatus = schedule.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) })?.status else {
+        guard let day = schedule.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) else {
             currentStatus = .checkSchedule
+            customMixedTitle = nil
             return
         }
         
+        let dayStatus = day.status
+        
         // Map AvailabilityStatus to UserStatus
         switch dayStatus {
-        case .free: currentStatus = .free
-        case .morningOnly: currentStatus = .morning
-        case .afternoonOnly: currentStatus = .afternoon
-        case .eveningOnly: currentStatus = .evening
-        case .busy: currentStatus = .busy
-        case .mixed: currentStatus = .mixed
-        case .unknown: currentStatus = .checkSchedule
+        case .free: 
+            currentStatus = .free
+            customMixedTitle = nil
+        case .morningOnly: 
+            currentStatus = .morning
+            customMixedTitle = day.earliestFreeBlockInfo?.replacingOccurrences(of: "\n", with: " ")
+        case .afternoonOnly: 
+            currentStatus = .afternoon
+            customMixedTitle = day.earliestFreeBlockInfo?.replacingOccurrences(of: "\n", with: " ")
+        case .eveningOnly: 
+            currentStatus = .evening
+            customMixedTitle = day.earliestFreeBlockInfo?.replacingOccurrences(of: "\n", with: " ")
+        case .busy: 
+            currentStatus = .busy
+            customMixedTitle = nil
+        case .mixed: 
+            currentStatus = .mixed
+            customMixedTitle = day.earliestFreeBlockInfo?.replacingOccurrences(of: "\n", with: " at ")
+        case .unknown: 
+            currentStatus = .checkSchedule
+            customMixedTitle = nil
         }
     }
 

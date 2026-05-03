@@ -24,7 +24,9 @@ extension AvailabilityStatus {
         case .unknown:
             return Color(red: 0.7, green: 0.7, blue: 0.7) // Light gray for unknown
         case .mixed:
-            return Color(hex: "6dd69c") // Base on free color as it contains free blocks
+            // For mixed days, we use the free color (green) because it indicates 
+            // there is at least some availability.
+            return Color(hex: "6dd69c")
         }
     }
 }

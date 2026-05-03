@@ -60,10 +60,10 @@ struct StatusBannerView: View {
                         .foregroundColor(.white.opacity(0.7))
                         .textCase(.uppercase)
 
-                    Text(viewModel.currentStatus.title)
+                    Text(viewModel.currentStatus.title(customMixed: viewModel.customMixedTitle))
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.white)
-                        .id("title-\(viewModel.currentStatus)")
+                        .id("title-\(viewModel.currentStatus)-\(viewModel.customMixedTitle ?? "")")
 
                     Text(viewModel.currentStatus.subtitle)
                         .font(.footnote)

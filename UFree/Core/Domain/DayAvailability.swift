@@ -86,9 +86,15 @@ public struct DayAvailability: Identifiable, Codable {
             return .unknown
         }
         
-        // If there is only one block and it's an aggregate status, return it directly
-        if timeBlocks.count == 1 && timeBlocks[0].status != .free && timeBlocks[0].status != .busy {
-            return timeBlocks[0].status
+        // If there is only one block and it's a specific quick-fill window, return it directly.
+        // We exclude .mixed here because a single block should not be .mixed;
+        // it should be calculated based on the actual free/busy periods.
+        if timeBlocks.count == 1 {
+            let status = timeBlocks[0].status
+            // Return aggregate statuses directly, except for .mixed which we want to recalculate
+            if status == .morningOnly || status == .afternoonOnly || status == .eveningOnly || status == .unknown {
+                return status
+            }
         }
         
         let freeBlocks = timeBlocks.filter { $0.status == .free }.sorted { $0.startTime < $1.startTime }
@@ -99,7 +105,6 @@ public struct DayAvailability: Identifiable, Codable {
         
         let calendar = Calendar.current
         let b = QuickFillWindows.boundaries(for: date, calendar: calendar)
-        let startOfDay = b.startOfDay
         let activeStart = b.activeStart
         let morningEnd = b.morningEnd
         let afternoonStart = b.afternoonStart
@@ -163,6 +168,16 @@ public struct DayAvailability: Identifiable, Codable {
         return .mixed
     }
 
+    /// Returns a human-readable string for the earliest free time block, if any.
+    public var earliestFreeBlockInfo: String? {
+        let freeBlocks = timeBlocks.filter { $0.status == .free }.sorted { $0.startTime < $1.startTime }
+        guard let firstFree = freeBlocks.first else { return nil }
+        
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return "Free starting\n\(formatter.string(from: firstFree.startTime))"
+    }
+
     /// Alias for overallStatus to maintain backward compatibility with existing code
     public var status: AvailabilityStatus {
         get { overallStatus }
@@ -201,8 +216,11 @@ public struct DayAvailability: Identifiable, Codable {
                     TimeBlock(startTime: eStart, endTime: eEnd, status: .free),
                     TimeBlock(startTime: eEnd, endTime: endOfDay, status: .busy)
                 ]
-            default:
-                self.timeBlocks = [TimeBlock(startTime: startOfDay, endTime: endOfDay, status: newValue)]
+            case .mixed, .unknown:
+                // For mixed or unknown, if we're setting it via this property, 
+                // we default to a single busy block. Real mixed status 
+                // should be set via timeBlocks directly.
+                self.timeBlocks = [TimeBlock(startTime: startOfDay, endTime: endOfDay, status: .busy)]
             }
         }
     }
