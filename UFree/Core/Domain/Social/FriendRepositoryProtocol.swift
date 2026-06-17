@@ -37,4 +37,7 @@ public protocol FriendRepositoryProtocol {
     
     /// Declines a friend request.
     func declineFriendRequest(_ request: FriendRequest) async throws
+
+    /// Updates the user's display name in Firestore (merging data).
+    func saveUserProfile(displayName: String) async throws
 }

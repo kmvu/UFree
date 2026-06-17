@@ -88,6 +88,10 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
         incomingRequests[index].status = .declined
     }
     
+    public func saveUserProfile(displayName: String) async throws {
+        // Mock: no-op
+    }
+    
     /// Adds a mock discovered user for testing
     public func addDiscoveredUser(_ user: UserProfile) {
         discoveredUsers.append(user)

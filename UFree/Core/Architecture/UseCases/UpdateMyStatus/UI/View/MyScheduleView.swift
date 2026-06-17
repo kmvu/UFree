@@ -12,6 +12,7 @@ public struct MyScheduleView: View {
     @StateObject private var viewModel: MyScheduleViewModel
     @ObservedObject var rootViewModel: RootViewModel
     @State private var isLoaded = false
+    @State private var showingSettings = false
     @State private var selectedDayForSheet: DayAvailability?
 
     public init(viewModel: MyScheduleViewModel, rootViewModel: RootViewModel) {
@@ -51,6 +52,14 @@ public struct MyScheduleView: View {
                 // Bell icon with notification badge
                 NotificationBellButton(isPresented: .constant(false))
                 
+                // Settings gear icon
+                Button(action: {
+                    showingSettings = true
+                }) {
+                    Image(systemName: "gearshape")
+                        .font(.body)
+                }
+                
                 // Menu with sign out
                 Menu {
                     Button(role: .destructive, action: {
@@ -63,6 +72,12 @@ public struct MyScheduleView: View {
                         .font(.body)
                 }
             }
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(viewModel: SettingsViewModel(
+                authRepository: rootViewModel.authRepository,
+                friendRepository: rootViewModel.friendsViewModel.friendRepository
+            ))
         }
 
         .task {

@@ -217,6 +217,16 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         ])
     }
     
+    func saveUserProfile(displayName: String) async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "FriendRepository", code: -1, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"])
+        }
+        
+        try await db.collection("users").document(userId).setData([
+            "displayName": displayName
+        ], merge: true)
+    }
+    
     // MARK: - Private Helpers
     
     /// Queries Firestore for users matching a batch of hashes
