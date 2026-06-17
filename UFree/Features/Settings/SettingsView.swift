@@ -67,6 +67,9 @@ struct SettingsView: View {
                     dismiss()
                 }
             }
+            .task {
+                await viewModel.loadInitialData()
+            }
         }
     }
 }

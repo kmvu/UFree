@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
@@ -21,9 +22,10 @@ final class SettingsViewModel: ObservableObject {
     init(authRepository: AuthRepository, friendRepository: FriendRepositoryProtocol) {
         self.authRepository = authRepository
         self.friendRepository = friendRepository
-        
-        // Initialize displayName if available
-        if let user = authRepository.currentUser {
+    }
+    
+    func loadInitialData() async {
+        if let user = await authRepository.currentUser {
             self.displayName = user.displayName ?? ""
         }
     }

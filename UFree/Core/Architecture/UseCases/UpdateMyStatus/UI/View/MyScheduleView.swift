@@ -74,10 +74,12 @@ public struct MyScheduleView: View {
             }
         }
         .sheet(isPresented: $showingSettings) {
-            SettingsView(viewModel: SettingsViewModel(
-                authRepository: rootViewModel.authRepository,
-                friendRepository: rootViewModel.friendsViewModel.friendRepository
-            ))
+            if let friendRepo = rootViewModel.friendsViewModel?.friendRepository {
+                SettingsView(viewModel: SettingsViewModel(
+                    authRepository: rootViewModel.authRepository,
+                    friendRepository: friendRepo
+                ))
+            }
         }
 
         .task {

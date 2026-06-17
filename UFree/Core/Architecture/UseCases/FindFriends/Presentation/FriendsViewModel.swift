@@ -45,7 +45,7 @@ public final class FriendsViewModel: ObservableObject {
     @Published public var incomingRequests: [FriendRequest] = []
     private var listenerTask: Task<Void, Never>?
 
-    private let friendRepository: FriendRepositoryProtocol
+    public let friendRepository: FriendRepositoryProtocol
     private let contactsRepository: ContactsRepositoryProtocol
 
     public init(friendRepository: FriendRepositoryProtocol, contactsRepository: ContactsRepositoryProtocol? = nil) {

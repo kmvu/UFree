@@ -37,7 +37,7 @@ public final class RootViewModel: ObservableObject {
     @Published public var friendsScheduleViewModel: FriendsScheduleViewModel?
     @Published public var friendsViewModel: FriendsViewModel?
     
-    private let authRepository: AuthRepository
+    public let authRepository: AuthRepository
     private var authStateTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     
