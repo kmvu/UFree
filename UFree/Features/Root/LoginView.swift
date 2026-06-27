@@ -45,16 +45,21 @@ struct LoginView: View {
                         .background(Color(UIColor.secondarySystemGroupedBackground))
                         .cornerRadius(12)
                         .focused($isNameFocused)
+                        .submitLabel(.next)
+                    
+                    TextField("Phone Number", text: $viewModel.phoneNumber)
+                        .keyboardType(.phonePad)
+                        .textContentType(.telephoneNumber)
+                        .textFieldStyle(.plain)
+                        .padding()
+                        .background(Color(UIColor.secondarySystemGroupedBackground))
+                        .cornerRadius(12)
                         .submitLabel(.go)
                         .onSubmit {
                             viewModel.loginTapped()
                         }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.blue.opacity(isNameFocused ? 0.5 : 0), lineWidth: 2)
-                        )
                     
-                    Text("This name will be visible to your friends.")
+                    Text("Your name and phone number allow friends to find you. Your phone number is stored as a secure hash for privacy.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -78,11 +83,11 @@ struct LoginView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(viewModel.name.isEmpty ? Color.gray.opacity(0.3) : Color.blue)
+                    .background((viewModel.name.isEmpty || viewModel.phoneNumber.isEmpty) ? Color.gray.opacity(0.3) : Color.blue)
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
-                .disabled(viewModel.isLoading || viewModel.name.isEmpty)
+                .disabled(viewModel.isLoading || viewModel.name.isEmpty || viewModel.phoneNumber.isEmpty)
                 .padding(.horizontal)
                 
                 Spacer()

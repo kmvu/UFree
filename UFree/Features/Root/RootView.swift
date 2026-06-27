@@ -27,8 +27,7 @@ struct RootView: View {
             local: SwiftDataAvailabilityRepository(container: container),
             remote: FirebaseAvailabilityRepository()
         )
-        let contactsRepo = AppleContactsRepository()
-        let friendRepo = FirebaseFriendRepository(contactsRepo: contactsRepo)
+        let friendRepo = FirebaseFriendRepository()
         self.friendRepository = friendRepo
         let notificationRepo = FirebaseNotificationRepository()
 
@@ -61,7 +60,10 @@ struct RootView: View {
                     .transition(.opacity)
 
             case .unauthenticated:
-                LoginView(viewModel: LoginViewModel(authRepository: authRepository))
+                LoginView(viewModel: LoginViewModel(
+                    authRepository: authRepository,
+                    friendRepository: friendRepository
+                ))
                     .transition(.opacity)
 
             case .authenticated:
@@ -123,20 +125,7 @@ struct MainAppView: View {
         .sheet(item: $rootViewModel.deepLinkProfileId) { userId in
             // Profile Card View for Deep Links
             VStack(spacing: 20) {
-                Circle().fill(Color.blue.opacity(0.1)).frame(width: 80, height: 80)
-                    .overlay { Image(systemName: "person.fill").font(.system(size: 40)).foregroundColor(.blue) }
-                
-                Text("Connect on UFree").font(.headline)
-                Text("User ID: \(userId)").font(.caption).foregroundStyle(.secondary)
-                
-                Button("Send Friend Request") {
-                    let placeholderUser = UserProfile(id: userId, displayName: "UFree User", hashedPhoneNumber: "")
-                    Task {
-                        await friendsViewModel.sendFriendRequest(to: placeholderUser, source: "deep_link")
-                        rootViewModel.deepLinkProfileId = nil
-                    }
-                }
-                .buttonStyle(.borderedProminent)
+                ProfileResolutionView(userId: userId, friendsViewModel: friendsViewModel)
                 
                 Button("Cancel") { rootViewModel.deepLinkProfileId = nil }.foregroundStyle(.secondary)
             }
@@ -287,6 +276,65 @@ enum DeepLink {
             return .profile(userId: parameter)
         default:
             return .unknown
+        }
+    }
+}
+
+// MARK: - Profile Resolution for Deep Links
+
+struct ProfileResolutionView: View {
+    let userId: String
+    @ObservedObject var friendsViewModel: FriendsViewModel
+    @State private var resolvedUser: UserProfile?
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            if isLoading {
+                ProgressView("Finding user...")
+            } else if let user = resolvedUser {
+                Circle().fill(Color.blue.opacity(0.1)).frame(width: 80, height: 80)
+                    .overlay {
+                        Text(String(user.displayName.prefix(1)))
+                            .font(.system(size: 40, weight: .bold))
+                            .foregroundColor(.blue)
+                    }
+                
+                Text(user.displayName).font(.headline)
+                Text("Connect on UFree").font(.subheadline).foregroundStyle(.secondary)
+                
+                Button("Send Friend Request") {
+                    Task {
+                        await friendsViewModel.sendFriendRequest(to: user, source: "deep_link")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(friendsViewModel.isProcessing)
+            } else {
+                Image(systemName: "person.fill.questionmark")
+                    .font(.system(size: 40))
+                    .foregroundColor(.gray)
+                
+                Text(errorMessage ?? "User not found").font(.headline)
+                Text("The link might be invalid or the user may have deleted their account.")
+                    .font(.caption)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .task {
+            await resolveUser()
+        }
+    }
+    
+    private func resolveUser() async {
+        do {
+            resolvedUser = try await friendsViewModel.friendRepository.findUserById(userId)
+            isLoading = false
+        } catch {
+            errorMessage = "Failed to load profile"
+            isLoading = false
         }
     }
 }

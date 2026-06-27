@@ -11,70 +11,85 @@ import FirebaseAuth
 
 // MARK: - Implementation
 final class FirebaseFriendRepository: FriendRepositoryProtocol {
-     
+
     private let db = Firestore.firestore()
-    private let contactsRepo: ContactsRepositoryProtocol
-    
-    init(contactsRepo: ContactsRepositoryProtocol) {
-        self.contactsRepo = contactsRepo
-    }
-    
+
+    // contactsRepo dependency has been removed — callers now pass pre-computed
+    // hashes via findFriendsFromContactHashes(_:), eliminating the double-fetch.
+    init() {}
+
     func getMyFriends() async throws -> [UserProfile] {
         guard let userId = Auth.auth().currentUser?.uid else {
             // Return empty list for users not yet authenticated with Firebase
             return []
         }
-        
+
         let snapshot = try await db.collection("users").document(userId).getDocument()
         guard let data = snapshot.data(),
               let friendIds = data["friendIds"] as? [String] else {
             return []
         }
-        
+
         guard !friendIds.isEmpty else { return [] }
-        
+
         // Fetch friend profiles in batches of 10 (Firestore limit)
         let chunks = friendIds.chunked(into: 10)
         var friends: [UserProfile] = []
-        
+
         try await withThrowingTaskGroup(of: [UserProfile].self) { group in
             for chunk in chunks {
                 group.addTask {
                     return try await self.fetchUsers(withIds: chunk)
                 }
             }
-            
+
             for try await users in group {
                 friends.append(contentsOf: users)
             }
         }
-        
+
         return friends
     }
-    
+
     func findUserByPhoneNumber(_ phoneNumber: String) async throws -> UserProfile? {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
             return nil
         }
-        
-        // Hash the phone number (privacy-safe)
-        guard let hashedNumber = CryptoUtils.hashPhoneNumber(phoneNumber) else {
-            throw NSError(domain: "FriendRepository", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid phone number"])
+
+        // Generate all candidate hashes for this phone number (covers local & E.164 forms)
+        let candidateHashes = CryptoUtils.phoneNumberHashes(for: phoneNumber)
+        guard !candidateHashes.isEmpty else {
+            throw NSError(domain: "FriendRepository", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "Invalid phone number"])
         }
-        
-        // Query Firestore for user with matching hash
+
+        // Query the new array field using array-contains-any (up to 10 values, we have ≤2)
         let snapshot = try await db.collection("users")
-            .whereField("hashedPhoneNumber", isEqualTo: hashedNumber)
+            .whereField("hashedPhoneNumbers", arrayContainsAny: candidateHashes)
             .getDocuments()
-        
-        // Find first match that isn't the current user
+
+        // Return the first match that isn't the current user
         for doc in snapshot.documents {
             if let user = try? doc.data(as: UserProfile.self),
                user.id != currentUserId {
                 return user
             }
         }
-        
+
+        // Legacy fallback: query the old single-hash field for users registered before
+        // the schema migration so they are still discoverable.
+        if let legacyHash = candidateHashes.first {
+            let legacySnapshot = try await db.collection("users")
+                .whereField("hashedPhoneNumber", isEqualTo: legacyHash)
+                .getDocuments()
+            for doc in legacySnapshot.documents {
+                if let user = try? doc.data(as: UserProfile.self),
+                   user.id != currentUserId {
+                    return user
+                }
+            }
+        }
+
         return nil
     }
     
@@ -117,38 +132,42 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         return try? snapshot.data(as: UserProfile.self)
     }
     
-    func findFriendsFromContacts() async throws -> [UserProfile] {
-        // 1. Get local hashes (Privacy Safe)
-        let localHashes = try await contactsRepo.fetchHashedContacts()
-        
-        guard !localHashes.isEmpty else { return [] }
-        
-        // 2. Chunk hashes into batches of 10 (Firestore Limit)
-        let chunks = localHashes.chunked(into: 10)
+    func findFriendsFromContactHashes(_ hashes: [String]) async throws -> [UserProfile] {
+        guard !hashes.isEmpty else { return [] }
+
+        // Chunk into batches of 10 (Firestore `array-contains-any` limit)
+        let chunks = hashes.chunked(into: 10)
         var matchedUsers: [UserProfile] = []
-        
-        // 3. Query Firestore in parallel
-        // We use a TaskGroup to fire off all batch queries at once
+
+        // Query Firestore in parallel — one task per chunk
         try await withThrowingTaskGroup(of: [UserProfile].self) { group in
             for chunk in chunks {
                 group.addTask {
                     return try await self.fetchUsers(withHashes: chunk)
                 }
             }
-            
-            // Collect results
+
             for try await users in group {
                 matchedUsers.append(contentsOf: users)
             }
         }
-        
-        return matchedUsers
+
+        // De-duplicate by document ID in case a user matched on multiple hashes
+        var seen = Set<String>()
+        return matchedUsers.filter { user in
+            guard let id = user.id else { return false }
+            return seen.insert(id).inserted
+        }
     }
     
     func sendFriendRequest(to user: UserProfile) async throws {
         guard let currentUid = Auth.auth().currentUser?.uid,
-              let currentName = Auth.auth().currentUser?.displayName,
-              let toId = user.id else { return }
+              let toId = user.id else {
+            throw NSError(domain: "FriendRepository", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing user information for request"])
+        }
+        
+        // Use a fallback for name if not set in Auth profile yet
+        let currentName = Auth.auth().currentUser?.displayName ?? "UFree User"
         
         let request = FriendRequest(
             id: nil,
@@ -217,27 +236,55 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         ])
     }
     
-    func saveUserProfile(displayName: String) async throws {
+    func saveUserProfile(displayName: String, hashedPhoneNumbers: [String]) async throws {
         guard let userId = Auth.auth().currentUser?.uid else {
-            throw NSError(domain: "FriendRepository", code: -1, userInfo: [NSLocalizedDescriptionKey: "No authenticated user"])
+            throw NSError(domain: "FriendRepository", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "No authenticated user"])
         }
-        
-        try await db.collection("users").document(userId).setData([
-            "displayName": displayName
-        ], merge: true)
+
+        var data: [String: Any] = ["displayName": displayName]
+
+        if !hashedPhoneNumbers.isEmpty {
+            // Write the new array field (primary, used for array-contains-any queries)
+            data["hashedPhoneNumbers"] = hashedPhoneNumbers
+            // Also write the legacy single-hash field (first hash = raw-digits form)
+            // so that users registered before the migration remain discoverable via
+            // the old `isEqualTo` query path until their document is re-written.
+            data["hashedPhoneNumber"] = hashedPhoneNumbers[0]
+        }
+
+        try await db.collection("users").document(userId).setData(data, merge: true)
     }
     
     // MARK: - Private Helpers
     
-    /// Queries Firestore for users matching a batch of hashes
+    /// Queries Firestore for users whose `hashedPhoneNumbers` array contains any of the
+    /// given hashes (new array field).  Falls back to the legacy `hashedPhoneNumber`
+    /// single-field query for documents not yet migrated, then merges and deduplicates.
     private func fetchUsers(withHashes hashes: [String]) async throws -> [UserProfile] {
-        let snapshot = try await db.collection("users")
+        // Primary query — new array field
+        async let newFieldSnapshot = db.collection("users")
+            .whereField("hashedPhoneNumbers", arrayContainsAny: hashes)
+            .getDocuments()
+
+        // Legacy query — old single-hash field (handles pre-migration documents)
+        async let legacySnapshot = db.collection("users")
             .whereField("hashedPhoneNumber", in: hashes)
             .getDocuments()
-        
-        return snapshot.documents.compactMap { doc -> UserProfile? in
-            try? doc.data(as: UserProfile.self)
+
+        let (newDocs, oldDocs) = try await (newFieldSnapshot, legacySnapshot)
+
+        var seen = Set<String>()
+        var results: [UserProfile] = []
+
+        for doc in (newDocs.documents + oldDocs.documents) {
+            if let user = try? doc.data(as: UserProfile.self),
+               let id = user.id,
+               seen.insert(id).inserted {
+                results.append(user)
+            }
         }
+        return results
     }
     
     /// Queries Firestore for users matching a batch of IDs

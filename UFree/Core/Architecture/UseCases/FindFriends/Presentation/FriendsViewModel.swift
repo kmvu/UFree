@@ -115,19 +115,24 @@ public final class FriendsViewModel: ObservableObject {
             }
         }
 
-        // Step 2: Fetch and Hash contacts in background
+        // Step 2: Fetch and hash contacts once in background, then query Firestore
         do {
-            // Use Task.detached to move heavy hashing off the @MainActor
-            let (hashes, matches) = try await Task.detached(priority: .userInitiated) { [friendRepository, contactsRepository] in
-                let hashes = try await contactsRepository.fetchHashedContacts()
-                let matches = try await friendRepository.findFriendsFromContacts()
-                return (hashes, matches)
+            // Use Task.detached to move the heavy CNContact enumeration + hashing
+            // off the @MainActor thread.  Contacts are fetched exactly once here;
+            // the repository no longer fetches them internally (that was the
+            // source of the double-fetch bug).
+            let hashes = try await Task.detached(priority: .userInitiated) { [contactsRepository] in
+                try await contactsRepository.fetchHashedContacts()
             }.value
 
-            // Back on @MainActor to update UI state
+            // Store hashes for the trust-badge logic (isContactMatched)
             self.contactHashes = Set(hashes)
+
+            // Step 3: Query Firestore with the pre-computed hashes — no re-fetch
+            let matches = try await friendRepository.findFriendsFromContactHashes(hashes)
+
             let existingIds = Set(friends.compactMap { $0.id })
-            
+
             withAnimation {
                 self.discoveredUsers = matches.filter { !existingIds.contains($0.id ?? "") }
             }
@@ -159,10 +164,11 @@ public final class FriendsViewModel: ObservableObject {
     }
     
     public func handleScannedCode(_ code: String) async {
-        guard !isProcessing else { return }
-        isProcessing = true
+        // NOTE: Do NOT set isProcessing here — sendFriendRequest owns that flag.
+        // Setting it here caused a deadlock where sendFriendRequest's own
+        // `guard !isProcessing` would always bail out silently.
         
-        // QR Code extracts the encoded User ID
+        // QR Code contains the encoded User ID
         do {
             if let user = try await friendRepository.findUserById(code) {
                 print("Scanned user: \(user.displayName)")
@@ -182,7 +188,6 @@ public final class FriendsViewModel: ObservableObject {
             self.errorMessage = "Invalid QR code: \(error.localizedDescription)"
             scannedCode = nil
         }
-        isProcessing = false
     }
     
     // MARK: - Trust Logic

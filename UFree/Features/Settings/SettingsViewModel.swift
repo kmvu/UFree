@@ -43,7 +43,9 @@ final class SettingsViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            try await friendRepository.saveUserProfile(displayName: displayName)
+            // Pass empty array — display-name-only update preserves any existing hashes
+            // already stored in Firestore (merge: true in the repository implementation).
+            try await friendRepository.saveUserProfile(displayName: displayName, hashedPhoneNumbers: [])
             
             // Trigger haptic and success state
             HapticManager.success()

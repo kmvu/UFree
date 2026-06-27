@@ -4,78 +4,82 @@
 
 ---
 
-## Quick Start
+## 1. 🤖 Automated Unit Tests (CI/CD)
 
+This is your fastest validation layer — **245+ tests, zero Firebase dependency**. Tests auto-detect environment and use `MockAuthRepository` + in-memory SwiftData.
+
+**Run all unit tests from terminal:**
 ```bash
-# Quick validation (recommended)
-xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | \
-  grep -E '(PASS|FAIL|passed|failed|warning)'
+xcodebuild test \
+  -scheme UFreeUnitTests \
+  -project UFree.xcodeproj \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  2>&1 | grep -E '(PASS|FAIL|passed|failed|error)'
+```
 
-# Via fastlane
+**Via fastlane (recommended):**
+```bash
 fastlane tests
 ```
 
----
-
-## Debug Auth Strategy (Manual Testing)
-
-For testing multi-user flows without SMS codes:
-
-1. **Add Firebase test phone numbers** (Console > Authentication > Phone):
-   - +1 555-000-0001, +1 555-000-0002, +1 555-000-0003 (all code: 123456)
-2. **Tap "User 1/2/3"** in the developer tools section of the LoginView (DEBUG only).
+**Via Xcode:**
+Press `⌘ + U` with the `UFreeUnitTests` scheme selected.
 
 ---
 
-## QA Testing: 30-Minute Smoke Test
+## 2. 📱 Manual Multi-User Testing (Firebase Test Users)
 
-**Purpose:** Manual validation of core features before release.
+For testing social flows that require two real accounts without real SMS codes:
 
-### Test Scenarios
-
-1. **Friend Request Flow**: User A searches for User B, sends request. User B accepts. Verify bidirectional friendship.
-2. **Nudge Flow**: User A nudges User B. Verify red badge and notification in User B's inbox.
-3. **QR Connection**: Scan User A's QR code from User B's device. Verify profile loads instantly.
-4. **Rapid-Tap Protection**: Rapidly tap a nudge button. Verify only one notification is sent.
-5. **Offline Graceful**: Send nudge in Airplane mode. Verify error toast and no crash.
-6. **Deep Linking**: Simulate `https://ufree.app/notification/user123`. Verify app opens to notification.
-
-### Sign-Off Checklist
-- [ ] Friend requests sync within 3 sec.
-- [ ] Notifications update badge count correctly.
-- [ ] QR code generation and scanning work.
-- [ ] Rapid-tap protection prevents duplicate operations.
-- [ ] Cold start preserves user authentication.
+1. **Add Firebase test phone numbers** (Firebase Console > Authentication > Phone):
+   - `+1 555-000-0001`, `+1 555-000-0002`, `+1 555-000-0003` (All code: `123456`)
+2. **Use Developer Tools** in `LoginView` (DEBUG builds only):
+   - Run the app on two simulators (or simulator + device).
+   - Tap "User 1", "User 2", or "User 3" to bypass SMS auth and login instantly.
 
 ---
 
-## Test Organization
+## 3. 🔥 30-Minute Smoke Test (Core Flows)
 
-| Layer | Files |
-|-------|-------|
-| **Auth** | `UserTests.swift`, `MockAuthRepositoryTests.swift` |
+Run these manually before any release to validate end-to-end stability.
+
+| # | Scenario | Steps | Expected Result |
+|---|---|---|---|
+| 1 | **Friend Request Flow** | User A searches User B by phone → sends request. User B accepts. | Both see each other in friend list within ~3s. |
+| 2 | **Nudge Flow** | User A taps wave icon on User B's card in Friends Schedule tab. | User B sees red badge and nudge in Notification Center. |
+| 3 | **Batch Nudge** | Select day with 2+ free friends → tap "Nudge all X friends". | Success toast shows count. Each friend receives notification. |
+| 4 | **QR Connection** | Open QR code on B. Scan from A. | A sees B's profile instantly with friend request button. |
+| 5 | **Rapid-Tap Guard** | Rapidly tap any nudge or request button. | Only **one** request sent; button disables while processing. |
+| 6 | **Offline Mode** | Airplane mode → try to send nudge. | Error toast shown. No crash. |
+| 7 | **Heatmap Badges** | Check Friends Schedule day filters. | Badge counts correctly reflect number of "free" friends. |
+| 8 | **Deep Linking** | Visit `https://ufree.app/profile/{userId}` in Safari. | App opens to specific user's card. |
+| 9 | **Cold Start** | Force-quit app → reopen. | User stays logged in. Local data loads from SwiftData cache. |
+| 10 | **Notification Bell** | Tap bell after receiving nudge. | Inbox opens; unread count resets to 0. |
+
+---
+
+## 4. 📂 Test Organization
+
+| Layer | Primary Test Files |
+|---|---|
+| **Auth** | `RootViewModelTests.swift`, `MockAuthRepositoryTests.swift` |
 | **Domain** | `AvailabilityStatusTests.swift`, `DayAvailabilityTests.swift`, `UserScheduleTests.swift` |
-| **Data** | `FirestoreDayDTOTests.swift`, `PersistentDayAvailabilityTests.swift`, `SwiftDataAvailabilityRepositoryTests.swift`, `FriendRepositoryTests.swift` |
-| **Features** | `FriendsViewModelTests.swift`, `FriendsHandshakeTests.swift`, `MyScheduleViewModelTests.swift`, `StatusBannerViewModelTests.swift`, `NotificationViewModelTests.swift`, `FriendsScheduleViewModelBatchNudgeTests.swift` |
+| **Data** | `FirestoreDayDTOTests.swift`, `SwiftDataAvailabilityRepositoryTests.swift`, `FriendRepositoryTests.swift` |
+| **Features** | `FriendsViewModelTests.swift`, `FriendsHandshakeTests.swift`, `MyScheduleViewModelTests.swift`, `FriendsScheduleViewModelTests.swift`, `NotificationViewModelTests.swift` |
+| **Hardening** | `FriendsScheduleViewModelBatchNudgeTests.swift` (Concurrency/Race Conditions) |
 
 ---
 
-## Testing Patterns
+## 5. ✅ Sign-Off Checklist
 
-### Rapid-Tap Protection (ViewModel)
-Test that `isProcessing` flag ignores subsequent calls:
-```swift
-func test_rapidTaps_ignored_while_processing() async {
-    viewModel.doSomething()
-    XCTAssertTrue(viewModel.isProcessing)
-    viewModel.doSomething() // Should be ignored
-}
-```
-
-### In-Memory Persistence
-Unit tests auto-detect and use in-memory SwiftData containers for 100x speed and complete isolation.
+- [ ] All unit tests pass (`UFreeUnitTests` scheme).
+- [ ] Friend requests sync across accounts under 3s.
+- [ ] Notification badges clear correctly on read.
+- [ ] QR code scanning works between devices.
+- [ ] Rapid-tap protection prevents duplicate nudges.
+- [ ] Cold start preserves user authentication.
+- [ ] App remains stable in Airplane mode.
 
 ---
 
-**Last Updated:** April 29, 2026 | **Sprint:** 6.5 | **Status:** ✅ Ready to Ship
+**Last Updated:** June 27, 2026 | **Sprint:** 6.5 | **Status:** ✅ Ready to Ship

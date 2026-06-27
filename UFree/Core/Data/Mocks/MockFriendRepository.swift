@@ -28,21 +28,31 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
     }
     
     public func findUserByPhoneNumber(_ phoneNumber: String) async throws -> UserProfile? {
-        // Mock: hash the phone number same way as real implementation
-        guard let hashedNumber = CryptoUtils.hashPhoneNumber(phoneNumber) else {
-            return nil
+        // Generate candidate hashes the same way as the real implementation
+        let candidateHashes = CryptoUtils.phoneNumberHashes(for: phoneNumber)
+        guard !candidateHashes.isEmpty else { return nil }
+
+        // Search against the new array field first, then the legacy single-hash field
+        return allUsers.first { user in
+            let matchesArray = user.hashedPhoneNumbers.contains { candidateHashes.contains($0) }
+            let matchesLegacy = user.hashedPhoneNumber.map { candidateHashes.contains($0) } ?? false
+            return matchesArray || matchesLegacy
         }
-        
-        // Search by hashed phone number
-        return allUsers.first { $0.hashedPhoneNumber == hashedNumber }
     }
 
     public func findUserById(_ userId: String) async throws -> UserProfile? {
         return allUsers.first { $0.id == userId }
     }
-    
-    public func findFriendsFromContacts() async throws -> [UserProfile] {
-        return discoveredUsers
+
+    public func findFriendsFromContactHashes(_ hashes: [String]) async throws -> [UserProfile] {
+        guard !hashes.isEmpty else { return [] }
+        // Return any mock discovered user whose hashes overlap with the input
+        // (falls back to returning all discoveredUsers if none have hashes set,
+        //  preserving pre-existing mock behaviour for tests that don't care about hashes)
+        let matched = discoveredUsers.filter { user in
+            user.hashedPhoneNumbers.contains { hashes.contains($0) }
+        }
+        return matched.isEmpty ? discoveredUsers : matched
     }
     
     public func addFriend(userId: String) async throws {
@@ -88,7 +98,7 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
         incomingRequests[index].status = .declined
     }
     
-    public func saveUserProfile(displayName: String) async throws {
+    public func saveUserProfile(displayName: String, hashedPhoneNumbers: [String]) async throws {
         // Mock: no-op
     }
     

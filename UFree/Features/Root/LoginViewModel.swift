@@ -7,21 +7,26 @@
 
 import Foundation
 import Combine
+import SwiftUI
 
 @MainActor
 final class LoginViewModel: ObservableObject {
     // MARK: - State
     @Published var name: String = ""
+    @Published var phoneNumber: String = ""
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var showError: Bool = false
     
     // MARK: - Dependencies
     private let authRepository: AuthRepository
+    private let friendRepository: FriendRepositoryProtocol
     
     // MARK: - Init
-    init(authRepository: AuthRepository) {
+    init(authRepository: AuthRepository, friendRepository: FriendRepositoryProtocol? = nil) {
         self.authRepository = authRepository
+        // In a real app, we'd use a container or factory. For now, we default to Firebase if not provided.
+        self.friendRepository = friendRepository ?? FirebaseFriendRepository()
     }
     
     // MARK: - Intent
@@ -32,17 +37,31 @@ final class LoginViewModel: ObservableObject {
             return
         }
         
+        guard !phoneNumber.trimmingCharacters(in: .whitespaces).isEmpty else {
+            errorMessage = "Please enter your phone number to find friends."
+            showError = true
+            return
+        }
+        
         Task {
             isLoading = true
             do {
                 // 1. Sign In (Anonymous)
                 _ = try await authRepository.signInAnonymously()
                 
-                // 2. Update Name (So friends know who this is)
+                // 2. Update Auth Name (for Firebase Auth profile)
                 try await authRepository.updateDisplayName(name)
                 
+                // 3. Update Firestore Profile.
+                // Generate all candidate hashes (covers local + E.164 variants) so that
+                // friends who have this number stored in a different format still match.
+                let hashes = CryptoUtils.phoneNumberHashes(for: phoneNumber)
+                try await friendRepository.saveUserProfile(
+                    displayName: name,
+                    hashedPhoneNumbers: hashes
+                )
+                
                 // Success! RootView will automatically switch to MainAppView
-                // because it's listening to 'authState'
             } catch {
                 errorMessage = error.localizedDescription
                 showError = true
@@ -76,6 +95,13 @@ final class LoginViewModel: ObservableObject {
                 // Update name to identify the test user
                 let displayName = "Test User \(index + 1)"
                 try await authRepository.updateDisplayName(displayName)
+                
+                // Also update Firestore profile for test users so they are discoverable
+                let hashes = CryptoUtils.phoneNumberHashes(for: phoneNumber)
+                try await friendRepository.saveUserProfile(
+                    displayName: displayName,
+                    hashedPhoneNumbers: hashes
+                )
             } catch {
                 errorMessage = error.localizedDescription
                 showError = true
