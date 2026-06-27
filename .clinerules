@@ -1,29 +1,28 @@
 # UFree App - Cline AI Context & Rules
 
-## Project Overview & Architecture
-- **App:** UFree (iOS Mobile App).
-- [cite_start]**Data Flow:** UI → ViewModel → CompositeRepository → SwiftData (instant) + Firestore (background)[cite: 712].
-- [cite_start]**APNs**: Implement background notifications using the FCM bridge and Hybrid Listener strategy [cite: 659-664].
+## 1. Interaction Constraints (Token Mitigation)
+* Be extremely concise. Avoid conversational filler, intros, or summaries.
+* Provide only exact code changes or minimal diffs. Do not output full unchanged files.
+* If a task is complete, reply with a single short sentence.
 
-## Performance & Caching
-- [cite_start]**Optimization Goal**: Maintain <5s cold starts by reusing established caches[cite: 302].
-- **Mandatory Flags**: For any build/test, always include:
-  - [cite_start]`derived_data_path: "./fastlane/builds/DerivedData"` 
-  - [cite_start]`-skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache` 
+## 2. iOS Project Architecture
+* **Stack**: iOS Mobile App (Swift).
+* **Data Flow**: UI → ViewModel → CompositeRepository → SwiftData (instant) + Firestore (background).
+* **APNs**: FCM bridge + Hybrid Listener for background notifications.
 
-## Testing Protocol
-- [cite_start]**Source of Truth**: Use `bundle exec fastlane tests` for all pre-flight checks.
-- [cite_start]**Selective Execution**: For UI tweaks, run targeted tests for the specific component before running the full suite.
-- [cite_start]**Efficiency**: Only run tests if logic changes; skip for documentation or comments.
+## 3. Terminal & Xcode Build Protections (Anti-Hang Rules)
+* **The Token Explosion Rule**: Massive logs cause hangs. Never read full terminal logs.
+* **Silent Operator Protocol**: 
+  1. Pipe all build/test outputs directly to `build.log` (e.g., `command > build.log 2>&1`).
+  2. Use `tail -n 20` or `grep` to triage specific errors. Never print progress bars.
+* **The "Two Strike" Rule**: If a command fails twice, stop immediately and ask the human.
 
-## Terminal & API Limit Protections
-- **The Token Explosion Rule**: Massive logs cause hangs. [cite_start]Never read full logs in the terminal[cite: 726, 731].
-- **Silent Operator Protocol**: 
-  1. [cite_start]Pipe all build/test output to `build.log`.
-  2. [cite_start]Use `tail` or `grep` to verify success or triage specific errors.
-  3. [cite_start]Do not print progress bars or verbose output[cite: 728].
-- [cite_start]**The "Two Strike" Rule**: If a command fails twice, stop and wait for human guidance[cite: 731, 732].
+## 4. Performance & Test Commands
+* **Cold Starts**: Reuse established caches to keep cold starts <5s.
+* **Mandatory Flags**: For ALL builds/tests, append:
+  `derived_data_path: "./fastlane/builds/DerivedData" -skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache`
+* **Test Protocol**: Run `bundle exec fastlane tests`. For UI tweaks, run targeted tests only. Skip tests entirely if changes are only docs/comments.
 
-## Git Commit Convention
-- [cite_start]Pattern: `(TYPE) brief description in mostly lowercase`[cite: 723].
-- [cite_start]Valid Types: (FEAT), (FIX), (CHORE), (REFACTOR), (TEST), (DOCS)[cite: 724].
+## 5. Git Commit Convention
+* **Pattern**: `(TYPE) brief description in mostly lowercase`
+* **Allowed Types**: (FEAT), (FIX), (CHORE), (REFACTOR), (TEST), (DOCS)
