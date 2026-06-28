@@ -70,26 +70,30 @@ public final class MyScheduleViewModel: ObservableObject {
         }
     }
     
-    public func updateStatus(for day: DayAvailability) {
-        guard let index = weeklySchedule.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: day.date) }) else { return }
+    @discardableResult
+    public func updateStatus(for day: DayAvailability) -> Task<Void, Never> {
+        guard let index = weeklySchedule.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: day.date) }) else {
+            return Task { }
+        }
         
         let oldDay = weeklySchedule[index]
         weeklySchedule[index] = day
         
-        Task {
+        return Task {
             do {
                 try await updateUseCase.execute(day: day)
             } catch {
-                await MainActor.run {
-                    weeklySchedule[index] = oldDay
-                    errorMessage = "Failed to update status: \(error.localizedDescription)"
-                }
+                weeklySchedule[index] = oldDay
+                errorMessage = "Failed to update status: \(error.localizedDescription)"
             }
         }
     }
 
-    public func toggleStatus(for day: DayAvailability) {
-        guard let index = weeklySchedule.firstIndex(where: { $0.id == day.id }) else { return }
+    @discardableResult
+    public func toggleStatus(for day: DayAvailability) -> Task<Void, Never> {
+        guard let index = weeklySchedule.firstIndex(where: { $0.id == day.id }) else {
+            return Task { }
+        }
         
         // Cycle to next status
         let nextStatus = cycleStatus(weeklySchedule[index].status)
@@ -97,15 +101,13 @@ public final class MyScheduleViewModel: ObservableObject {
         
         // Update via use case
         let updatedDay = weeklySchedule[index]
-        Task {
+        return Task {
             do {
                 try await updateUseCase.execute(day: updatedDay)
             } catch {
                 // Revert on error
-                await MainActor.run {
-                    weeklySchedule[index].status = day.status
-                    errorMessage = "Failed to update status: \(error.localizedDescription)"
-                }
+                weeklySchedule[index].status = day.status
+                errorMessage = "Failed to update status: \(error.localizedDescription)"
             }
         }
     }
