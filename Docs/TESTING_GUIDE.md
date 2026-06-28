@@ -14,16 +14,17 @@ We use a **Zero-Sleep Protocol**:
 - **Awaitable Tasks**: ViewModels return `@discardableResult Task` objects so tests can `await` their completion precisely.
 - **Deterministic Stream Polling**: Use `Task.yield()` loops in tests to await `AsyncStream` emissions without fixed delays.
 
-**Run all unit tests from terminal:**
+**Run all unit tests from terminal (Fast - No Simulator):**
 ```bash
 xcodebuild test \
   -scheme UFreeUnitTests \
   -project UFree.xcodeproj \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -destination 'platform=macOS' \
+  CODE_SIGNING_ALLOWED=NO \
   2>&1 | grep -E '(PASS|FAIL|passed|failed|error)'
 ```
 
-**Via fastlane (recommended):**
+**Via fastlane (Recommended - No Simulator):**
 ```bash
 fastlane tests
 ```

@@ -310,9 +310,11 @@ public final class FriendsViewModel: ObservableObject {
     private func requestNotificationPermissions() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
             if granted {
+                #if canImport(UIKit)
                 DispatchQueue.main.async {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
+                #endif
             }
         }
     }

@@ -40,7 +40,7 @@ final class RootViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.currentUser?.isAnonymous ?? false)
     }
     
-    func test_signInAnonymously_setsIsSigningInDuringOperation() {
+    func test_signInAnonymously_setsIsSigningInDuringOperation() async {
         var wasSigningIn = false
         
         let observation = viewModel.$isSigningIn.sink { isSigningIn in
@@ -52,9 +52,13 @@ final class RootViewModelTests: XCTestCase {
         // Don't await the task here, we want to observe state during execution
         let task = viewModel.signInAnonymously()
         
+        // Yield to allow the Task to start executing on the MainActor
+        await Task.yield()
+        
         // Wait for the synchronous publish to hit our sink before the task finishes
         XCTAssertTrue(wasSigningIn)
         observation.cancel()
+        await task.value // Clean up
     }
     
     func test_signInAnonymously_clearsErrorMessageOnSuccess() async throws {

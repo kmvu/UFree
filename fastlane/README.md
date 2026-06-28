@@ -21,7 +21,7 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 [bundle exec] fastlane ios tests
 ```
 
-Pre-flight Check: Run all 206+ Unit Tests
+Pre-flight Check: Run all 250+ Unit Tests
 
 ### ios alpha
 

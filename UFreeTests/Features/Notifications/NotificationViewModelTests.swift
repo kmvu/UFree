@@ -65,12 +65,11 @@ final class NotificationViewModelTests: XCTestCase {
     
     func test_startListening_cancelsPreviousTask() {
         sut.startListening()
-        let oldTask = Mirror(reflecting: sut).children.first { $0.label == "task" }?.value
+        let _ = sut.task
         
         sut.startListening()
-        let newTask = Mirror(reflecting: sut).children.first { $0.label == "task" }?.value
+        let newTask = sut.task
         
-        // Cannot strictly compare tasks easily, but we can verify no crash and it continues to work.
         XCTAssertNotNil(newTask)
     }
     
@@ -78,11 +77,7 @@ final class NotificationViewModelTests: XCTestCase {
         sut.startListening()
         sut.stopListening()
         
-        let task = Mirror(reflecting: sut).children.first { $0.label == "task" }?.value
-        // Actually, the property is private and optional, we can verify it's nil
-        // Mirror might unwrap optionals weirdly, but stopListening() should set it to nil
-        let unwrapped = task as? AnyHashable // just to check presence loosely
-        XCTAssertNil(unwrapped) // Might not be perfect due to Mirror, but behavior is testable via public effect.
+        XCTAssertNil(sut.task)
     }
     
     // MARK: - Mark as Read Guards

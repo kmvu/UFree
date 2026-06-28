@@ -7,6 +7,9 @@
 
 import SwiftUI
 import Combine
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @MainActor
 public class NotificationViewModel: ObservableObject {
@@ -20,7 +23,7 @@ public class NotificationViewModel: ObservableObject {
     }
     
     private let repository: NotificationRepository
-    private var task: Task<Void, Never>?
+    var task: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     
     public init(repository: NotificationRepository) {
@@ -38,6 +41,7 @@ public class NotificationViewModel: ObservableObject {
     }
     
     private func setupLifecycleObservers() {
+        #if canImport(UIKit)
         // Detach listener when backgrounding to save database reads
         NotificationCenter.default.publisher(for: UIScene.didEnterBackgroundNotification)
             .sink { [weak self] _ in
@@ -51,6 +55,7 @@ public class NotificationViewModel: ObservableObject {
                 self?.startListening()
             }
             .store(in: &cancellables)
+        #endif
             
         // Listen for FCM token updates
         NotificationCenter.default.publisher(for: .didReceiveFCMToken)
@@ -116,9 +121,11 @@ public class NotificationViewModel: ObservableObject {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             if granted {
                 print("Notification permission granted.")
+                #if canImport(UIKit)
                 DispatchQueue.main.async {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
+                #endif
             } else if let error = error {
                 print("Notification permission error: \(error)")
             }

@@ -5,6 +5,7 @@
 //  Created by Khang Vu on 07/01/26.
 //
 
+#if canImport(UIKit)
 import UIKit
 
 struct HapticManager {
@@ -50,3 +51,14 @@ struct HapticManager {
         feedback.selectionChanged()
     }
 }
+#else
+struct HapticManager {
+    static func light() {}
+    static func medium() {}
+    static func heavy() {}
+    static func success() {}
+    static func warning() {}
+    static func error() {}
+    static func selection() {}
+}
+#endif

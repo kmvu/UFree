@@ -7,21 +7,22 @@
 
 import Foundation
 
-@MainActor
 protocol TaskScheduler: Sendable {
-    func schedule(delay: TimeInterval, action: @escaping @MainActor () -> Void)
+    @MainActor func schedule(delay: TimeInterval, action: @escaping @MainActor () -> Void)
 }
 
 struct MainTaskScheduler: TaskScheduler {
-    func schedule(delay: TimeInterval, action: @escaping @MainActor () -> Void) {
+    @MainActor func schedule(delay: TimeInterval, action: @escaping @MainActor () -> Void) {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            action()
+            Task { @MainActor in
+                action()
+            }
         }
     }
 }
 
 struct ImmediateTaskScheduler: TaskScheduler {
-    func schedule(delay: TimeInterval, action: @escaping @MainActor () -> Void) {
+    @MainActor func schedule(delay: TimeInterval, action: @escaping @MainActor () -> Void) {
         action()
     }
 }

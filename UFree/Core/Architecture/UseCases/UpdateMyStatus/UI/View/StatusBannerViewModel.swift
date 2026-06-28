@@ -21,8 +21,8 @@ final class StatusBannerViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let scheduler: TaskScheduler
 
-    init(scheduler: TaskScheduler = MainTaskScheduler()) {
-        self.scheduler = scheduler
+    init(scheduler: TaskScheduler? = nil) {
+        self.scheduler = scheduler ?? MainTaskScheduler()
     }
 
     func configure(with scheduleViewModel: MyScheduleViewModel) {

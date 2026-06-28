@@ -44,20 +44,19 @@ def setup_api_key
 end
 
 platform :ios do
-  desc "Pre-flight Check: Run all 206+ Unit Tests"
+  desc "Pre-flight Check: Run all 250+ Unit Tests"
   lane :tests do
-    puts "🧪 Running test suite (206+ tests)..."
+    puts "🧪 Running test suite (250+ tests)..."
     run_tests(
       project: "UFree.xcodeproj",
       scheme: "UFreeUnitTests",
-      device: "iPhone 16 Pro",
-      destination: "platform=iOS Simulator,name=iPhone 16 Pro",
+      devices: ["iPhone 17 Pro"],
       clean: true,
       fail_build: true,
       output_directory: "fastlane/test_results",
       result_bundle: true,
       derived_data_path: "./fastlane/builds/DerivedData",
-      xcargs: "-skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache ONLY_ACTIVE_ARCH=NO"
+      xcargs: "CODE_SIGN_IDENTITY='-' CODE_SIGN_STYLE=Automatic AD_HOC_CODE_SIGNING_ALLOWED=YES ENTITLEMENTS_ALLOWED=NO PROVISIONING_PROFILE_SPECIFIER='' -skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache ONLY_ACTIVE_ARCH=NO"
     )
     puts "✅ All tests passed"
   end
