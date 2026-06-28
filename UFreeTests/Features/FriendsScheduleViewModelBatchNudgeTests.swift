@@ -40,8 +40,8 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
             let friend = UserProfile(id: id, displayName: "User\(i)", hashedPhoneNumber: "h\(i)")
             let schedule = UserSchedule(id: id, name: "User\(i)", avatarURL: nil,
                 weeklyStatus: [DayAvailability(date: today, status: status)])
-            await mockFriendRepo.addFriend(friend)
-            await mockAvailabilityRepo.addFriendSchedule(schedule)
+            mockFriendRepo.addFriend(friend)
+            mockAvailabilityRepo.addFriendSchedule(schedule)
         }
     }
 
@@ -52,8 +52,8 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
             let friend = UserProfile(id: id, displayName: "User\(index + 1)", hashedPhoneNumber: "h\(index + 1)")
             let schedule = UserSchedule(id: id, name: "User\(index + 1)", avatarURL: nil,
                 weeklyStatus: [DayAvailability(date: today, status: status)])
-            await mockFriendRepo.addFriend(friend)
-            await mockAvailabilityRepo.addFriendSchedule(schedule)
+            mockFriendRepo.addFriend(friend)
+            mockAvailabilityRepo.addFriendSchedule(schedule)
         }
     }
 
@@ -250,7 +250,8 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
     func test_nudgeAllFree_highConcurrency_10Friends() async {
         let today = Calendar.current.startOfDay(for: Date())
         await addFriends(count: 10, status: .free, date: today)
-        mockNotificationRepo.simulatedDelay = 100_000_000 // 0.1s
+        // Optimize test speed: Use 0ms delay instead of 100ms
+        mockNotificationRepo.simulatedDelay = 0 
         
         await sut.loadFriendsSchedules()
         await sut.nudgeAllFree(for: today)

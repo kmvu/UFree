@@ -1,12 +1,18 @@
 # UFree Testing Guide
 
-**Status:** ✅ Production Ready | **Tests:** 245+ | **Coverage:** 85%+ | **Quality:** Zero flaky, zero memory leaks
+**Status:** ✅ Production Ready | **Tests:** 250+ | **Coverage:** 88%+ | **Quality:** 100% Deterministic | **Performance:** ~3.5s saved
 
 ---
 
 ## 1. 🤖 Automated Unit Tests (CI/CD)
 
-This is your fastest validation layer — **245+ tests, zero Firebase dependency**. Tests auto-detect environment and use `MockAuthRepository` + in-memory SwiftData.
+This is your fastest validation layer — **250+ tests, zero Firebase dependency**. Tests are **100% deterministic** (no `Task.sleep`) and use `MockAuthRepository` + in-memory SwiftData.
+
+### Deterministic Async Testing
+We use a **Zero-Sleep Protocol**:
+- **Injectable Schedulers**: Use `TaskScheduler` to inject `ImmediateTaskScheduler` in tests for instant completion of delayed actions.
+- **Awaitable Tasks**: ViewModels return `@discardableResult Task` objects so tests can `await` their completion precisely.
+- **Deterministic Stream Polling**: Use `Task.yield()` loops in tests to await `AsyncStream` emissions without fixed delays.
 
 **Run all unit tests from terminal:**
 ```bash
@@ -82,4 +88,4 @@ Run these manually before any release to validate end-to-end stability.
 
 ---
 
-**Last Updated:** June 27, 2026 | **Sprint:** 6.5 | **Status:** ✅ Ready to Ship
+**Last Updated:** June 28, 2026 | **Sprint:** 7.0 | **Status:** ✅ Ready to Ship

@@ -33,10 +33,7 @@ final class MyScheduleViewModelTests: XCTestCase {
         var updatedDay = day
         updatedDay.status = .free
         
-        sut.updateStatus(for: updatedDay)
-        
-        // Use Task to wait for the async operation in ViewModel
-        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+        await sut.updateStatus(for: updatedDay).value
         
         XCTAssertEqual(updateUseCaseSpy.executeCallCount, 1)
         XCTAssertEqual(updateUseCaseSpy.executedDay?.status, .free)
@@ -48,28 +45,23 @@ final class MyScheduleViewModelTests: XCTestCase {
         XCTAssertEqual(day.status, .busy)
         
         // Busy -> Free
-        sut.toggleStatus(for: day)
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.toggleStatus(for: day).value
         XCTAssertEqual(sut.weeklySchedule[0].status, .free)
         
         // Free -> MorningOnly
-        sut.toggleStatus(for: sut.weeklySchedule[0])
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.toggleStatus(for: sut.weeklySchedule[0]).value
         XCTAssertEqual(sut.weeklySchedule[0].status, .morningOnly)
         
         // MorningOnly -> AfternoonOnly
-        sut.toggleStatus(for: sut.weeklySchedule[0])
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.toggleStatus(for: sut.weeklySchedule[0]).value
         XCTAssertEqual(sut.weeklySchedule[0].status, .afternoonOnly)
         
         // AfternoonOnly -> EveningOnly
-        sut.toggleStatus(for: sut.weeklySchedule[0])
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.toggleStatus(for: sut.weeklySchedule[0]).value
         XCTAssertEqual(sut.weeklySchedule[0].status, .eveningOnly)
         
         // EveningOnly -> Busy
-        sut.toggleStatus(for: sut.weeklySchedule[0])
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.toggleStatus(for: sut.weeklySchedule[0]).value
         XCTAssertEqual(sut.weeklySchedule[0].status, .busy)
     }
     
@@ -89,8 +81,7 @@ final class MyScheduleViewModelTests: XCTestCase {
         
         sut.weeklySchedule[0] = mixedDay
         
-        sut.toggleStatus(for: mixedDay)
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.toggleStatus(for: mixedDay).value
         
         XCTAssertEqual(sut.weeklySchedule[0].status, .busy)
     }

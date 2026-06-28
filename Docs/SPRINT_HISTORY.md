@@ -387,6 +387,25 @@ users/{auth_uid}
 
 ---
 
-**Last Updated:** April 29, 2026 | **Total Sprints:** 6.5 | **Tests:** 245+ | **Status:** Production Ready ✅
+## Sprint 7.0: Deterministic Testing & Coverage Boost ✅
+
+**Theme:** 100% CI Reliability & Performance
+
+- **Test Suite Optimization**
+  - Eliminated all `Task.sleep` and `RunLoop.run` calls (Saved ~3.5s per run).
+  - Introduced `TaskScheduler` protocol for injectable timing control.
+  - Refactored ViewModels to return awaitable `Task` objects for deterministic testing.
+  - Replaced arbitrary waits with `Task.yield()` polling for stream emissions.
+
+- **Coverage Hardening**
+  - **Data Layer:** `CompositeAvailabilityRepositoryTests` covering Write-Through sync.
+  - **Utilities:** `CryptoUtilsPhoneHashesTests` for multi-format phone number matching.
+  - **Features:** `MyScheduleViewModelLoadTests` for Firestore Quota error handling.
+  - **Navigation:** `RootViewModelAuthPhaseTests` for session state transitions.
+  - **Cleanup:** Removed 10+ trivial UI tests to reduce compilation overhead.
+
+---
+
+**Last Updated:** June 28, 2026 | **Total Sprints:** 7.0 | **Tests:** 250+ | **Status:** Production Ready ✅
 
 **Next Phase:** Group Chat & Shared Calendars

@@ -76,8 +76,9 @@ public final class RootViewModel: ObservableObject {
     
     // MARK: - Actions
     
-    public func signInAnonymously() {
-        Task {
+    @discardableResult
+    public func signInAnonymously() -> Task<Void, Never> {
+        return Task {
             isSigningIn = true
             errorMessage = nil
             
@@ -92,8 +93,9 @@ public final class RootViewModel: ObservableObject {
         }
     }
     
-    public func signOut() {
-        Task {
+    @discardableResult
+    public func signOut() -> Task<Void, Never> {
+        return Task {
             do {
                 try await authRepository.signOut()
                 self.currentUser = nil

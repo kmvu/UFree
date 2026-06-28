@@ -79,24 +79,16 @@ final class MockAuthRepositoryTests: XCTestCase {
     
     func test_authState_emitsUserAfterSignIn() async throws {
         var emittedUser: User? = nil
-        var emissionReceived = false
-        
-        let task = Task {
-            for await user in repository.authState {
-                if user != nil {
-                    emittedUser = user
-                    emissionReceived = true
-                    break
-                }
-            }
-        }
         
         let signedInUser = try await repository.signInAnonymously()
         
-        try await Task.sleep(nanoseconds: 300_000_000)  // 0.3s to allow emission
-        task.cancel()
+        for await user in repository.authState {
+            if user != nil {
+                emittedUser = user
+                break
+            }
+        }
         
-        XCTAssertTrue(emissionReceived)
         XCTAssertEqual(emittedUser?.id, signedInUser.id)
     }
     
@@ -119,7 +111,11 @@ final class MockAuthRepositoryTests: XCTestCase {
         
         try await repository.signOut()
         
-        try await Task.sleep(nanoseconds: 300_000_000)  // 0.3s to allow emission
+        // Yield to allow task to process the emission
+        let startDate = Date()
+        while !emittedNil && Date().timeIntervalSince(startDate) < 1.0 {
+            await Task.yield()
+        }
         task.cancel()
         
         XCTAssertTrue(emittedNil)

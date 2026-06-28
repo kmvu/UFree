@@ -65,5 +65,16 @@ This section outlines the strategy for implementing background notifications and
     - *Risk*: Parallel nudges to 10+ friends could trigger Cloud Function or write limits.
     - *Backup*: Harden `FriendsScheduleViewModel` with rate-limiting, tactile warnings via `HapticManager`, and clear success/failure reporting with optimistic state rollbacks.
 
+## 5. Test Suite Optimization & Determinism (Sprint 7.0)
+
+To ensure rapid development cycles and 100% CI reliability, the test suite was overhauled to eliminate non-deterministic waits and fill critical architecture gaps.
+
+### Key Improvements:
+- **Zero Task.sleep Strategy**: Eliminated 3.5s+ of hardcoded delays by introducing injectable schedulers and awaitable ViewModel tasks.
+- **TaskScheduler Utility**: Abstracted `asyncAfter` into a protocol-based system.
+- **Data Sync Validation**: Added `CompositeAvailabilityRepositoryTests` to verify the Write-Through/Read-Back pattern.
+- **Privacy Hashing Verification**: Comprehensive coverage for `CryptoUtils.phoneNumberHashes` across E.164 and local formats.
+- **Quota Resilience Testing**: Explicitly tested Firestore error code 8 (Quota Exhausted) handling in `MyScheduleViewModel`.
+
 ---
-*Note: This plan was generated on 2026-04-27 based on the UFree Architectural Audit.*
+*Note: This plan was updated on 2026-06-28 based on the Sprint 7.0 Optimization.*

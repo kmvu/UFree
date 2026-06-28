@@ -60,7 +60,7 @@ final class FriendsHandshakeTests: XCTestCase {
             timestamp: Date()
         )
         
-        await mockRepo.addIncomingRequest(request)
+        mockRepo.addIncomingRequest(request)
         viewModel.incomingRequests = [request]
         
         await viewModel.acceptRequest(request)
@@ -80,7 +80,7 @@ final class FriendsHandshakeTests: XCTestCase {
             timestamp: Date()
         )
         
-        await mockRepo.addIncomingRequest(request)
+        mockRepo.addIncomingRequest(request)
         viewModel.incomingRequests = [request]
         
         await viewModel.declineRequest(request)
@@ -94,8 +94,8 @@ final class FriendsHandshakeTests: XCTestCase {
         let req1 = makeFriendRequest(id: "req1", fromName: "Alice")
         let req2 = makeFriendRequest(id: "req2", fromName: "Bob")
         
-        await mockRepo.addIncomingRequest(req1)
-        await mockRepo.addIncomingRequest(req2)
+        mockRepo.addIncomingRequest(req1)
+        mockRepo.addIncomingRequest(req2)
         viewModel.incomingRequests = [req1, req2]
         
         await viewModel.acceptRequest(req1)
@@ -111,7 +111,7 @@ final class FriendsHandshakeTests: XCTestCase {
     
     func test_observeIncomingRequests() async {
         let request = makeFriendRequest(id: "req1", fromName: "Alice")
-        await mockRepo.addIncomingRequest(request)
+        mockRepo.addIncomingRequest(request)
         
         var receivedRequests: [FriendRequest] = []
         for await requests in await mockRepo.observeIncomingRequests() {
@@ -127,10 +127,15 @@ final class FriendsHandshakeTests: XCTestCase {
     
     func test_listenToRequests_startsListener() async {
         let request = makeFriendRequest(id: "req1", fromName: "Alice")
-        await mockRepo.addIncomingRequest(request)
+        mockRepo.addIncomingRequest(request)
         
         viewModel.listenToRequests()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        
+        // Wait deterministically for the listener to process the mock stream
+        let startDate = Date()
+        while viewModel.incomingRequests.count == 0 && Date().timeIntervalSince(startDate) < 1.0 {
+            await Task.yield()
+        }
         
         XCTAssertEqual(viewModel.incomingRequests.count, 1)
     }
@@ -143,13 +148,20 @@ final class FriendsHandshakeTests: XCTestCase {
     
     func test_listenToRequests_cancelsExisting() async {
         let request = makeFriendRequest(id: "req1", fromName: "Alice")
-        await mockRepo.addIncomingRequest(request)
+        mockRepo.addIncomingRequest(request)
         
         viewModel.listenToRequests()
-        try? await Task.sleep(nanoseconds: 50_000_000)
         
+        let startDate = Date()
+        while viewModel.incomingRequests.count == 0 && Date().timeIntervalSince(startDate) < 1.0 {
+            await Task.yield()
+        }
+        
+        // Start listener again to verify it cancels the previous one
         viewModel.listenToRequests()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        
+        // Yield to allow new listener to set up
+        await Task.yield()
         
         XCTAssertEqual(viewModel.incomingRequests.count, 1)
     }

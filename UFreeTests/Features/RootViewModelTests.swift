@@ -34,10 +34,7 @@ final class RootViewModelTests: XCTestCase {
     // MARK: - Sign In
     
     func test_signInAnonymously_setsCurrentUser() async throws {
-        viewModel.signInAnonymously()
-        
-        // Wait for async operation
-        try await Task.sleep(nanoseconds: 500_000_000)  // 0.5s
+        await viewModel.signInAnonymously().value
         
         XCTAssertNotNil(viewModel.currentUser)
         XCTAssertTrue(viewModel.currentUser?.isAnonymous ?? false)
@@ -52,11 +49,10 @@ final class RootViewModelTests: XCTestCase {
             }
         }
         
-        viewModel.signInAnonymously()
+        // Don't await the task here, we want to observe state during execution
+        let task = viewModel.signInAnonymously()
         
-        // Give it a moment to observe the state change
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-        
+        // Wait for the synchronous publish to hit our sink before the task finishes
         XCTAssertTrue(wasSigningIn)
         observation.cancel()
     }
@@ -64,9 +60,7 @@ final class RootViewModelTests: XCTestCase {
     func test_signInAnonymously_clearsErrorMessageOnSuccess() async throws {
         viewModel.errorMessage = "Previous error"
         
-        viewModel.signInAnonymously()
-        
-        try await Task.sleep(nanoseconds: 500_000_000)
+        await viewModel.signInAnonymously().value
         
         XCTAssertNil(viewModel.errorMessage)
     }
@@ -74,11 +68,8 @@ final class RootViewModelTests: XCTestCase {
     // MARK: - Sign Out
     
     func test_signOut_clearsCurrentUser() async throws {
-        viewModel.signInAnonymously()
-        try await Task.sleep(nanoseconds: 300_000_000)
-        
-        viewModel.signOut()
-        try await Task.sleep(nanoseconds: 300_000_000)
+        await viewModel.signInAnonymously().value
+        await viewModel.signOut().value
         
         XCTAssertNil(viewModel.currentUser)
     }
@@ -88,7 +79,15 @@ final class RootViewModelTests: XCTestCase {
     func test_authStateListener_updatesCurrentUser() async throws {
         let user = try await authRepository.signInAnonymously()
         
-        try await Task.sleep(nanoseconds: 300_000_000)
+        // Wait for the ViewModel's authState listener task to pick up the emission
+        // Since we are mocking the stream, we can yield to the runloop to let the AsyncStream process
+        await Task.yield()
+        
+        // Let's ensure we wait deterministically until the user matches
+        let startDate = Date()
+        while viewModel.currentUser?.id != user.id && Date().timeIntervalSince(startDate) < 1.0 {
+            await Task.yield()
+        }
         
         XCTAssertEqual(viewModel.currentUser?.id, user.id)
     }
