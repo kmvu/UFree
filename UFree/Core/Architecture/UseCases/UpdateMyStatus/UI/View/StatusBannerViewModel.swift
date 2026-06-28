@@ -19,6 +19,11 @@ final class StatusBannerViewModel: ObservableObject {
     
     private var scheduleViewModel: MyScheduleViewModel?
     private var cancellables = Set<AnyCancellable>()
+    private let scheduler: TaskScheduler
+
+    init(scheduler: TaskScheduler = MainTaskScheduler()) {
+        self.scheduler = scheduler
+    }
 
     func configure(with scheduleViewModel: MyScheduleViewModel) {
         self.scheduleViewModel = scheduleViewModel
@@ -116,7 +121,7 @@ final class StatusBannerViewModel: ObservableObject {
             }
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        scheduler.schedule(delay: 0.3) {
             self.isProcessing = false
         }
     }
