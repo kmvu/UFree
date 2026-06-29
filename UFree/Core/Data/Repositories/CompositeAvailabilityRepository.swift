@@ -34,11 +34,11 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         try await local.updateMySchedule(for: day)
 
         // 2. Update Remote (Background)
-        // We use a Task to fire-and-forget the cloud update.
+        // We use a detached Task to fire-and-forget the cloud update.
         // If it fails, the local version remains the source of truth for now.
-        Task {
+        Task.detached {
             do {
-                try await remote.updateMySchedule(for: day)
+                try await self.remote.updateMySchedule(for: day)
                 print("☁️ Remote sync successful for \(day.date.formatted(date: .abbreviated, time: .omitted))")
             } catch {
                 print("⚠️ Remote sync failed: \(error.localizedDescription)")
@@ -54,15 +54,15 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         let localSchedule = try await local.getMySchedule()
 
         // 2. Refresh from Remote in the background
-        Task {
+        Task.detached {
             do {
-                let remoteSchedule = try await remote.getMySchedule()
+                let remoteSchedule = try await self.remote.getMySchedule()
 
                 // Sync remote days back into local storage, but only if they have a known status
                 // (Avoid overwriting local data with "unknown" gap-filler values)
                 for day in remoteSchedule.weeklyStatus {
                     if day.status != .unknown {
-                        try await local.updateMySchedule(for: day)
+                        try await self.local.updateMySchedule(for: day)
                     }
                 }
                 print("🔄 Local storage refreshed from Cloud")

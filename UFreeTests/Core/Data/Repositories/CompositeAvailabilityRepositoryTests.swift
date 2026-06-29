@@ -56,14 +56,14 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         // Local schedule should be returned immediately
         XCTAssertEqual(returnedSchedule.name, localSchedule.name)
         XCTAssertEqual(localSpy.getScheduleCallCount, 1)
-        XCTAssertEqual(remoteSpy.getScheduleCallCount, 0)
+        // Note: We don't assert remoteSpy.getScheduleCallCount == 0 here because
+        // the background Task may have already started — this is non-deterministic
+        // in Swift's concurrency model.
         
-        // Background task should fetch remote and update local
-        await Task.yield()
-        
+        // Wait for background task to fetch remote and update local
         let startDate = Date()
-        while localSpy.updateCallCount == 0 && Date().timeIntervalSince(startDate) < 1.0 {
-            await Task.yield()
+        while remoteSpy.getScheduleCallCount == 0 && Date().timeIntervalSince(startDate) < 5.0 {
+            try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
         }
         
         XCTAssertEqual(remoteSpy.getScheduleCallCount, 1)
