@@ -1,6 +1,6 @@
 # UFree - Weekly Availability Scheduler
 
-**Status:** ✅ Production Ready | **Version:** 7.0.0 | **Tests:** 250+ | **Coverage:** 88%+
+**Status:** ✅ Production Ready | **Version:** 8.0.0 | **Tests:** 230+ | **Coverage:** 85%+
 
 ---
 
@@ -60,8 +60,8 @@ UI → ViewModel → CompositeRepository → SwiftData [instant]
 - **@MainActor Isolation**: Guaranteed thread safety for UI updates.
 - **AsyncStream**: Reactive state management without the overhead of Combine.
 - **HapticManager**: Unified tactile feedback across all primary interactions.
-- **Zero Warnings**: Clean build with 250+ automated unit tests.
+- **Zero Warnings**: Clean build with 230+ automated unit tests.
 
 ---
 
-**Last Updated:** June 28, 2026 | **Sprint:** 7.0 | **Status:** ✅ Production Ready
+**Last Updated:** July 30, 2026 | **Sprint:** 8.0 | **Status:** ✅ Production Ready

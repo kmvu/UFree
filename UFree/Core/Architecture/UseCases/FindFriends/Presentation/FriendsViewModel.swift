@@ -60,11 +60,12 @@ public final class FriendsViewModel: ObservableObject {
         // Cancel existing listener if any
         listenerTask?.cancel()
         
-        listenerTask = Task {
+        listenerTask = Task { [weak self] in
+            guard let friendRepository = self?.friendRepository else { return }
             for await requests in friendRepository.observeIncomingRequests() {
                 // SwiftUI animation for new requests popping in
                 withAnimation(.spring()) {
-                    self.incomingRequests = requests
+                    self?.incomingRequests = requests
                 }
             }
         }

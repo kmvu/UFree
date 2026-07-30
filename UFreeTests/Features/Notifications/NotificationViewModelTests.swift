@@ -17,47 +17,41 @@ final class NotificationViewModelTests: XCTestCase {
         super.setUp()
         mockRepository = MockNotificationRepository()
         sut = NotificationViewModel(repository: mockRepository)
+        trackForMemoryLeaks(sut)
     }
     
     override func tearDown() {
+        sut.stopListening()
         sut = nil
         mockRepository = nil
+        verifyNoMemoryLeaks()
         super.tearDown()
     }
     
     // MARK: - Badge Count (Domain Logic)
     
     func test_unreadCount_returnsZeroWhenEmpty() {
-        // Arrange
         sut.notifications = []
-        
-        // Act & Assert
         XCTAssertEqual(sut.unreadCount, 0)
     }
     
     func test_unreadCount_ignoresReadNotifications() {
-        // Arrange: 3 notifications, 2 unread
         sut.notifications = [
             TestNotificationBuilder.friendRequest(isRead: false),
             TestNotificationBuilder.nudge(isRead: true),
             TestNotificationBuilder.friendRequest(isRead: false)
         ]
-        
-        // Act & Assert
         XCTAssertEqual(sut.unreadCount, 2)
     }
     
     // MARK: - Mark as Read (Optimistic + Sync)
     
     func test_markRead_updatesUIImmediately() {
-        // Arrange
         let notification = TestNotificationBuilder.friendRequest(isRead: false)
         sut.notifications = [notification]
         
-        // Act
         sut.markRead(notification)
         
-        // Assert: optimistic update is immediate
         XCTAssertTrue(sut.notifications[0].isRead)
     }
     
@@ -83,31 +77,21 @@ final class NotificationViewModelTests: XCTestCase {
     // MARK: - Mark as Read Guards
     
     func test_markRead_ignoresAlreadyReadNotifications() {
-        // Arrange
         let notification = TestNotificationBuilder.friendRequest(isRead: true)
         sut.notifications = [notification]
         
-        // Act
         sut.markRead(notification)
         
-        // Assert: no repository call is made because of the guard
-        // (MockNotificationRepository should expose a spy or we just verify it doesn't crash)
         XCTAssertTrue(sut.notifications[0].isRead)
     }
     
     // MARK: - Send Nudge Guards
     
     func test_sendNudge_isProcessingGuard() async {
-        // Arrange
         sut.isProcessing = true
         
-        // Act
         await sut.sendNudge(to: "recipient_123")
         
-        // Assert
-        // We know it guarded out if isProcessing is still true, because the defer block wouldn't run if the guard hit.
-        // Wait, guard !isProcessing else { return } returns immediately without defer.
-        // So isProcessing should remain true.
         XCTAssertTrue(sut.isProcessing)
     }
 }

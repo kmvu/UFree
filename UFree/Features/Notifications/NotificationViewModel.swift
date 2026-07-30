@@ -73,10 +73,11 @@ public class NotificationViewModel: ObservableObject {
         // Ensure we don't start multiple listeners
         stopListening()
         
-        task = Task {
+        task = Task { [weak self] in
+            guard let repository = self?.repository else { return }
             for await notes in repository.listenToNotifications() {
                 withAnimation {
-                    self.notifications = notes
+                    self?.notifications = notes
                 }
             }
         }
@@ -95,8 +96,8 @@ public class NotificationViewModel: ObservableObject {
             notifications[index].isRead = true
         }
         
-        Task {
-            try? await repository.markAsRead(note)
+        Task { [weak self] in
+            try? await self?.repository.markAsRead(note)
         }
     }
     

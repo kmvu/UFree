@@ -76,5 +76,14 @@ To ensure rapid development cycles and 100% CI reliability, the test suite was o
 - **Privacy Hashing Verification**: Comprehensive coverage for `CryptoUtils.phoneNumberHashes` across E.164 and local formats.
 - **Quota Resilience Testing**: Explicitly tested Firestore error code 8 (Quota Exhausted) handling in `MyScheduleViewModel`.
 
+## 6. Test Suite Consistency & Documentation (Sprint 8.0)
+
+- **Helper Consolidation**: Unified scattered test helpers into `UFreeTests/Helpers/` with subdirectory for notification builders and assertions.
+- **Memory Leak Tracking**: Adopted `trackForMemoryLeaks()` across all ViewModel tests (`FriendsViewModelTests`, `NotificationViewModelTests`, `StatusBannerViewModelTests`, `DayFilterViewModelTests`).
+- **Dead Code Removal**: Removed unused `XCTestCase+TestHelpers.swift` (`anyNSError`) and `HTTPClientStub.swift`.
+- **Comment Consistency**: Stripped explicit Arrange-Act-Assert label comments in favor of natural AAA structure.
+- **setUp() Normalization**: Standardized all `setUp()` methods to synchronous form.
+- **Documentation Refresh**: Updated `AGENTS.md`, `TESTING_GUIDE.md`, `README.md`, and `IMPROVEMENTS.md` with accurate test counts (230+), scheme names, and helper organization.
+
 ---
-*Note: This plan was updated on 2026-06-28 based on the Sprint 7.0 Optimization.*
+*Note: This plan was updated on 2026-07-30 based on the Sprint 8.0 Test Consistency audit.*

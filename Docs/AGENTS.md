@@ -56,7 +56,7 @@ xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
 
 **Naming:** CamelCase types, camelCase properties/functions
 
-**Testing:** Arrange-Act-Assert pattern. Test names: `test_[method]_[expectedBehavior]()`
+**Testing:** Tests follow AAA structure naturally without explicit comment labels. Test names: `test_[method]_[expectedBehavior]()`. All ViewModel tests call `trackForMemoryLeaks()` in `setUp()`. Shared helpers live under `UFreeTests/Helpers/`.
 
 ---
 
@@ -190,11 +190,11 @@ fastlane sync_certs     # Refresh certificates
 
 | Operation | Expected |
 |-----------|----------|
-| Tests | ~90 sec |
+| Tests | ~60 sec |
 | Build (fresh) | ~8 min |
 | Real-time sync | < 3 sec |
 | Phone search | < 2 sec |
 
 ---
 
-**Last Updated:** April 29, 2026 | **Sprint:** 6.5 | **Status:** ✅ Optimized for Production
+**Last Updated:** July 30, 2026 | **Sprint:** 8.0 | **Status:** ✅ Optimized for Production

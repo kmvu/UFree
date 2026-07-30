@@ -18,11 +18,13 @@ final class FriendsViewModelTests: XCTestCase {
         super.setUp()
         mockRepository = MockFriendRepository()
         sut = FriendsViewModel(friendRepository: mockRepository)
+        trackForMemoryLeaks(sut)
     }
     
     override func tearDown() {
         sut = nil
         mockRepository = nil
+        verifyNoMemoryLeaks()
         super.tearDown()
     }
     

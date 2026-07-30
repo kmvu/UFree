@@ -15,6 +15,13 @@ final class StatusBannerViewModelTests: XCTestCase {
     override func setUp() {
         super.setUp()
         viewModel = StatusBannerViewModel(scheduler: ImmediateTaskScheduler())
+        trackForMemoryLeaks(viewModel)
+    }
+
+    override func tearDown() {
+        viewModel = nil
+        verifyNoMemoryLeaks()
+        super.tearDown()
     }
 
     func test_initialStatus_isCheckSchedule() {
@@ -33,7 +40,6 @@ final class StatusBannerViewModelTests: XCTestCase {
         viewModel.toggleExpansion()
         viewModel.setStatus(.free)
 
-        // Status should update immediately, not after delay
         XCTAssertEqual(viewModel.currentStatus, .free)
     }
 
@@ -42,9 +48,7 @@ final class StatusBannerViewModelTests: XCTestCase {
         viewModel.setStatus(.morning)
         XCTAssertEqual(viewModel.currentStatus, .morning)
         
-        // No need to wait with ImmediateTaskScheduler
-        
-        viewModel.toggleExpansion() // Re-expand after previous selection closed it
+        viewModel.toggleExpansion()
         viewModel.setStatus(.afternoon)
         XCTAssertEqual(viewModel.currentStatus, .afternoon)
     }
@@ -58,24 +62,13 @@ final class StatusBannerViewModelTests: XCTestCase {
     }
 
     func test_rapidTaps_ignored_while_processing() {
-        // ImmediateTaskScheduler will fire the reset instantly,
-        // so to test "ignoring while processing" we would need a controlled scheduler.
-        // However, with ImmediateTaskScheduler, isProcessing will be false again immediately.
-        
-        // If we want to test the 'ignore' logic, we might need a TestScheduler that we can step manually.
-        // But for the goal of speeding up tests, Immediate is fine for verifying it WORKS.
-        
         viewModel.toggleExpansion()
         viewModel.setStatus(.free)
         
-        // With ImmediateTaskScheduler, it is already false
         XCTAssertFalse(viewModel.isProcessing)
     }
 
     func test_processingState_betweenTaps() {
-        // This test is less relevant with ImmediateTaskScheduler as it's atomic.
-        // If we want to keep it, we'd need a ControlledScheduler.
-        // For now, let's just ensure it doesn't crash and isFalse at the end.
         viewModel.toggleExpansion()
         viewModel.setStatus(.free)
         XCTAssertFalse(viewModel.isProcessing)

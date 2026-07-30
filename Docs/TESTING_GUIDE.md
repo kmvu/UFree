@@ -1,12 +1,12 @@
 # UFree Testing Guide
 
-**Status:** ✅ Production Ready | **Tests:** 250+ | **Coverage:** 88%+ | **Quality:** 100% Deterministic | **Performance:** ~3.5s saved
+**Status:** ✅ Production Ready | **Tests:** 230+ | **Coverage:** 85%+ | **Quality:** Zero-Sleep Deterministic
 
 ---
 
 ## 1. 🤖 Automated Unit Tests (CI/CD)
 
-This is your fastest validation layer — **250+ tests, zero Firebase dependency**. Tests are **100% deterministic** (no `Task.sleep`) and use `MockAuthRepository` + in-memory SwiftData.
+**230+ tests, zero Firebase dependency**. Tests use `MockAuthRepository` + in-memory SwiftData. All ViewModel tests include `trackForMemoryLeaks()` in `setUp()`.
 
 ### Deterministic Async Testing
 We use a **Zero-Sleep Protocol**:
@@ -67,13 +67,25 @@ Run these manually before any release to validate end-to-end stability.
 
 ## 4. 📂 Test Organization
 
+### Test Files by Layer
+
 | Layer | Primary Test Files |
 |---|---|
-| **Auth** | `RootViewModelTests.swift`, `MockAuthRepositoryTests.swift` |
-| **Domain** | `AvailabilityStatusTests.swift`, `DayAvailabilityTests.swift`, `UserScheduleTests.swift` |
-| **Data** | `FirestoreDayDTOTests.swift`, `SwiftDataAvailabilityRepositoryTests.swift`, `FriendRepositoryTests.swift` |
-| **Features** | `FriendsViewModelTests.swift`, `FriendsHandshakeTests.swift`, `MyScheduleViewModelTests.swift`, `FriendsScheduleViewModelTests.swift`, `NotificationViewModelTests.swift` |
+| **Auth** | `RootViewModelTests.swift`, `RootViewModelAuthPhaseTests.swift`, `MockAuthRepositoryTests.swift`, `UserTests.swift` |
+| **Domain** | `AvailabilityStatusTests.swift`, `DayAvailabilityTests.swift`, `UserScheduleTests.swift`, `UpdateMyStatusUseCaseTests.swift` |
+| **Data** | `FirestoreDayDTOTests.swift`, `SwiftDataAvailabilityRepositoryTests.swift`, `PersistentDayAvailabilityTests.swift`, `FriendRepositoryTests.swift`, `FirebaseAvailabilityRepositoryTests.swift`, `CompositeAvailabilityRepositoryTests.swift` |
+| **Features** | `FriendsViewModelTests.swift`, `FriendsHandshakeTests.swift`, `MyScheduleViewModelTests.swift`, `MyScheduleViewModelLoadTests.swift`, `FriendsScheduleViewModelTests.swift`, `NotificationViewModelTests.swift`, `NotificationCenterViewTests.swift`, `DayFilterViewModelTests.swift`, `StatusBannerViewModelTests.swift` |
 | **Hardening** | `FriendsScheduleViewModelBatchNudgeTests.swift` (Concurrency/Race Conditions) |
+| **Utilities** | `CryptoUtilsTests.swift`, `CryptoUtilsPhoneHashesTests.swift`, `Color+HexTests.swift` |
+
+### Shared Test Helpers (`UFreeTests/Helpers/`)
+
+| Helper | Purpose |
+|---|---|
+| `XCTestCase+MemoryLeakTracking` | `trackForMemoryLeaks()` called in `setUp()` of all ViewModel tests |
+| `TestContainerFactory` | Creates in-memory `ModelContainer` for SwiftData tests |
+| `Helpers/Notifications/TestNotificationBuilder` | Factory for `AppNotification` instances with sensible defaults |
+| `Helpers/Notifications/NotificationTestAssertions` | Assertion helpers for friend request and nudge messages |
 
 ---
 
@@ -89,4 +101,4 @@ Run these manually before any release to validate end-to-end stability.
 
 ---
 
-**Last Updated:** June 28, 2026 | **Sprint:** 7.0 | **Status:** ✅ Ready to Ship
+**Last Updated:** July 30, 2026 | **Sprint:** 8.0 | **Status:** ✅ Ready to Ship

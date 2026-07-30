@@ -12,8 +12,8 @@ final class MockAvailabilityRepositoryTests: XCTestCase {
     
     private var repository: MockAvailabilityRepository!
     
-    override func setUp() async throws {
-        try await super.setUp()
+    override func setUp() {
+        super.setUp()
         repository = MockAvailabilityRepository()
     }
     

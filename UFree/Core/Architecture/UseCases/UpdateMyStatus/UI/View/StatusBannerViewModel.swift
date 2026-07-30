@@ -121,8 +121,8 @@ final class StatusBannerViewModel: ObservableObject {
             }
         }
 
-        scheduler.schedule(delay: 0.3) {
-            self.isProcessing = false
+        scheduler.schedule(delay: 0.3) { [weak self] in
+            self?.isProcessing = false
         }
     }
 
