@@ -275,7 +275,7 @@ public final class FriendsViewModel: ObservableObject {
                 }
             }
         } catch {
-            self.errorMessage = "Failed to send friend request."
+            self.errorMessage = "Failed to send friend request: \(error.localizedDescription)"
         }
     }
     
@@ -304,7 +304,7 @@ public final class FriendsViewModel: ObservableObject {
             // Contextual Permission Prompt: Request APNs permission after first handshake
             requestNotificationPermissions()
         } catch {
-            self.errorMessage = "Failed to accept request."
+            self.errorMessage = "Failed to accept request: \(error.localizedDescription)"
         }
     }
     

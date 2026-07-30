@@ -117,10 +117,20 @@
 ```javascript
 match /users/{userId}/notifications/{document=**} {
   allow read: if request.auth.uid == userId;
-  allow create: if request.auth.uid == resource.data.senderId;
+  allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
   allow write: if request.auth.uid == userId;
 }
+
+// Friend handshake (required for invite / QR / accept)
+match /friendRequests/{requestId} {
+  allow create: if request.auth != null && request.resource.data.fromId == request.auth.uid;
+  allow read: if request.auth != null
+    && (resource.data.fromId == request.auth.uid || resource.data.toId == request.auth.uid);
+  allow update: if request.auth != null && resource.data.toId == request.auth.uid;
+}
 ```
+
+See `firestore.rules` for the full production rules (including mutual `friendIds` updates).
 
 ---
 
