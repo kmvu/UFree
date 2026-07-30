@@ -502,6 +502,43 @@ xcrun simctl boot iPhone\ 17\ Pro
 
 ## 7. FIREBASE ISSUES
 
+### Symptom: Friend invite / QR scan shows "Failed to send friend request" (or permission errors)
+
+**Root Cause:** Firestore security rules did not allow the `friendRequests` collection, and peers could not update each other's `friendIds` during accept/unfriend. Writes were denied with `Missing or insufficient permissions`.
+
+**Fix:**
+```bash
+# 1. Confirm rules include match /friendRequests/{requestId} and mutual friendIds updates
+grep -n "friendRequests\|isSelfFriendIdsChange" firestore.rules
+
+# 2. Confirm firebase.json wires Firestore rules + indexes
+grep -A6 '"firestore"' firebase.json
+
+# 3. Deploy rules + indexes to the Firebase project used by the app
+firebase deploy --only firestore:rules,firestore:indexes
+
+# 4. Re-test smoke cases from TESTING_GUIDE.md:
+#    - Friend Request Flow (phone search → request → accept)
+#    - QR Connection (scan → request)
+#    - Contact sync discover → request
+```
+
+**Expected:** Request writes succeed; recipient sees the request within ~3s; accept updates both users' friend lists.
+
+---
+
+### Symptom: Incoming friend requests never appear (listener silent)
+
+**Root Cause:** Missing composite index on `friendRequests` (`toId` + `status`), or rules blocking reads.
+
+**Fix:**
+```bash
+firebase deploy --only firestore:indexes
+# Or open the index-creation URL printed in the Xcode console when the query fails.
+```
+
+---
+
 ### Symptom: "Crashes not appearing in Crashlytics"
 
 **Root Cause:** dSYM upload failed or Firebase not initialized
@@ -664,6 +701,8 @@ fastlane beta
 | Invalid passphrase | 5 | Update MATCH_PASSWORD in .env |
 | Git repo error | 5 | Test SSH key, check Bitbucket access |
 | Crashes not showing | 7 | Verify dSYM upload, wait 5-10 min |
+| Friend invite / QR fails | 7 | Deploy updated `firestore.rules` + indexes |
+| Incoming requests never appear | 7 | Deploy `friendRequests` composite index |
 | Analytics empty | 7 | Add AnalyticsManager.log() calls |
 
 ---

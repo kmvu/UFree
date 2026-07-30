@@ -62,8 +62,8 @@ public class FirebaseNotificationRepository: NotificationRepository {
             isRead: false
         )
         
-        // Write to the RECIPIENT'S subcollection
-        try db.collection("users").document(userId).collection("notifications")
+        // Await so permission / network failures propagate to callers.
+        _ = try await db.collection("users").document(userId).collection("notifications")
             .addDocument(from: note)
     }
     
