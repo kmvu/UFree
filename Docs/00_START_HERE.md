@@ -21,7 +21,7 @@ Welcome to the UFree developer documentation. We have optimized our documentatio
 
 1.  **`README.md`**: The source of truth for features, models, and high-level architecture.
 2.  **`AGENTS.md`**: The technical playbook. Setup commands, code standards, and deep linking rules.
-3.  **`TESTING_GUIDE.md`**: How we maintain our 85%+ coverage. Includes manual QA smoke tests.
+3.  **`TESTING_GUIDE.md`**: How we maintain our 85%+ coverage of the `UFree.app` target. Includes manual QA smoke tests.
 4.  **`TROUBLESHOOTING_RUNBOOK.md`**: A living document of 40+ symptoms and their exact fixes.
 5.  **`SPRINT_HISTORY.md`**: The chronological record of how the app was built.
 

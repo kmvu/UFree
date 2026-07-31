@@ -38,7 +38,10 @@ public final class RootViewModel: ObservableObject {
     @Published public var friendsViewModel: FriendsViewModel?
     
     public let authRepository: AuthRepository
-    private var authStateTask: Task<Void, Never>?
+    /// `nonisolated(unsafe)` so `deinit` can cancel without hopping to the MainActor.
+    /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
+    /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
+    nonisolated(unsafe) private var authStateTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     
     public init(authRepository: AuthRepository) {
@@ -105,7 +108,7 @@ public final class RootViewModel: ObservableObject {
         }
     }
     
-    deinit {
+    nonisolated deinit {
         authStateTask?.cancel()
     }
 }

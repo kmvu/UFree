@@ -46,13 +46,6 @@
       <CodeCoverageTargets>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "237D8FD02EF53F26006BAE5F"
-            BuildableName = "UFreeTests.xctest"
-            BlueprintName = "UFreeTests"
-            ReferencedContainer = "container:UFree.xcodeproj">
-         </BuildableReference>
-         <BuildableReference
-            BuildableIdentifier = "primary"
             BlueprintIdentifier = "237D8FC32EF53F24006BAE5F"
             BuildableName = "UFree.app"
             BlueprintName = "UFree"

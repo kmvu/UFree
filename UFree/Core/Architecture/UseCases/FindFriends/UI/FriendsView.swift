@@ -13,8 +13,14 @@ public struct FriendsView: View {
     @FocusState private var isSearchFocused: Bool
 
     public init(friendRepository: FriendRepositoryProtocol, rootViewModel: RootViewModel) {
+        self.init(viewModel: FriendsViewModel(friendRepository: friendRepository), rootViewModel: rootViewModel)
+    }
+
+    /// Accepts a pre-built ViewModel so callers can supply their own contacts repository
+    /// instead of the `AppleContactsRepository` default.
+    public init(viewModel: FriendsViewModel, rootViewModel: RootViewModel) {
         self.rootViewModel = rootViewModel
-        _viewModel = StateObject(wrappedValue: FriendsViewModel(friendRepository: friendRepository))
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
 
     public var body: some View {

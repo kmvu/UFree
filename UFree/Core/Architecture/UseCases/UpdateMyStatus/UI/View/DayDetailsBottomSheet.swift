@@ -12,7 +12,7 @@ struct DayDetailsBottomSheet: View {
     let onSave: (DayAvailability) -> Void
     @Environment(\.dismiss) private var dismiss
     
-    @State private var editedBlocks: [TimeBlock]
+    @State private var editor: DayDetailsEditor
     @State private var startTime: Date
     @State private var endTime: Date
     
@@ -20,22 +20,10 @@ struct DayDetailsBottomSheet: View {
         self.day = day
         self.onSave = onSave
         
-        let blocks = day.timeBlocks
-        self._editedBlocks = State(initialValue: blocks)
-        
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: day.date)
-        let now = Date()
-        
-        let initialStart: Date
-        if calendar.isDate(now, inSameDayAs: day.date) {
-            initialStart = now
-        } else {
-            initialStart = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: startOfDay)!
-        }
-        
-        self._startTime = State(initialValue: initialStart)
-        self._endTime = State(initialValue: calendar.date(byAdding: .hour, value: 1, to: initialStart) ?? initialStart)
+        let editor = DayDetailsEditor(day: day)
+        self._editor = State(initialValue: editor)
+        self._startTime = State(initialValue: editor.defaultStartTime())
+        self._endTime = State(initialValue: editor.defaultEndTime())
     }
     
     var body: some View {
@@ -84,20 +72,20 @@ struct DayDetailsBottomSheet: View {
                     Section(header: Text("Quick Fills")) {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
-                                QuickFillButton(title: "Morning", icon: "sunrise.fill", color: .orange, isSelected: isQuickFillActive(startHour: 9, endHour: 12)) {
-                                    applyQuickFill(startHour: 9, endHour: 12)
+                                QuickFillButton(title: "Morning", icon: "sunrise.fill", color: .orange, isSelected: editor.isQuickFillActive(.morning)) {
+                                    applyQuickFill(.morning)
                                     scrollToWindows(proxy)
                                 }
                                 .frame(width: 100)
                                 
-                                QuickFillButton(title: "Afternoon", icon: "sun.max.fill", color: .yellow, isSelected: isQuickFillActive(startHour: 12, endHour: 17)) {
-                                    applyQuickFill(startHour: 12, endHour: 17)
+                                QuickFillButton(title: "Afternoon", icon: "sun.max.fill", color: .yellow, isSelected: editor.isQuickFillActive(.afternoon)) {
+                                    applyQuickFill(.afternoon)
                                     scrollToWindows(proxy)
                                 }
                                 .frame(width: 100)
                                 
-                                QuickFillButton(title: "Evening", icon: "moon.stars.fill", color: .purple, isSelected: isQuickFillActive(startHour: 17, endHour: 22)) {
-                                    applyQuickFill(startHour: 17, endHour: 22)
+                                QuickFillButton(title: "Evening", icon: "moon.stars.fill", color: .purple, isSelected: editor.isQuickFillActive(.evening)) {
+                                    applyQuickFill(.evening)
                                     scrollToWindows(proxy)
                                 }
                                 .frame(width: 100)
@@ -108,7 +96,7 @@ struct DayDetailsBottomSheet: View {
                     }
                     
                     Section(header: Text("Current Windows")) {
-                        let freeBlocks = editedBlocks.filter { $0.status == .free }
+                        let freeBlocks = editor.freeBlocks
                         
                         if freeBlocks.isEmpty {
                             Text("No free windows added yet.")
@@ -158,135 +146,33 @@ struct DayDetailsBottomSheet: View {
     }
     
     private func addCustomBlock() {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: day.date)
-        
-        let sComp = calendar.dateComponents([.hour, .minute], from: startTime)
-        let eComp = calendar.dateComponents([.hour, .minute], from: endTime)
-        
-        let finalStart = calendar.date(bySettingHour: sComp.hour!, minute: sComp.minute!, second: 0, of: startOfDay)!
-        let finalEnd = calendar.date(bySettingHour: eComp.hour!, minute: eComp.minute!, second: 0, of: startOfDay)!
-        
-        let newBlock = TimeBlock(startTime: finalStart, endTime: finalEnd, status: .free)
-        mergeAndAddBlock(newBlock)
+        withAnimation {
+            editor.addFreeWindow(from: startTime, to: endTime)
+        }
         HapticManager.light()
     }
     
-    private func applyQuickFill(startHour: Int, endHour: Int) {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: day.date)
+    private func applyQuickFill(_ quickFill: DayDetailsEditor.QuickFill) {
+        var didAdd = false
+        withAnimation {
+            didAdd = editor.toggleQuickFill(quickFill)
+        }
         
-        let qStart = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: startOfDay)!
-        let qEnd = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: startOfDay)!
-        
-        if isQuickFillActive(startHour: startHour, endHour: endHour) {
-            subtractFreeRange(startTime: qStart, endTime: qEnd)
-            HapticManager.light()
-        } else {
-            let newBlock = TimeBlock(startTime: qStart, endTime: qEnd, status: .free)
-            mergeAndAddBlock(newBlock)
+        if didAdd {
             HapticManager.success()
-        }
-    }
-    
-    private func subtractFreeRange(startTime: Date, endTime: Date) {
-        var freeBlocks = editedBlocks.filter { $0.status == .free }
-        var resultBlocks: [TimeBlock] = []
-        
-        for block in freeBlocks {
-            if block.endTime <= startTime || block.startTime >= endTime {
-                // No overlap
-                resultBlocks.append(block)
-            } else {
-                // Overlap exists - we might need to split or truncate
-                if block.startTime < startTime {
-                    // Left part remains
-                    resultBlocks.append(TimeBlock(startTime: block.startTime, endTime: startTime, status: .free))
-                }
-                
-                if block.endTime > endTime {
-                    // Right part remains
-                    resultBlocks.append(TimeBlock(startTime: endTime, endTime: block.endTime, status: .free))
-                }
-            }
-        }
-        
-        var finalBlocks = editedBlocks.filter { $0.status != .free }
-        finalBlocks.append(contentsOf: resultBlocks)
-        
-        withAnimation {
-            self.editedBlocks = finalBlocks
-        }
-    }
-    
-    private func mergeAndAddBlock(_ newBlock: TimeBlock) {
-        var freeBlocks = editedBlocks.filter { $0.status == .free }
-        freeBlocks.append(newBlock)
-        
-        // Sort by start time
-        freeBlocks.sort { $0.startTime < $1.startTime }
-        
-        var merged: [TimeBlock] = []
-        for block in freeBlocks {
-            if let last = merged.last, block.startTime <= last.endTime {
-                let newEndTime = max(last.endTime, block.endTime)
-                merged[merged.count - 1].endTime = newEndTime
-            } else {
-                merged.append(block)
-            }
-        }
-        
-        var finalBlocks = editedBlocks.filter { $0.status != .free }
-        finalBlocks.append(contentsOf: merged)
-        
-        withAnimation {
-            self.editedBlocks = finalBlocks
+        } else {
+            HapticManager.light()
         }
     }
     
     private func removeBlock(_ block: TimeBlock) {
         withAnimation {
-            editedBlocks.removeAll { $0.id == block.id }
-        }
-    }
-
-    private func isQuickFillActive(startHour: Int, endHour: Int) -> Bool {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: day.date)
-        let qStart = calendar.date(bySettingHour: startHour, minute: 0, second: 0, of: startOfDay)!
-        let qEnd = calendar.date(bySettingHour: endHour, minute: 0, second: 0, of: startOfDay)!
-        
-        return editedBlocks.contains { block in
-            block.status == .free && block.startTime <= qStart && block.endTime >= qEnd
+            editor.removeBlock(id: block.id)
         }
     }
     
     private func saveAndDismiss() {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: day.date)
-        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-        
-        let freeBlocks = editedBlocks.filter { $0.status == .free }.sorted { $0.startTime < $1.startTime }
-        var finalBlocks: [TimeBlock] = []
-        
-        var currentTime = startOfDay
-        
-        for freeBlock in freeBlocks {
-            if freeBlock.startTime > currentTime {
-                finalBlocks.append(TimeBlock(startTime: currentTime, endTime: freeBlock.startTime, status: .busy))
-            }
-            finalBlocks.append(freeBlock)
-            currentTime = freeBlock.endTime
-        }
-        
-        if currentTime < endOfDay {
-            finalBlocks.append(TimeBlock(startTime: currentTime, endTime: endOfDay, status: .busy))
-        }
-        
-        var updatedDay = day
-        updatedDay.timeBlocks = finalBlocks
-        
-        onSave(updatedDay)
+        onSave(editor.makeUpdatedDay(from: day))
         dismiss()
     }
 }

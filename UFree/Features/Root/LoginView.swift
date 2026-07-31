@@ -143,6 +143,10 @@ struct LoginView: View {
             Text(viewModel.errorMessage ?? "Unknown error")
         }
         .onAppear {
+            // Don't fight the keyboard against an already-presented error alert — UIKit
+            // rejects the second presentation ("while a presentation is in progress") and
+            // on the iOS 26.2 simulator that path corrupts allocator state.
+            guard !viewModel.showError else { return }
             isNameFocused = true
         }
     }

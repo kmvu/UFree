@@ -194,6 +194,40 @@ final class DayFilterViewModelTests: XCTestCase {
         XCTAssertEqual(count, 3, "All free friends should be counted")
     }
 
+    // MARK: - Heatmap Date Range
+    
+    func test_nextSevenDays_startsToday() {
+        let days = viewModel.nextSevenDays
+        
+        XCTAssertEqual(days.first, Calendar.current.startOfDay(for: Date()))
+    }
+    
+    func test_nextSevenDays_returnsSevenConsecutiveStartOfDayDates() {
+        let days = viewModel.nextSevenDays
+        
+        XCTAssertEqual(days.count, 7)
+        for (offset, day) in days.enumerated() {
+            let expected = Calendar.current.date(
+                byAdding: .day,
+                value: offset,
+                to: Calendar.current.startOfDay(for: Date())
+            )
+            XCTAssertEqual(day, expected, "Day at offset \(offset) should be \(offset) day(s) from today")
+        }
+    }
+    
+    func test_nextSevenDays_alignsWithFreeFriendCountLookups() {
+        let days = viewModel.nextSevenDays
+        let schedules = days.map { makeSchedule(id: "f\($0)", name: "Friend", date: $0, status: .free) }
+        
+        for day in days {
+            XCTAssertEqual(
+                viewModel.freeFriendCount(for: day, friendsSchedules: schedules), 1,
+                "Every day in the heatmap range should be matchable by freeFriendCount"
+            )
+        }
+    }
+
     func test_freeFriendCount_dateNotInSchedule_returnsZero() async {
         let today = Calendar.current.startOfDay(for: Date())
         let farFuture = Calendar.current.date(byAdding: .day, value: 30, to: today)!

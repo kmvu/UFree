@@ -10,8 +10,12 @@ import FirebaseAuth
 
 @MainActor
 public final class FirebaseAuthRepository: AuthRepository {
-    private let auth: Auth
-    private var authStateHandle: AuthStateDidChangeListenerHandle?
+    /// Touched from `nonisolated deinit`, so it cannot be MainActor-isolated storage.
+    nonisolated(unsafe) private let auth: Auth
+    /// `nonisolated(unsafe)` so `deinit` can unregister without hopping to the MainActor.
+    /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
+    /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
+    nonisolated(unsafe) private var authStateHandle: AuthStateDidChangeListenerHandle?
     
     // AsyncStream for auth state changes
     private let authStateStream: AsyncStream<User?>
@@ -32,7 +36,7 @@ public final class FirebaseAuthRepository: AuthRepository {
         setupAuthStateListener()
     }
     
-    deinit {
+    nonisolated deinit {
         if let handle = authStateHandle {
             auth.removeStateDidChangeListener(handle)
         }

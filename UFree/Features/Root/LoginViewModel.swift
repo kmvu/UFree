@@ -28,6 +28,11 @@ final class LoginViewModel: ObservableObject {
         // In a real app, we'd use a container or factory. For now, we default to Firebase if not provided.
         self.friendRepository = friendRepository ?? FirebaseFriendRepository()
     }
+
+    /// Empty on purpose. A non-empty `@MainActor deinit` (or the synthesized MainActor
+    /// deallocation path under `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`) trips an
+    /// iOS 26.2 XCTest bug: `pointer being freed was not allocated` at a fixed address.
+    nonisolated deinit {}
     
     // MARK: - Intent
     func loginTapped() {

@@ -8,8 +8,19 @@
 import SwiftUI
 
 struct StatusBannerView: View {
-    @StateObject private var viewModel = StatusBannerViewModel()
+    @StateObject private var viewModel: StatusBannerViewModel
     let scheduleViewModel: MyScheduleViewModel
+
+    init(scheduleViewModel: MyScheduleViewModel) {
+        self.init(scheduleViewModel: scheduleViewModel, viewModel: StatusBannerViewModel())
+    }
+
+    /// Accepts a pre-built ViewModel so callers can drive the banner's expansion and
+    /// status independently of a tap.
+    init(scheduleViewModel: MyScheduleViewModel, viewModel: StatusBannerViewModel) {
+        self.scheduleViewModel = scheduleViewModel
+        _viewModel = StateObject(wrappedValue: viewModel)
+    }
 
     var body: some View {
         VStack(spacing: 0) {

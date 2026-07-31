@@ -23,7 +23,10 @@ public class NotificationViewModel: ObservableObject {
     }
     
     private let repository: NotificationRepository
-    var task: Task<Void, Never>?
+    /// `nonisolated(unsafe)` so `deinit` can cancel without hopping to the MainActor.
+    /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
+    /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
+    nonisolated(unsafe) var task: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     
     public init(repository: NotificationRepository) {
@@ -36,7 +39,7 @@ public class NotificationViewModel: ObservableObject {
         startListening()
     }
     
-    deinit {
+    nonisolated deinit {
         task?.cancel()
     }
     

@@ -68,6 +68,53 @@ final class MockAuthRepositoryTests: XCTestCase {
         XCTAssertNil(currentUser)
     }
     
+    // MARK: - Update Display Name
+    
+    func test_updateDisplayName_withSignedInUser_updatesCurrentUser() async throws {
+        _ = try await repository.signInAnonymously()
+        
+        try await repository.updateDisplayName("Alice")
+        let currentUser = await repository.currentUser
+        
+        XCTAssertEqual(currentUser?.displayName, "Alice")
+    }
+    
+    func test_updateDisplayName_preservesIdentityAndAnonymousFlag() async throws {
+        let original = try await repository.signInAnonymously()
+        
+        try await repository.updateDisplayName("Alice")
+        let currentUser = await repository.currentUser
+        
+        XCTAssertEqual(currentUser?.id, original.id)
+        XCTAssertEqual(currentUser?.isAnonymous, original.isAnonymous)
+    }
+    
+    func test_updateDisplayName_withoutSignedInUser_throwsUnauthorized() async {
+        do {
+            try await repository.updateDisplayName("Alice")
+            XCTFail("Expected updateDisplayName to throw when no user is signed in")
+        } catch {
+            XCTAssertEqual((error as NSError).code, 401)
+        }
+    }
+    
+    // MARK: - Test User Sign In
+    
+    func test_signInAsTestUser_usesPhoneNumberAsIdentity() async throws {
+        let user = try await repository.signInAsTestUser(phoneNumber: "555-1234")
+        
+        XCTAssertEqual(user.id, "555-1234")
+        XCTAssertFalse(user.isAnonymous)
+        XCTAssertNil(user.displayName)
+    }
+    
+    func test_signInAsTestUser_setsCurrentUser() async throws {
+        let user = try await repository.signInAsTestUser(phoneNumber: "555-1234")
+        let currentUser = await repository.currentUser
+        
+        XCTAssertEqual(currentUser?.id, user.id)
+    }
+    
     // MARK: - Auth State Stream
     
     func test_authState_providesAccessToStream() async {

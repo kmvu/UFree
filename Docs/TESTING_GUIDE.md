@@ -1,12 +1,12 @@
 # UFree Testing Guide
 
-**Status:** ✅ Production Ready | **Tests:** 230+ | **Coverage:** 85%+ | **Quality:** Zero-Sleep Deterministic
+**Status:** ✅ Production Ready | **Tests:** 510 | **Coverage:** 85.78% of the `UFree.app` target | **Quality:** Zero-Sleep Deterministic
 
 ---
 
 ## 1. 🤖 Automated Unit Tests (CI/CD)
 
-**230+ tests, zero Firebase dependency**. Tests use `MockAuthRepository` + in-memory SwiftData. All ViewModel tests include `trackForMemoryLeaks()` in `setUp()`.
+**510 tests, zero Firebase dependency**. Tests use `MockAuthRepository` + in-memory SwiftData. All ViewModel tests include `trackForMemoryLeaks()` in `setUp()`.
 
 ### Deterministic Async Testing
 We use a **Zero-Sleep Protocol**:
@@ -31,6 +31,33 @@ fastlane tests
 
 **Via Xcode:**
 Press `⌘ + U` with the `UFreeUnitTests` scheme selected.
+
+### Measuring Coverage
+
+The `UFreeUnitTests` scheme measures coverage for the **`UFree.app` target only**. The test bundle itself is deliberately excluded, because including it inflates the blended number without telling you anything about production code.
+
+```bash
+xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -resultBundlePath /tmp/UFreeCoverage.xcresult
+xcrun xccov view --report --only-targets /tmp/UFreeCoverage.xcresult
+```
+
+For a per-file breakdown, add `--files-for-target UFree.app`.
+
+### Testing SwiftUI Views
+
+Most of the app's line count lives in view bodies, and SwiftUI is lazy: constructing a view value runs no `body` code at all. Views are therefore covered by attaching them to a real `UIWindow` and forcing layout, via two helpers:
+
+- **`ViewHost`** (`UFreeTests/Helpers/ViewHost.swift`) renders a view in a visible window and forces layout passes. Use `renderAwaitingUpdates` when the view has `.task` or `.onAppear` work whose result should appear in a second body pass.
+- **`TestScene`** (`UFreeTests/Helpers/TestScene.swift`) assembles the whole mock-backed ViewModel graph the way `RootView` does, because views read across each other — `MyScheduleView` reaches into `rootViewModel.friendsScheduleViewModel`, for instance.
+
+Two things to know when writing these tests:
+
+- **Prefer injecting a ViewModel over simulating a tap.** State that a view owns as `@StateObject` is otherwise only reachable through its buttons. `FriendsView` and `StatusBannerView` each expose an `init` taking a pre-built ViewModel for exactly this reason, which is how the status banner's expanded drawer gets covered.
+- **Seed repositories before building a ViewModel that listens.** `NotificationViewModel` starts a listener in `init` and starts another whenever the scene activates — which hosting a view does. Assigning state onto the ViewModel after `init` races with the listener `init` already started, and either can win. `TestScene(notifications:)` exists for this.
+
+Prefer `MainAppView` over `RootView` when testing the authenticated state: it takes every dependency by injection, whereas `RootView.init` constructs live Firebase repositories itself.
 
 ---
 
