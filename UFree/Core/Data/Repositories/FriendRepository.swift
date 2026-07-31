@@ -178,7 +178,21 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
             timestamp: Date()
         )
         
-        try db.collection("friendRequests").addDocument(from: request)
+        // Await the write so permission / network failures propagate to the UI
+        // instead of silently succeeding in the local cache only.
+        _ = try await db.collection("friendRequests").addDocument(from: request)
+
+        // Mirror into the recipient's inbox so Notification Center + FCM fire.
+        let note = AppNotification(
+            recipientId: toId,
+            senderId: currentUid,
+            senderName: currentName,
+            type: .friendRequest,
+            date: Date(),
+            isRead: false
+        )
+        _ = try await db.collection("users").document(toId).collection("notifications")
+            .addDocument(from: note)
     }
     
     nonisolated func observeIncomingRequests() -> AsyncStream<[FriendRequest]> {

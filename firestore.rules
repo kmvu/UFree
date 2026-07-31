@@ -1,42 +1,109 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // User Profiles
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId;
-      
-      // Availability Collection
-      match /availability/{date} {
-        allow read: if request.auth != null; // Friends need to read this
-        allow write: if request.auth.uid == userId && isValidAvailability();
-      }
-      
-      // Notifications Collection
-      match /notifications/{docId} {
-        allow read: if request.auth.uid == userId;
-        allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
-        allow update: if request.auth.uid == userId; // To mark as read
-        allow delete: if request.auth.uid == userId;
-      }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
     }
-    
-    // Validation Functions
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /// True when the only field changed on a user doc is `friendIds`.
+    function onlyModifiesFriendIds() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friendIds']);
+    }
+
+    /// True when the requester is adding or removing *only their own* UID
+    /// from another user's `friendIds` array (mutual handshake / unfriend).
+    function isSelfFriendIdsChange() {
+      let before = ('friendIds' in resource.data) ? resource.data.friendIds : [];
+      let after = ('friendIds' in request.resource.data) ? request.resource.data.friendIds : [];
+      let addedSelf = after.hasAll(before)
+        && after.size() == before.size() + 1
+        && request.auth.uid in after
+        && !(request.auth.uid in before);
+      let removedSelf = before.hasAll(after)
+        && before.size() == after.size() + 1
+        && request.auth.uid in before
+        && !(request.auth.uid in after);
+      return addedSelf || removedSelf;
+    }
+
     function isValidAvailability() {
       let data = request.resource.data;
-      return data.size() <= 10 // Basic safety check for document size
-        && (data.timeBlocks == null || (data.timeBlocks is list && data.timeBlocks.size() <= 10)) // Max 10 blocks
+      return data.size() <= 10
+        && (data.timeBlocks == null || (data.timeBlocks is list && data.timeBlocks.size() <= 10))
         && allBlocksValid(data.timeBlocks);
     }
-    
+
     function allBlocksValid(blocks) {
-      return blocks == null || blocks.all(block => 
-        block.startTime is timestamp && 
-        block.endTime is timestamp && 
-        block.startTime < block.endTime &&
-        block.status is int && block.status >= 0 && block.status <= 5
+      return blocks == null || blocks.all(block =>
+        block.startTime is timestamp
+        && block.endTime is timestamp
+        && block.startTime < block.endTime
+        && block.status is int && block.status >= 0 && block.status <= 5
       );
+    }
+
+    // ── User Profiles ────────────────────────────────────────────────────────
+
+    match /users/{userId} {
+      // Authenticated users can discover profiles (phone/QR/contact matching).
+      allow read: if isSignedIn();
+
+      // Owners write their own profile (displayName, hashes, fcmToken, etc.).
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId)
+        // Peer may only add/remove *their own* UID during accept/unfriend.
+        || (isSignedIn() && onlyModifiesFriendIds() && isSelfFriendIdsChange());
+      allow delete: if false;
+
+      // Availability Collection
+      match /availability/{date} {
+        allow read: if isSignedIn();
+        allow write: if isOwner(userId) && isValidAvailability();
+      }
+
+      // Notifications Collection
+      match /notifications/{docId} {
+        allow read: if isOwner(userId);
+        allow create: if isSignedIn()
+          && request.resource.data.senderId == request.auth.uid;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // ── Friend Requests (Handshake) ──────────────────────────────────────────
+    // Without these rules, send/accept/decline all fail with
+    // "Missing or insufficient permissions" — the root cause of invite/QR errors.
+
+    match /friendRequests/{requestId} {
+      allow create: if isSignedIn()
+        && request.resource.data.fromId == request.auth.uid
+        && request.resource.data.toId is string
+        && request.resource.data.toId != request.auth.uid
+        && request.resource.data.status == 'pending';
+
+      // Sender or recipient can read their own requests.
+      allow read: if isSignedIn()
+        && (resource.data.fromId == request.auth.uid
+            || resource.data.toId == request.auth.uid);
+
+      // Only the recipient may accept or decline; immutable identity fields.
+      allow update: if isSignedIn()
+        && resource.data.toId == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.fromId == resource.data.fromId
+        && request.resource.data.toId == resource.data.toId
+        && request.resource.data.fromName == resource.data.fromName
+        && request.resource.data.status in ['accepted', 'declined'];
+
+      allow delete: if false;
     }
   }
 }

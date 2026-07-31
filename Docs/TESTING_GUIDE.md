@@ -65,9 +65,14 @@ Prefer `MainAppView` over `RootView` when testing the authenticated state: it ta
 
 For testing social flows that require two real accounts without real SMS codes:
 
-1. **Add Firebase test phone numbers** (Firebase Console > Authentication > Phone):
+1. **Deploy Firestore rules + indexes** (required for invites / QR / accept):
+   ```bash
+   firebase deploy --only firestore:rules,firestore:indexes
+   ```
+   Without `friendRequests` rules, every invite fails with a permission error dialog.
+2. **Add Firebase test phone numbers** (Firebase Console > Authentication > Phone):
    - `+1 555-000-0001`, `+1 555-000-0002`, `+1 555-000-0003` (All code: `123456`)
-2. **Use Developer Tools** in `LoginView` (DEBUG builds only):
+3. **Use Developer Tools** in `LoginView` (DEBUG builds only):
    - Run the app on two simulators (or simulator + device).
    - Tap "User 1", "User 2", or "User 3" to bypass SMS auth and login instantly.
 
