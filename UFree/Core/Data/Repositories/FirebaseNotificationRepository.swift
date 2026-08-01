@@ -54,22 +54,61 @@ public class FirebaseNotificationRepository: NotificationRepository {
             .updateData(["isRead": true])
     }
     
-    public func sendNudge(to userId: String) async throws {
+    public func sendNudge(to userId: String, targetDate: Date?) async throws {
         guard let currentUid = auth.currentUser?.uid,
               let currentName = auth.currentUser?.displayName else { return }
         
+        let targetDateString = targetDate.map { AppNotification.dateString(from: $0) }
         let note = AppNotification(
             recipientId: userId,
             senderId: currentUid,
             senderName: currentName,
             type: .nudge,
             date: Date(),
-            isRead: false
+            isRead: false,
+            targetDateString: targetDateString
         )
         
         // Await so permission / network failures propagate to callers.
         _ = try await db.collection("users").document(userId).collection("notifications")
             .addDocument(from: note)
+    }
+
+    public func sendNudgeReply(
+        to userId: String,
+        targetDateString: String?,
+        response: AppNotification.NudgeResponse
+    ) async throws {
+        guard let currentUid = auth.currentUser?.uid,
+              let currentName = auth.currentUser?.displayName else { return }
+
+        let note = AppNotification(
+            recipientId: userId,
+            senderId: currentUid,
+            senderName: currentName,
+            type: .nudgeReply,
+            date: Date(),
+            isRead: false,
+            targetDateString: targetDateString,
+            nudgeResponse: response.rawValue
+        )
+
+        _ = try await db.collection("users").document(userId).collection("notifications")
+            .addDocument(from: note)
+    }
+
+    public func markNudgeResponded(
+        _ notification: AppNotification,
+        response: AppNotification.NudgeResponse
+    ) async throws {
+        guard let uid = auth.currentUser?.uid, let noteId = notification.id else { return }
+
+        try await db.collection("users").document(uid).collection("notifications")
+            .document(noteId)
+            .updateData([
+                "isRead": true,
+                "nudgeResponse": response.rawValue
+            ])
     }
     
     public func updatePushToken(_ token: String) async throws {

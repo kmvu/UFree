@@ -87,14 +87,32 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
             continuation.finish()
         }
     }
+
+    public func pendingFriendRequest(from fromId: String) async throws -> FriendRequest? {
+        incomingRequests.first { $0.fromId == fromId && $0.status == .pending }
+    }
     
     public func acceptFriendRequest(_ request: FriendRequest) async throws {
-        guard let index = incomingRequests.firstIndex(where: { $0.id == request.id }) else { return }
-        incomingRequests[index].status = .accepted
-        
-        // Add to friends list
-        let profile = UserProfile(id: request.fromId, displayName: request.fromName, hashedPhoneNumber: "")
-        myFriends.append(profile)
+        if let index = incomingRequests.firstIndex(where: { $0.id == request.id }) {
+            incomingRequests[index].status = .accepted
+        } else if let index = incomingRequests.firstIndex(where: {
+            $0.fromId == request.fromId && $0.status == .pending
+        }) {
+            incomingRequests[index].status = .accepted
+        } else if request.id != nil {
+            // Accept-by-id path (Notification Center with relatedRequestId) when
+            // the in-memory list was never populated by the listener.
+            var accepted = request
+            accepted.status = .accepted
+            incomingRequests.append(accepted)
+        } else {
+            return
+        }
+
+        if !myFriends.contains(where: { $0.id == request.fromId }) {
+            let profile = UserProfile(id: request.fromId, displayName: request.fromName, hashedPhoneNumber: "")
+            myFriends.append(profile)
+        }
     }
     
     public func declineFriendRequest(_ request: FriendRequest) async throws {

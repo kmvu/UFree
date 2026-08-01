@@ -27,6 +27,7 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
     private(set) var declinedRequests: [FriendRequest] = []
     private(set) var removedFriendIds: [String] = []
     private(set) var contactHashQueries: [[String]] = []
+    private(set) var pendingRequestLookups: [String] = []
 
     // MARK: - Stubbed results
 
@@ -35,6 +36,7 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
     var userByPhoneNumber: UserProfile?
     var userById: UserProfile?
     var incomingRequests: [FriendRequest] = []
+    var pendingRequestByFromId: [String: FriendRequest] = [:]
 
     // MARK: - Failure injection
 
@@ -44,6 +46,7 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
     var findByPhoneError: Error?
     var findByIdError: Error?
     var sendRequestError: Error?
+    var pendingRequestError: Error?
     var acceptRequestError: Error?
     var declineRequestError: Error?
     var removeFriendError: Error?
@@ -89,6 +92,13 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
             continuation.yield(requests)
             continuation.finish()
         }
+    }
+
+    func pendingFriendRequest(from fromId: String) async throws -> FriendRequest? {
+        pendingRequestLookups.append(fromId)
+        if let pendingRequestError { throw pendingRequestError }
+        if let exact = pendingRequestByFromId[fromId] { return exact }
+        return incomingRequests.first { $0.fromId == fromId && $0.status == .pending }
     }
 
     func acceptFriendRequest(_ request: FriendRequest) async throws {

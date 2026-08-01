@@ -155,7 +155,9 @@ final class MockFriendRepositoryTests: XCTestCase {
         XCTAssertEqual(friends.map(\.displayName), ["Alice"])
     }
 
-    func test_acceptFriendRequest_unknownRequest_isIgnored() async throws {
+    func test_acceptFriendRequest_byIdWithoutCache_promotesSender() async throws {
+        // Notification Center Accept may construct a FriendRequest from relatedRequestId
+        // before the live incoming-requests listener has populated.
         let request = FriendRequest(
             id: "ghost", fromId: "u1", fromName: "Alice", toId: "me", status: .pending, timestamp: Date()
         )
@@ -163,7 +165,7 @@ final class MockFriendRepositoryTests: XCTestCase {
         try await sut.acceptFriendRequest(request)
 
         let friends = try await sut.getMyFriends()
-        XCTAssertTrue(friends.isEmpty)
+        XCTAssertEqual(friends.map(\.displayName), ["Alice"])
     }
 
     func test_declineFriendRequest_doesNotAddFriend() async throws {

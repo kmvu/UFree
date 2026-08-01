@@ -10,6 +10,8 @@ import Foundation
 @MainActor
 public class MockNotificationRepository: NotificationRepository {
     public var mockNotifications: [AppNotification]
+    public var sentNudges: [(userId: String, targetDate: Date?)] = []
+    public var sentReplies: [(userId: String, targetDateString: String?, response: AppNotification.NudgeResponse)] = []
     public var userIdsToFailFor: Set<String> = []  // Test hook: cause sendNudge to fail for these user IDs
     public var shouldThrowRateLimit = false
     public var simulatedDelay: UInt64 = 0 // Nanoseconds
@@ -35,7 +37,7 @@ public class MockNotificationRepository: NotificationRepository {
         }
     }
     
-    public func sendNudge(to userId: String) async throws {
+    public func sendNudge(to userId: String, targetDate: Date?) async throws {
         if simulatedDelay > 0 {
             try? await Task.sleep(nanoseconds: simulatedDelay)
         }
@@ -48,6 +50,8 @@ public class MockNotificationRepository: NotificationRepository {
         if userIdsToFailFor.contains(userId) {
             throw NSError(domain: "MockError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Simulated nudge failure"])
         }
+
+        sentNudges.append((userId, targetDate))
         
         let nudge = AppNotification(
             recipientId: userId,
@@ -55,9 +59,39 @@ public class MockNotificationRepository: NotificationRepository {
             senderName: "You",
             type: .nudge,
             date: Date(),
-            isRead: false
+            isRead: false,
+            targetDateString: targetDate.map { AppNotification.dateString(from: $0) }
         )
         mockNotifications.insert(nudge, at: 0)
+    }
+
+    public func sendNudgeReply(
+        to userId: String,
+        targetDateString: String?,
+        response: AppNotification.NudgeResponse
+    ) async throws {
+        sentReplies.append((userId, targetDateString, response))
+        let reply = AppNotification(
+            recipientId: userId,
+            senderId: "current_user",
+            senderName: "You",
+            type: .nudgeReply,
+            date: Date(),
+            isRead: false,
+            targetDateString: targetDateString,
+            nudgeResponse: response.rawValue
+        )
+        mockNotifications.insert(reply, at: 0)
+    }
+
+    public func markNudgeResponded(
+        _ notification: AppNotification,
+        response: AppNotification.NudgeResponse
+    ) async throws {
+        if let index = mockNotifications.firstIndex(where: { $0.id == notification.id }) {
+            mockNotifications[index].isRead = true
+            mockNotifications[index].nudgeResponse = response.rawValue
+        }
     }
     
     public func updatePushToken(_ token: String) async throws {

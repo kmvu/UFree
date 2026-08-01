@@ -51,6 +51,10 @@ public protocol FriendRepositoryProtocol {
     /// Observes incoming friend requests in real-time.
     func observeIncomingRequests() -> AsyncStream<[FriendRequest]>
 
+    /// One-shot lookup of a pending incoming request from a specific sender.
+    /// Used when Notification Center Accept runs before the live listener has populated.
+    func pendingFriendRequest(from fromId: String) async throws -> FriendRequest?
+
     /// Accepts a friend request (atomic batch write).
     func acceptFriendRequest(_ request: FriendRequest) async throws
 
