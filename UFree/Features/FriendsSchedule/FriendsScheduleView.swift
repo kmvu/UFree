@@ -67,10 +67,10 @@ public struct FriendsScheduleView: View {
                                     .font(.system(size: 16, weight: .semibold))
                                 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Nudge all \(freeCount) friends")
+                                    Text("Free \(selectedDate.formatted(.dateTime.weekday(.abbreviated)))?")
                                         .fontWeight(.bold)
                                     
-                                    Text(selectedDate.formatted(.dateTime.weekday(.abbreviated)))
+                                    Text("Nudge all \(freeCount) free friends")
                                         .font(.caption)
                                         .opacity(0.8)
                                 }
@@ -158,7 +158,10 @@ private struct FriendScheduleRow: View {
                 Button(action: {
                     HapticManager.medium()
                     Task {
-                        await viewModel.sendNudge(to: display.id)
+                        await viewModel.sendNudge(
+                            to: display.id,
+                            targetDate: viewModel.selectedDate
+                        )
                     }
                 }) {
                     Image(systemName: "hand.wave.fill")

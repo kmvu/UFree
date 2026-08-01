@@ -69,13 +69,17 @@ public final class FriendsScheduleViewModel: ObservableObject {
 
     // MARK: - Data Loading
 
-    /// Counts how many friends are "Free" on a specific date (Phase 1 - Sprint 6 heatmap)
-    /// Only counts .free status (excludes afternoonOnly, eveningOnly, busy, unknown)
+    /// Counts friends with any free window on a specific date (full-day or partial).
     public func freeFriendCount(for date: Date, friendsSchedules: [FriendScheduleDisplay]) -> Int {
         let normalizedDate = Calendar.current.startOfDay(for: date)
         
         return friendsSchedules.filter { display in
-            display.status(for: normalizedDate) == .free
+            guard let day = display.userSchedule.weeklyStatus.first(where: {
+                Calendar.current.isDate($0.date, inSameDayAs: normalizedDate)
+            }) else {
+                return false
+            }
+            return day.isAvailable
         }.count
     }
     
@@ -127,7 +131,7 @@ public final class FriendsScheduleViewModel: ObservableObject {
         }
     }
 
-    public func sendNudge(to userId: String) async {
+    public func sendNudge(to userId: String, targetDate: Date? = nil) async {
         // Rapid-tap protection: guard against concurrent nudges
         guard !isNudging else { return }
 
@@ -136,8 +140,10 @@ public final class FriendsScheduleViewModel: ObservableObject {
         defer { isNudging = false }
 
         do {
-            try await notificationRepository.sendNudge(to: userId)
+            let day = targetDate ?? selectedDate
+            try await notificationRepository.sendNudge(to: userId, targetDate: day)
             AnalyticsManager.logNudgeSent(isBatch: false)
+            OnboardingProgressStore.shared.recordWeekendActivity()
             HapticManager.success()
         } catch {
             self.errorMessage = "Failed to send nudge: \(error.localizedDescription)"
@@ -160,10 +166,15 @@ public final class FriendsScheduleViewModel: ObservableObject {
         // Normalize date
         let normalizedDate = Calendar.current.startOfDay(for: date)
 
-        // Filter friends who are free on this date
+        // Filter friends who have any free window on this date
         let freeFriendIds = friendSchedules
             .filter { display in
-                display.status(for: normalizedDate) == .free
+                guard let day = display.userSchedule.weeklyStatus.first(where: {
+                    Calendar.current.isDate($0.date, inSameDayAs: normalizedDate)
+                }) else {
+                    return false
+                }
+                return day.isAvailable
             }
             .map { $0.id }
 
@@ -185,7 +196,10 @@ public final class FriendsScheduleViewModel: ObservableObject {
                 for friendId in freeFriendIds {
                     group.addTask {
                         do {
-                            try await self.notificationRepository.sendNudge(to: friendId)
+                            try await self.notificationRepository.sendNudge(
+                                to: friendId,
+                                targetDate: normalizedDate
+                            )
                             return true  // Success
                         } catch {
                             print("⚠️ Failed to nudge \(friendId): \(error)")
@@ -211,14 +225,17 @@ public final class FriendsScheduleViewModel: ObservableObject {
                 AnalyticsManager.logBatchNudge(recipientCount: successCount)
             }
             
+            let dayLabel = normalizedDate.formatted(.dateTime.weekday(.abbreviated))
             if successCount == totalCount {
                 // All succeeded
                 let friendWord = totalCount == 1 ? "friend" : "friends"
-                self.successMessage = "All \(totalCount) \(friendWord) nudged! 👋"
+                self.successMessage = "Asked all \(totalCount) \(friendWord) about \(dayLabel)"
+                OnboardingProgressStore.shared.recordWeekendActivity()
                 HapticManager.success()
             } else if successCount > 0 {
                 // Partial success
-                self.successMessage = "Nudged \(successCount) of \(totalCount) friends"
+                self.successMessage = "Nudged \(successCount) of \(totalCount) friends for \(dayLabel)"
+                OnboardingProgressStore.shared.recordWeekendActivity()
                 HapticManager.warning()
             } else {
                 // All failed

@@ -43,6 +43,8 @@ public final class FriendsViewModel: ObservableObject {
     
     // Friend requests (handshake)
     @Published public var incomingRequests: [FriendRequest] = []
+    /// Separate from `isProcessing` so Accept works while friends are still loading.
+    private var isHandlingHandshake = false
     /// `nonisolated(unsafe)` so `deinit` can cancel without hopping to the MainActor.
     /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
     /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
@@ -270,6 +272,7 @@ public final class FriendsViewModel: ObservableObject {
             HapticManager.medium()
             try await friendRepository.sendFriendRequest(to: user)
             AnalyticsManager.logFriendRequestSent(source: source)
+            OnboardingProgressStore.shared.markInvitedFriend()
             
             // Remove from discovered users or search result
             withAnimation {
@@ -286,32 +289,75 @@ public final class FriendsViewModel: ObservableObject {
         }
     }
     
-    public func acceptRequest(_ request: FriendRequest) async {
-        guard !isProcessing else { return }
-        isProcessing = true
-        defer { isProcessing = false }
+    /// Fired after a successful mutual accept so the host can jump to Who's Free + weekend CTA.
+    public var onFirstHandshakeCompleted: (() -> Void)?
+
+    /// Resolves a pending request for Notification Center Accept.
+    /// Prefers `relatedRequestId`, then in-memory listener cache, then a one-shot fetch.
+    public func resolveIncomingRequest(
+        fromSenderId senderId: String,
+        relatedRequestId: String?,
+        senderName: String,
+        recipientId: String
+    ) async -> FriendRequest? {
+        if let relatedRequestId {
+            return FriendRequest(
+                id: relatedRequestId,
+                fromId: senderId,
+                fromName: senderName,
+                toId: recipientId,
+                status: .pending,
+                timestamp: Date()
+            )
+        }
+
+        if let cached = incomingRequests.first(where: { $0.fromId == senderId && $0.status == .pending }) {
+            return cached
+        }
+
+        return try? await friendRepository.pendingFriendRequest(from: senderId)
+    }
+
+    @discardableResult
+    public func acceptRequest(_ request: FriendRequest) async -> Bool {
+        guard !isHandlingHandshake else { return false }
+        isHandlingHandshake = true
+        defer { isHandlingHandshake = false }
         
         do {
             HapticManager.success()
             try await friendRepository.acceptFriendRequest(request)
             
+            let wasFirstFriend = friends.isEmpty
+
             // Remove from incoming requests and add to friends
             withAnimation {
                 if let index = incomingRequests.firstIndex(where: { $0.id == request.id }) {
                     incomingRequests.remove(at: index)
+                } else if let index = incomingRequests.firstIndex(where: { $0.fromId == request.fromId }) {
+                    incomingRequests.remove(at: index)
                 }
-                let newFriend = UserProfile(
-                    id: request.fromId,
-                    displayName: request.fromName,
-                    hashedPhoneNumber: ""
-                )
-                friends.append(newFriend)
+                if !friends.contains(where: { $0.id == request.fromId }) {
+                    let newFriend = UserProfile(
+                        id: request.fromId,
+                        displayName: request.fromName,
+                        hashedPhoneNumber: ""
+                    )
+                    friends.append(newFriend)
+                }
+            }
+
+            OnboardingProgressStore.shared.markFirstHandshake()
+            if wasFirstFriend {
+                onFirstHandshakeCompleted?()
             }
             
             // Contextual Permission Prompt: Request APNs permission after first handshake
             requestNotificationPermissions()
+            return true
         } catch {
             self.errorMessage = "Failed to accept request: \(error.localizedDescription)"
+            return false
         }
     }
     
@@ -328,9 +374,9 @@ public final class FriendsViewModel: ObservableObject {
     }
     
     public func declineRequest(_ request: FriendRequest) async {
-        guard !isProcessing else { return }
-        isProcessing = true
-        defer { isProcessing = false }
+        guard !isHandlingHandshake else { return }
+        isHandlingHandshake = true
+        defer { isHandlingHandshake = false }
         
         do {
             HapticManager.warning()

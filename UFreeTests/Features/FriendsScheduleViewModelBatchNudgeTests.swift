@@ -68,8 +68,13 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
         if expectations.successExpected {
             if let count = expectations.count {
                 let word = count == 1 ? "friend" : "friends"
-                let prefix = expectations.partial ? "Nudged \(count - 1) of \(count)" : "All \(count) \(word) nudged!"
-                XCTAssertTrue(sut.successMessage?.contains(prefix) ?? false)
+                let expected = expectations.partial
+                    ? "Nudged \(count - 1) of \(count) friends"
+                    : "Asked all \(count) \(word) about"
+                XCTAssertTrue(
+                    sut.successMessage?.contains(expected) ?? false,
+                    "Expected '\(expected)' in '\(sut.successMessage ?? "nil")'"
+                )
             }
             XCTAssertNil(sut.errorMessage)
         } else {
@@ -117,7 +122,7 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
         await addFriends(count: 1, status: .free, date: today)
         await nudgeAndVerify(for: today, expectations: (successExpected: true, count: 1, partial: false))
         
-        XCTAssertTrue(sut.successMessage?.contains("All 1 friend nudged!") ?? false)
+        XCTAssertTrue(sut.successMessage?.contains("Asked all 1 friend about") ?? false)
         XCTAssertFalse(sut.successMessage?.contains("friends") ?? true)
     }
 
@@ -140,7 +145,7 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
 
     // MARK: - Status Filtering (2 tests)
 
-    func test_nudgeAllFree_onlyFreeStatus_ignoresPartials() async {
+    func test_nudgeAllFree_countsPartialsAsAvailable() async {
         let today = Calendar.current.startOfDay(for: Date())
         let statuses: [AvailabilityStatus] = [.free, .afternoonOnly, .free, .eveningOnly, .busy, .unknown, .free]
         await addFriendsWithStatuses(statuses, date: today)
@@ -148,7 +153,8 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
         await sut.loadFriendsSchedules()
         await sut.nudgeAllFree(for: today)
         
-        XCTAssertTrue(sut.successMessage?.contains("All 3") ?? false)
+        // free + afternoonOnly + free + eveningOnly + free = 5
+        XCTAssertTrue(sut.successMessage?.contains("Asked all 5") ?? false)
     }
 
     func test_nudgeAllFree_mixedStatuses_correctFiltering() async {
@@ -159,7 +165,8 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
         await sut.loadFriendsSchedules()
         await sut.nudgeAllFree(for: today)
         
-        XCTAssertTrue(sut.successMessage?.contains("All 1") ?? false)
+        // free + afternoonOnly = 2 (busy excluded)
+        XCTAssertTrue(sut.successMessage?.contains("Asked all 2") ?? false)
     }
 
     // MARK: - State & Edge Cases (5 tests)
@@ -256,7 +263,7 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
         await sut.loadFriendsSchedules()
         await sut.nudgeAllFree(for: today)
         
-        XCTAssertTrue(sut.successMessage?.contains("All 10 friends nudged!") ?? false)
+        XCTAssertTrue(sut.successMessage?.contains("Asked all 10 friends about") ?? false)
         XCTAssertNil(sut.errorMessage)
     }
 

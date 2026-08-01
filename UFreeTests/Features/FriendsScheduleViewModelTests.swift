@@ -317,10 +317,9 @@ final class FriendsScheduleViewModelTests: XCTestCase {
         // Act: Nudge all free for today
         await sut.nudgeAllFree(for: today)
         
-        // Assert: Should nudge only f1 (.free), not f2 (afternoonOnly) or f3 (busy)
-        // Only .free status counts for nudges
+        // Assert: Should nudge f1 (.free) and f2 (afternoonOnly), not f3 (busy)
         XCTAssertNil(sut.errorMessage)
-        XCTAssertTrue(sut.successMessage?.contains("1") ?? false, "Should nudge only the free friend (f1)")
+        XCTAssertTrue(sut.successMessage?.contains("2") ?? false, "Should nudge friends with any free window")
     }
 
     func test_nudgeAllFree_parallelProcessing_withTaskGroup() async {
@@ -408,10 +407,9 @@ final class FriendsScheduleViewModelTests: XCTestCase {
         await sut.nudgeAllFree(for: today)
         
         // Assert: Success message should display friend count
-        // Expected: "All 2 friends nudged! 👋"
         XCTAssertNotNil(sut.successMessage, "Success message should be set")
         XCTAssertTrue(sut.successMessage?.contains("2") ?? false, "Message should contain count")
-        XCTAssertTrue(sut.successMessage?.contains("nudged") ?? false, "Message should use 'nudged'")
+        XCTAssertTrue(sut.successMessage?.contains("Asked all") ?? false, "Message should use day-scoped ask copy")
         XCTAssertNil(sut.errorMessage, "Error message should be cleared on success")
     }
 
@@ -434,9 +432,9 @@ final class FriendsScheduleViewModelTests: XCTestCase {
         // Act: Nudge single friend
         await sut.nudgeAllFree(for: today)
         
-        // Assert: Should show singular "All 1 friend nudged!" (not "friends")
+        // Assert: Should show singular ask copy (not "friends")
         XCTAssertNotNil(sut.successMessage, "Success message should be set")
-        XCTAssertTrue(sut.successMessage?.contains("1") ?? false, "Message should show count: 1")
+        XCTAssertTrue(sut.successMessage?.contains("Asked all 1 friend about") ?? false, "Message should show singular friend")
         XCTAssertNil(sut.errorMessage, "No error on single friend nudge")
     }
 
@@ -606,6 +604,6 @@ final class FriendsScheduleViewModelTests: XCTestCase {
         
         // Assert: Singular "friend" not "friends"
         XCTAssertNotNil(sut.successMessage, "Success message should be set")
-        XCTAssertTrue(sut.successMessage?.contains("All 1 friend nudged!") ?? false, "Should use singular 'friend'")
+        XCTAssertTrue(sut.successMessage?.contains("Asked all 1 friend about") ?? false, "Should use singular 'friend'")
     }
 }

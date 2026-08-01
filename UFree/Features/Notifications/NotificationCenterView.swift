@@ -26,11 +26,16 @@ public struct NotificationCenterView: View {
                     )
                 } else {
                     ForEach(viewModel.notifications) { note in
-                        NotificationRow(note: note)
+                        NotificationRow(note: note, viewModel: viewModel)
                             .listRowBackground(note.isRead ? Color.clear : Color.blue.opacity(0.1))
                             .onAppear {
-                                if !note.isRead {
+                                if !note.isRead && note.type != .nudge {
                                     viewModel.markRead(note)
+                                } else if !note.isRead && note.type == .nudgeReply {
+                                    viewModel.markRead(note)
+                                    if let response = note.nudgeResponse {
+                                        AnalyticsManager.logNudgeReplyReceived(response: response)
+                                    }
                                 }
                             }
                     }
@@ -42,24 +47,29 @@ public struct NotificationCenterView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+                Button("OK") { viewModel.errorMessage = nil }
+            } message: {
+                if let error = viewModel.errorMessage { Text(error) }
+            }
         }
     }
 }
 
 struct NotificationRow: View {
     let note: AppNotification
+    @ObservedObject var viewModel: NotificationViewModel
     
     var body: some View {
-        Button(action: {}) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                // Icon based on type
                 ZStack {
                     Circle()
-                        .fill(note.type == .nudge ? Color.orange.opacity(0.2) : Color.blue.opacity(0.2))
+                        .fill(iconBackground)
                         .frame(width: 40, height: 40)
                     
-                    Image(systemName: note.type == .nudge ? "hand.wave.fill" : "person.badge.plus")
-                        .foregroundStyle(note.type == .nudge ? .orange : .blue)
+                    Image(systemName: iconName)
+                        .foregroundStyle(iconColor)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -73,23 +83,84 @@ struct NotificationRow: View {
                 }
                 
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
             }
-            .contentShape(Rectangle())
-            .foregroundStyle(.primary)
-            .padding(.vertical, 4)
+
+            if note.type == .friendRequest {
+                Button("Accept") {
+                    Task { await viewModel.acceptFriendRequest(from: note) }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .controlSize(.small)
+            }
+
+            if note.type == .nudge && !note.hasResponded {
+                HStack(spacing: 8) {
+                    ForEach(AppNotification.NudgeResponse.allCases, id: \.rawValue) { response in
+                        Button(response.displayLabel) {
+                            Task { await viewModel.replyToNudge(note, response: response) }
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(response == .imIn ? .green : (response == .busy ? .red : .orange))
+                        .controlSize(.small)
+                        .disabled(viewModel.isProcessing)
+                    }
+                }
+            }
+
+            if note.type == .nudge, let responded = note.nudgeResponse,
+               let response = AppNotification.NudgeResponse(rawValue: responded) {
+                Text("You replied: \(response.displayLabel)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 4)
+    }
+
+    private var iconName: String {
+        switch note.type {
+        case .nudge: return "hand.wave.fill"
+        case .nudgeReply: return "checkmark.bubble.fill"
+        case .friendRequest: return "person.badge.plus"
+        }
+    }
+
+    private var iconColor: Color {
+        switch note.type {
+        case .nudge: return .orange
+        case .nudgeReply: return .green
+        case .friendRequest: return .blue
+        }
+    }
+
+    private var iconBackground: Color {
+        iconColor.opacity(0.2)
     }
     
     var message: String {
+        let day = note.targetWeekdayLabel
         switch note.type {
         case .friendRequest:
             return "\(note.senderName) sent you a friend request."
         case .nudge:
+            if let day {
+                return "\(note.senderName) asked if you're free \(day)"
+            }
             return "\(note.senderName) nudged you! 👋"
+        case .nudgeReply:
+            let response = note.nudgeResponse.flatMap { AppNotification.NudgeResponse(rawValue: $0) }
+            let verb: String
+            switch response {
+            case .imIn: verb = "is in"
+            case .maybe: verb = "said maybe"
+            case .busy: verb = "is busy"
+            case .none: verb = "replied"
+            }
+            if let day {
+                return "\(note.senderName) \(verb) for \(day)"
+            }
+            return "\(note.senderName) \(verb)"
         }
     }
 }
@@ -111,7 +182,8 @@ struct NotificationRow: View {
                 senderName: "Bob",
                 type: .nudge,
                 date: Date().addingTimeInterval(-3600),
-                isRead: true
+                isRead: true,
+                targetDateString: AppNotification.dateString(from: Date())
             )
         ]
     )

@@ -16,6 +16,7 @@ public class NotificationViewModel: ObservableObject {
     @Published public var notifications: [AppNotification] = []
     @Published public var highlightedSenderId: String?
     @Published public var isProcessing: Bool = false
+    @Published public var errorMessage: String?
     
     // Computed property for the red badge
     public var unreadCount: Int {
@@ -23,6 +24,10 @@ public class NotificationViewModel: ObservableObject {
     }
     
     private let repository: NotificationRepository
+    private weak var friendsViewModel: FriendsViewModel?
+    private weak var scheduleViewModel: MyScheduleViewModel?
+    private weak var rootViewModel: RootViewModel?
+
     /// `nonisolated(unsafe)` so `deinit` can cancel without hopping to the MainActor.
     /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
     /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
@@ -43,6 +48,16 @@ public class NotificationViewModel: ObservableObject {
         
         // Start listening if initialized in foreground
         startListening()
+    }
+
+    public func bind(
+        friendsViewModel: FriendsViewModel,
+        scheduleViewModel: MyScheduleViewModel,
+        rootViewModel: RootViewModel
+    ) {
+        self.friendsViewModel = friendsViewModel
+        self.scheduleViewModel = scheduleViewModel
+        self.rootViewModel = rootViewModel
     }
     
     /// Empty on purpose — see `task` / `cancellables` notes above. Callers (and tests)
@@ -118,19 +133,95 @@ public class NotificationViewModel: ObservableObject {
         }
     }
     
-    public func sendNudge(to userId: String) async {
+    public func sendNudge(to userId: String, targetDate: Date? = nil) async {
         guard !isProcessing else { return }
         isProcessing = true
         defer { isProcessing = false }
         
         do {
-            try await repository.sendNudge(to: userId)
+            try await repository.sendNudge(to: userId, targetDate: targetDate)
             
             // Contextual Permission Prompt: Request APNs permission after first successful interaction
             requestPermissions()
         } catch {
             print("Error sending nudge: \(error)")
         }
+    }
+
+    public func acceptFriendRequest(from note: AppNotification) async {
+        guard note.type == .friendRequest, let friendsVM = friendsViewModel else { return }
+        guard !isProcessing else { return }
+        isProcessing = true
+        defer { isProcessing = false }
+
+        // Keep the live listener warm, but do not require its cache — resolve via
+        // relatedRequestId, cache, or one-shot pending fetch.
+        friendsVM.listenToRequests()
+
+        guard let request = await friendsVM.resolveIncomingRequest(
+            fromSenderId: note.senderId,
+            relatedRequestId: note.relatedRequestId,
+            senderName: note.senderName,
+            recipientId: note.recipientId
+        ) else {
+            errorMessage = "Couldn't find this friend request. Try Friends tab."
+            return
+        }
+
+        let accepted = await friendsVM.acceptRequest(request)
+        if accepted {
+            markRead(note)
+            errorMessage = nil
+        } else if friendsVM.errorMessage != nil {
+            errorMessage = friendsVM.errorMessage
+        }
+    }
+
+    public func replyToNudge(_ note: AppNotification, response: AppNotification.NudgeResponse) async {
+        guard note.type == .nudge, !note.hasResponded else { return }
+        guard !isProcessing else { return }
+        isProcessing = true
+        defer { isProcessing = false }
+
+        do {
+            try await repository.sendNudgeReply(
+                to: note.senderId,
+                targetDateString: note.targetDateString,
+                response: response
+            )
+            try await repository.markNudgeResponded(note, response: response)
+
+            if let index = notifications.firstIndex(where: { $0.id == note.id }) {
+                notifications[index].isRead = true
+                notifications[index].nudgeResponse = response.rawValue
+            }
+
+            await applyAvailabilitySideEffect(for: note, response: response)
+
+            AnalyticsManager.logNudgeReplySent(response: response.rawValue)
+            OnboardingProgressStore.shared.recordWeekendActivity()
+            HapticManager.success()
+        } catch {
+            errorMessage = "Couldn't send reply. Try again."
+            HapticManager.warning()
+        }
+    }
+
+    private func applyAvailabilitySideEffect(
+        for note: AppNotification,
+        response: AppNotification.NudgeResponse
+    ) async {
+        guard response == .imIn || response == .busy else { return }
+        guard let dateString = note.targetDateString,
+              let date = AppNotification.date(from: dateString),
+              let scheduleVM = scheduleViewModel else { return }
+
+        var day = scheduleVM.weeklySchedule.first(where: {
+            Calendar.current.isDate($0.date, inSameDayAs: date)
+        }) ?? DayAvailability(date: date, status: response == .imIn ? .free : .busy)
+
+        day.status = response == .imIn ? .free : .busy
+        await scheduleVM.updateStatus(for: day).value
     }
     
     /// Triggers the system notification permission dialog.

@@ -15,37 +15,44 @@ final class NotificationCenterViewTests: XCTestCase {
     // MARK: - Message Generation (View Logic)
     
     func test_notificationRowMessage_friendRequest_formatsCorrectly() {
-        // Arrange
+        let vm = NotificationViewModel(
+            repository: MockNotificationRepository(),
+            observesSceneLifecycle: false
+        )
+        defer { vm.stopListening() }
         let notification = TestNotificationBuilder.friendRequest(senderName: "Alice")
-        let row = NotificationRow(note: notification)
+        let row = NotificationRow(note: notification, viewModel: vm)
         
-        // Act
         let message = row.message
         
-        // Assert
         NotificationTestAssertions.assertFriendRequestMessage(message, senderName: "Alice")
     }
     
     func test_notificationRowMessage_nudge_formatsCorrectly() {
-        // Arrange
+        let vm = NotificationViewModel(
+            repository: MockNotificationRepository(),
+            observesSceneLifecycle: false
+        )
+        defer { vm.stopListening() }
         let notification = TestNotificationBuilder.nudge(senderName: "Bob")
-        let row = NotificationRow(note: notification)
+        let row = NotificationRow(note: notification, viewModel: vm)
         
-        // Act
         let message = row.message
         
-        // Assert
         NotificationTestAssertions.assertNudgeMessage(message, senderName: "Bob")
     }
     
     func test_notificationRowMessage_alwaysIncludesSenderName() {
-        // Arrange: multiple senders
+        let vm = NotificationViewModel(
+            repository: MockNotificationRepository(),
+            observesSceneLifecycle: false
+        )
+        defer { vm.stopListening() }
         let senders = ["Alice", "Bob", "Carol"]
         
-        // Act & Assert
         for sender in senders {
             let notification = TestNotificationBuilder.friendRequest(senderName: sender)
-            let row = NotificationRow(note: notification)
+            let row = NotificationRow(note: notification, viewModel: vm)
             
             NotificationTestAssertions.assertContainsSenderName(row.message, senderName: sender)
         }
