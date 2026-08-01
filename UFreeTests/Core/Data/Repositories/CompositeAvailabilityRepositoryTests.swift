@@ -62,7 +62,7 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         
         // Wait for background task to fetch remote and update local
         let startDate = Date()
-        while remoteSpy.getScheduleCallCount == 0 && Date().timeIntervalSince(startDate) < 5.0 {
+        while localSpy.updateCallCount == 0 && Date().timeIntervalSince(startDate) < 5.0 {
             try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
         }
         
