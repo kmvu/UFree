@@ -39,10 +39,11 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         try await local.updateMySchedule(for: day)
 
         // 2. Update Remote (Background)
-        // Capture the remote repo (not `self`) so this composite can deallocate while
-        // sync runs — a strong `self` capture kept MainActor teardown racing XCTest.
+        // Use a MainActor-bound unstructured Task (not detached) so background sync
+        // participates in the cooperative pool — deterministic in XCTest via drainPendingTasks().
+        // Capture repos only (not `self`) so teardown does not race XCTest deallocation.
         let remote = self.remote
-        Task.detached {
+        Task { @MainActor in
             do {
                 try await remote.updateMySchedule(for: day)
                 print("☁️ Remote sync successful for \(day.date.formatted(date: .abbreviated, time: .omitted))")
@@ -62,7 +63,7 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         // 2. Refresh from Remote in the background
         let remote = self.remote
         let local = self.local
-        Task.detached {
+        Task { @MainActor in
             do {
                 let remoteSchedule = try await remote.getMySchedule()
 
