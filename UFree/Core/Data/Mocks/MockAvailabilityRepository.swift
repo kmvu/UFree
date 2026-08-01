@@ -22,6 +22,10 @@ public class MockAvailabilityRepository: AvailabilityRepository {
         self.friendsSchedules = [:]
     }
 
+    /// Empty `nonisolated` deinit works around a Swift 6.2 / iOS 26.2 XCTest bug where
+    /// MainActor-isolated class teardown aborts with "pointer being freed was not allocated".
+    nonisolated deinit {}
+
     public func getSchedules(for userIds: [String]) async throws -> [UserSchedule] {
         var result: [UserSchedule] = []
         for userId in userIds {

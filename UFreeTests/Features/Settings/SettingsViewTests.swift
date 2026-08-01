@@ -23,6 +23,7 @@ final class SettingsViewTests: XCTestCase {
     }
 
     override func tearDown() async throws {
+        await drainPendingTasks()
         viewModel = nil
         authRepository = nil
         friendRepository = nil

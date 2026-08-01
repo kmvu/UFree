@@ -25,6 +25,10 @@ public final class MyScheduleViewModel: ObservableObject {
         
         setupInitialWeek()
     }
+
+    /// Empty `nonisolated` deinit works around a Swift 6.2 / iOS 26.2 XCTest bug where
+    /// MainActor-isolated class teardown aborts with "pointer being freed was not allocated".
+    nonisolated deinit {}
     
     private func setupInitialWeek() {
         // Generate next 7 days starting from today with 'busy' status

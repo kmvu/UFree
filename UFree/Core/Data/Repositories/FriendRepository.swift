@@ -18,6 +18,11 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
     // hashes via findFriendsFromContactHashes(_:), eliminating the double-fetch.
     init() {}
 
+    /// Empty on purpose. A MainActor-isolated deallocation path under
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` trips an iOS 26.2 XCTest bug:
+    /// `pointer being freed was not allocated`.
+    nonisolated deinit {}
+
     func getMyFriends() async throws -> [UserProfile] {
         guard let userId = Auth.auth().currentUser?.uid else {
             // Return empty list for users not yet authenticated with Firebase

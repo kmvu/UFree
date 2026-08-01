@@ -14,6 +14,11 @@ public class FirebaseNotificationRepository: NotificationRepository {
     private let auth = Auth.auth()
     
     public init() {}
+
+    /// Empty on purpose. A MainActor-isolated deallocation path under
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` trips an iOS 26.2 XCTest bug:
+    /// `pointer being freed was not allocated`.
+    nonisolated deinit {}
     
     public nonisolated func listenToNotifications() -> AsyncStream<[AppNotification]> {
         AsyncStream { continuation in

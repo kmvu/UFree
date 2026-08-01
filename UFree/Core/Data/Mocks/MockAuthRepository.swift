@@ -10,7 +10,8 @@ import Foundation
 public class MockAuthRepository: AuthRepository {
     private var user: User?
     private let authStateStream: AsyncStream<User?>
-    private let authStateContinuation: AsyncStream<User?>.Continuation
+    /// Touched from `nonisolated deinit`, so it cannot be MainActor-isolated storage.
+    nonisolated(unsafe) private let authStateContinuation: AsyncStream<User?>.Continuation
     
     public init(user: User? = nil) {
         self.user = user
@@ -27,6 +28,12 @@ public class MockAuthRepository: AuthRepository {
         if let user = user {
             continuation.yield(user)
         }
+    }
+
+    /// Finish the stream and avoid a MainActor-isolated deinit path that aborts under
+    /// iOS 26.2 XCTest (`pointer being freed was not allocated`).
+    nonisolated deinit {
+        authStateContinuation.finish()
     }
     
     public var currentUser: User? {

@@ -18,7 +18,7 @@ final class FriendsScheduleViewTests: XCTestCase {
     }
 
     override func tearDown() async throws {
-        scene.tearDown()
+        await releaseTestScene(scene)
         scene = nil
         await drainPendingTasks()
         try await super.tearDown()

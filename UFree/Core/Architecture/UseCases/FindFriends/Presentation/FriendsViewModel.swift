@@ -43,7 +43,10 @@ public final class FriendsViewModel: ObservableObject {
     
     // Friend requests (handshake)
     @Published public var incomingRequests: [FriendRequest] = []
-    private var listenerTask: Task<Void, Never>?
+    /// `nonisolated(unsafe)` so `deinit` can cancel without hopping to the MainActor.
+    /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
+    /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
+    nonisolated(unsafe) private var listenerTask: Task<Void, Never>?
 
     public let friendRepository: FriendRepositoryProtocol
     private let contactsRepository: ContactsRepositoryProtocol
@@ -51,6 +54,10 @@ public final class FriendsViewModel: ObservableObject {
     public init(friendRepository: FriendRepositoryProtocol, contactsRepository: ContactsRepositoryProtocol? = nil) {
         self.friendRepository = friendRepository
         self.contactsRepository = contactsRepository ?? AppleContactsRepository()
+    }
+
+    nonisolated deinit {
+        listenerTask?.cancel()
     }
     
     // MARK: - Real-Time Listener Lifecycle
@@ -63,10 +70,10 @@ public final class FriendsViewModel: ObservableObject {
         listenerTask = Task { [weak self] in
             guard let friendRepository = self?.friendRepository else { return }
             for await requests in friendRepository.observeIncomingRequests() {
-                // SwiftUI animation for new requests popping in
-                withAnimation(.spring()) {
-                    self?.incomingRequests = requests
-                }
+                guard !Task.isCancelled else { return }
+                // Avoid `withAnimation` during hosted-view teardown (iOS 26.2 XCTest
+                // allocator abort when an animation transaction outlives the hierarchy).
+                self?.incomingRequests = requests
             }
         }
     }

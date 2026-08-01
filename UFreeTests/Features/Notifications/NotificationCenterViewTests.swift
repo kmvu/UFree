@@ -68,7 +68,11 @@ final class NotificationCenterViewHostingTests: XCTestCase {
     }
 
     override func tearDown() async throws {
+        // Stop the listener and let its Task finish *before* releasing the ViewModel.
+        // Nilling first races `deinit` with an in-flight `for await` body under iOS 26.2
+        // XCTest and surfaces as `pointer being freed was not allocated`.
         viewModel?.stopListening()
+        await drainPendingTasks()
         viewModel = nil
         repository = nil
         await drainPendingTasks()

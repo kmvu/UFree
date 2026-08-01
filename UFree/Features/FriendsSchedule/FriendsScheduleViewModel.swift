@@ -52,6 +52,10 @@ public final class FriendsScheduleViewModel: ObservableObject {
         self.selectedDate = Calendar.current.startOfDay(for: Date())
     }
 
+    /// Empty `nonisolated` deinit works around a Swift 6.2 / iOS 26.2 XCTest bug where
+    /// MainActor-isolated class teardown aborts with "pointer being freed was not allocated".
+    nonisolated deinit {}
+
     // MARK: - Date Selection
     
     public func toggleDate(_ date: Date) {

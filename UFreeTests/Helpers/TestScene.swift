@@ -52,11 +52,19 @@ final class TestScene {
             availabilityRepository: availabilityRepository,
             notificationRepository: notificationRepository
         )
-        notificationViewModel = NotificationViewModel(repository: notificationRepository)
+        notificationViewModel = NotificationViewModel(
+            repository: notificationRepository,
+            observesSceneLifecycle: false
+        )
 
         rootViewModel.friendsViewModel = friendsViewModel
         rootViewModel.friendsScheduleViewModel = friendsScheduleViewModel
     }
+
+    /// Empty on purpose. A MainActor-isolated deallocation path under iOS 26.2 XCTest
+    /// can abort with `pointer being freed was not allocated`. Call `tearDown()` and
+    /// drain before releasing the scene.
+    nonisolated deinit {}
 
     // MARK: - Fixtures
 

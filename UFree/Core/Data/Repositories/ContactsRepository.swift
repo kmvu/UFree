@@ -26,6 +26,11 @@ public final class AppleContactsRepository: ContactsRepositoryProtocol {
 
     public init() {}
 
+    /// Empty on purpose. A MainActor-isolated deallocation path under
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` trips an iOS 26.2 XCTest bug:
+    /// `pointer being freed was not allocated`.
+    nonisolated deinit {}
+
     public func requestAccess() async -> Bool {
         do {
             return try await store.requestAccess(for: .contacts)

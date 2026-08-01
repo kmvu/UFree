@@ -26,6 +26,7 @@ final class FriendsViewModelContactSyncTests: XCTestCase {
 
     override func tearDown() async throws {
         sut?.stopListening()
+        await drainPendingTasks()
         sut = nil
         friendRepository = nil
         contactsRepository = nil
@@ -253,11 +254,16 @@ final class FriendsViewModelContactSyncTests: XCTestCase {
 
     func test_sendFriendRequest_failure_surfacesError() async {
         let alice = UserProfile(id: "u1", displayName: "Alice")
-        friendRepository.sendRequestError = NSError(domain: "firestore", code: 1)
+        let error = NSError(
+            domain: "firestore",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Permission denied"]
+        )
+        friendRepository.sendRequestError = error
 
         await sut.sendFriendRequest(to: alice, source: "manual")
 
-        XCTAssertEqual(sut.errorMessage, "Failed to send friend request.")
+        XCTAssertEqual(sut.errorMessage, "Failed to send friend request: Permission denied")
     }
 
     func test_acceptRequest_failure_surfacesError() async {
@@ -265,11 +271,16 @@ final class FriendsViewModelContactSyncTests: XCTestCase {
             id: "r1", fromId: "u1", fromName: "Alice", toId: "me", status: .pending, timestamp: Date()
         )
         sut.incomingRequests = [request]
-        friendRepository.acceptRequestError = NSError(domain: "firestore", code: 1)
+        let error = NSError(
+            domain: "firestore",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "Permission denied"]
+        )
+        friendRepository.acceptRequestError = error
 
         await sut.acceptRequest(request)
 
-        XCTAssertEqual(sut.errorMessage, "Failed to accept request.")
+        XCTAssertEqual(sut.errorMessage, "Failed to accept request: Permission denied")
         XCTAssertEqual(sut.incomingRequests.count, 1)
     }
 

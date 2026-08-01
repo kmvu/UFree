@@ -27,37 +27,48 @@ public class NotificationViewModel: ObservableObject {
     /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
     /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
     nonisolated(unsafe) var task: Task<Void, Never>?
-    private var cancellables = Set<AnyCancellable>()
+    nonisolated(unsafe) private var cancellables = Set<AnyCancellable>()
     
-    public init(repository: NotificationRepository) {
+    public init(
+        repository: NotificationRepository,
+        /// Scene activate/background observers. Off by default under XCTest — view-hosting
+        /// tests install a second window on the host scene, and making it key would otherwise
+        /// re-fire `didActivateNotification` and restart every live listener mid-teardown.
+        observesSceneLifecycle: Bool = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+    ) {
         self.repository = repository
         
         // Setup lifecycle observers for Hybrid Listener strategy
-        setupLifecycleObservers()
+        setupLifecycleObservers(observesSceneLifecycle: observesSceneLifecycle)
         
         // Start listening if initialized in foreground
         startListening()
     }
     
+    /// Empty on purpose — see `task` / `cancellables` notes above. Callers (and tests)
+    /// must `stopListening()` before release; `deinit` only cancels as a backstop.
     nonisolated deinit {
         task?.cancel()
+        cancellables.removeAll()
     }
     
-    private func setupLifecycleObservers() {
+    private func setupLifecycleObservers(observesSceneLifecycle: Bool) {
         #if canImport(UIKit)
-        // Detach listener when backgrounding to save database reads
-        NotificationCenter.default.publisher(for: UIScene.didEnterBackgroundNotification)
-            .sink { [weak self] _ in
-                self?.stopListening()
-            }
-            .store(in: &cancellables)
-            
-        // Re-attach when returning to active
-        NotificationCenter.default.publisher(for: UIScene.didActivateNotification)
-            .sink { [weak self] _ in
-                self?.startListening()
-            }
-            .store(in: &cancellables)
+        if observesSceneLifecycle {
+            // Detach listener when backgrounding to save database reads
+            NotificationCenter.default.publisher(for: UIScene.didEnterBackgroundNotification)
+                .sink { [weak self] _ in
+                    self?.stopListening()
+                }
+                .store(in: &cancellables)
+
+            // Re-attach when returning to active
+            NotificationCenter.default.publisher(for: UIScene.didActivateNotification)
+                .sink { [weak self] _ in
+                    self?.startListening()
+                }
+                .store(in: &cancellables)
+        }
         #endif
             
         // Listen for FCM token updates
@@ -79,9 +90,12 @@ public class NotificationViewModel: ObservableObject {
         task = Task { [weak self] in
             guard let repository = self?.repository else { return }
             for await notes in repository.listenToNotifications() {
-                withAnimation {
-                    self?.notifications = notes
-                }
+                guard !Task.isCancelled else { return }
+                // Avoid `withAnimation` here: hosting tests tear the `List` down while this
+                // yield can still be in flight, and an in-flight animation transaction on a
+                // disappearing hierarchy is one of the paths that trips the iOS 26.2
+                // XCTest allocator abort.
+                self?.notifications = notes
             }
         }
     }

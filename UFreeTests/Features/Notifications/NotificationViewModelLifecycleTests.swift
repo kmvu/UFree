@@ -23,6 +23,7 @@ final class NotificationViewModelLifecycleTests: XCTestCase {
 
     override func tearDown() async throws {
         sut?.stopListening()
+        await drainPendingTasks()
         sut = nil
         repository = nil
         await drainPendingTasks()
@@ -36,7 +37,9 @@ final class NotificationViewModelLifecycleTests: XCTestCase {
     /// next, and either one can win.
     private func start(with notifications: [AppNotification] = []) async {
         repository.mockNotifications = notifications
-        sut = NotificationViewModel(repository: repository)
+        // Opt into scene observers — production default, but off under XCTest so view-hosting
+        // suites don't restart listeners when ViewHost touches the host scene.
+        sut = NotificationViewModel(repository: repository, observesSceneLifecycle: true)
         await waitUntil("the initial listener delivers \(notifications.count) notification(s)") {
             self.sut.notifications.count == notifications.count
         }

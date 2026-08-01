@@ -22,6 +22,10 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
         self.sentRequests = []
         self.allUsers = allUsers
     }
+
+    /// Empty `nonisolated` deinit works around a Swift 6.2 / iOS 26.2 XCTest bug where
+    /// MainActor-isolated class teardown aborts with "pointer being freed was not allocated".
+    nonisolated deinit {}
     
     public func getMyFriends() async throws -> [UserProfile] {
         return myFriends

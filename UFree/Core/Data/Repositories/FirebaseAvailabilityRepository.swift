@@ -13,6 +13,11 @@ class FirebaseAvailabilityRepository: AvailabilityRepository {
     private let db = Firestore.firestore()
     private let auth = Auth.auth()
 
+    /// Empty on purpose. A MainActor-isolated deallocation path under
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` trips an iOS 26.2 XCTest bug:
+    /// `pointer being freed was not allocated`.
+    nonisolated deinit {}
+
     // MARK: - Write (Update Status)
 
     func updateMySchedule(for day: DayAvailability) async throws {

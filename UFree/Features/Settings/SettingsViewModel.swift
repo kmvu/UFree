@@ -23,6 +23,10 @@ final class SettingsViewModel: ObservableObject {
         self.authRepository = authRepository
         self.friendRepository = friendRepository
     }
+
+    /// Empty `nonisolated` deinit works around a Swift 6.2 / iOS 26.2 XCTest bug where
+    /// MainActor-isolated class teardown aborts with "pointer being freed was not allocated".
+    nonisolated deinit {}
     
     func loadInitialData() async {
         if let user = await authRepository.currentUser {

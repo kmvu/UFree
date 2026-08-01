@@ -20,7 +20,7 @@ final class MyScheduleViewTests: XCTestCase {
     }
 
     override func tearDown() async throws {
-        scene.tearDown()
+        await releaseTestScene(scene)
         scene = nil
         await drainPendingTasks()
         try await super.tearDown()
@@ -109,12 +109,18 @@ final class MyScheduleViewTests: XCTestCase {
     // MARK: - Chrome
 
     func test_render_withoutDisplayName_fallsBackToPlainGreeting() async {
+        await releaseTestScene(scene)
+        scene = nil
+        await drainPendingTasks()
         scene = TestScene(user: User(id: "me", isAnonymous: true, displayName: nil))
 
         await ViewHost.renderAwaitingUpdates(makeView())
     }
 
     func test_render_withEmptyDisplayName_fallsBackToPlainGreeting() async {
+        await releaseTestScene(scene)
+        scene = nil
+        await drainPendingTasks()
         scene = TestScene(user: User(id: "me", isAnonymous: true, displayName: ""))
 
         await ViewHost.renderAwaitingUpdates(makeView())
@@ -122,10 +128,11 @@ final class MyScheduleViewTests: XCTestCase {
 
     func test_render_withUnreadNotifications_showsBellBadge() async {
         // Seeded before the ViewModel is built rather than assigned onto it afterwards.
-        // NotificationViewModel starts a listener in `init` and starts another whenever the
-        // scene activates — which hosting a view does — so a feed that is only correct after
-        // init races with the listener that init already started.
-        scene.tearDown()
+        // NotificationViewModel starts a listener in `init`, so a feed that is only correct
+        // after init races with the listener that init already started.
+        await releaseTestScene(scene)
+        scene = nil
+        await drainPendingTasks()
         scene = TestScene(notifications: [
             TestScene.makeNudge(id: "n1"),
             TestScene.makeNudge(id: "n2")

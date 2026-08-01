@@ -22,6 +22,7 @@ final class LoginViewTests: XCTestCase {
     }
 
     override func tearDown() async throws {
+        await drainPendingTasks()
         viewModel = nil
         authRepository = nil
         friendRepository = nil

@@ -31,6 +31,10 @@ final class AuthRepositoryStub: AuthRepository, @unchecked Sendable {
         self.continuation = continuation
     }
 
+    deinit {
+        continuation.finish()
+    }
+
     var currentUser: User? {
         get async { stubbedUser }
     }

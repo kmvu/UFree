@@ -24,6 +24,11 @@ public final class SwiftDataAvailabilityRepository: AvailabilityRepository {
         self.userId = userId
     }
 
+    /// Empty on purpose. A MainActor-isolated deallocation path under
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` trips an iOS 26.2 XCTest bug:
+    /// `pointer being freed was not allocated`.
+    nonisolated deinit {}
+
     /// Fetch the current user's schedule from persistent storage
     /// - Returns: UserSchedule with all persisted DayAvailability objects
     /// - Note: If database is empty, generates initial 7-day schedule with .unknown status

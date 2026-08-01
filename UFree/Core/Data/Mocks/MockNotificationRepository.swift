@@ -17,6 +17,10 @@ public class MockNotificationRepository: NotificationRepository {
     public init(notifications: [AppNotification] = []) {
         self.mockNotifications = notifications
     }
+
+    /// Empty `nonisolated` deinit works around a Swift 6.2 / iOS 26.2 XCTest bug where
+    /// MainActor-isolated class teardown aborts with "pointer being freed was not allocated".
+    nonisolated deinit {}
     
     public func listenToNotifications() -> AsyncStream<[AppNotification]> {
         AsyncStream { continuation in

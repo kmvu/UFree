@@ -29,6 +29,7 @@ final class StatusBannerViewTests: XCTestCase {
     }
 
     override func tearDown() async throws {
+        await drainPendingTasks()
         bannerViewModel = nil
         scheduleViewModel = nil
         await drainPendingTasks()

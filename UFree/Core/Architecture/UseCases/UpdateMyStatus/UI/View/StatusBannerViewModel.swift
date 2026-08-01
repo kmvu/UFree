@@ -18,11 +18,19 @@ final class StatusBannerViewModel: ObservableObject {
     @Published var selectedDate: Date = Date()
     
     private var scheduleViewModel: MyScheduleViewModel?
-    private var cancellables = Set<AnyCancellable>()
+    /// `nonisolated(unsafe)` so `deinit` can clear Combine subscriptions without hopping
+    /// onto the MainActor (see deinit note below).
+    nonisolated(unsafe) private var cancellables = Set<AnyCancellable>()
     private let scheduler: TaskScheduler
 
     init(scheduler: TaskScheduler? = nil) {
         self.scheduler = scheduler ?? MainTaskScheduler()
+    }
+
+    /// Works around a Swift 6.2 / iOS 26.2 XCTest bug where MainActor-isolated class
+    /// teardown aborts with "pointer being freed was not allocated".
+    nonisolated deinit {
+        cancellables.removeAll()
     }
 
     func configure(with scheduleViewModel: MyScheduleViewModel) {

@@ -26,6 +26,11 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         self.remote = remote
     }
 
+    /// Empty on purpose. A MainActor-isolated deallocation path under
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` trips an iOS 26.2 XCTest bug:
+    /// `pointer being freed was not allocated`.
+    nonisolated deinit {}
+
     // MARK: - Update Logic (Write-Through)
 
     func updateMySchedule(for day: DayAvailability) async throws {
@@ -34,11 +39,12 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         try await local.updateMySchedule(for: day)
 
         // 2. Update Remote (Background)
-        // We use a detached Task to fire-and-forget the cloud update.
-        // If it fails, the local version remains the source of truth for now.
+        // Capture the remote repo (not `self`) so this composite can deallocate while
+        // sync runs — a strong `self` capture kept MainActor teardown racing XCTest.
+        let remote = self.remote
         Task.detached {
             do {
-                try await self.remote.updateMySchedule(for: day)
+                try await remote.updateMySchedule(for: day)
                 print("☁️ Remote sync successful for \(day.date.formatted(date: .abbreviated, time: .omitted))")
             } catch {
                 print("⚠️ Remote sync failed: \(error.localizedDescription)")
@@ -54,15 +60,17 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         let localSchedule = try await local.getMySchedule()
 
         // 2. Refresh from Remote in the background
+        let remote = self.remote
+        let local = self.local
         Task.detached {
             do {
-                let remoteSchedule = try await self.remote.getMySchedule()
+                let remoteSchedule = try await remote.getMySchedule()
 
                 // Sync remote days back into local storage, but only if they have a known status
                 // (Avoid overwriting local data with "unknown" gap-filler values)
                 for day in remoteSchedule.weeklyStatus {
                     if day.status != .unknown {
-                        try await self.local.updateMySchedule(for: day)
+                        try await local.updateMySchedule(for: day)
                     }
                 }
                 print("🔄 Local storage refreshed from Cloud")

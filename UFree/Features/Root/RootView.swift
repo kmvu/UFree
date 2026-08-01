@@ -13,6 +13,7 @@ struct RootView: View {
     let authRepository: AuthRepository
 
     @StateObject private var rootViewModel: RootViewModel
+    @StateObject private var scheduleViewModel: MyScheduleViewModel
     @StateObject private var friendsScheduleViewModel: FriendsScheduleViewModel
     @StateObject private var friendsViewModel: FriendsViewModel
     @StateObject private var notificationViewModel: NotificationViewModel
@@ -32,6 +33,10 @@ struct RootView: View {
         let notificationRepo = FirebaseNotificationRepository()
 
         // 2. Instantiate ViewModels (Non-StateObject versions for injection)
+        let scheduleVM = MyScheduleViewModel(
+            updateUseCase: UpdateMyStatusUseCase(repository: availabilityRepo),
+            repository: availabilityRepo
+        )
         let friendsScheduleVM = FriendsScheduleViewModel(
             friendRepository: friendRepo,
             availabilityRepository: availabilityRepo,
@@ -47,6 +52,7 @@ struct RootView: View {
 
         // 4. Wrap in StateObjects for SwiftUI lifecycle
         _rootViewModel = StateObject(wrappedValue: rootVM)
+        _scheduleViewModel = StateObject(wrappedValue: scheduleVM)
         _friendsScheduleViewModel = StateObject(wrappedValue: friendsScheduleVM)
         _friendsViewModel = StateObject(wrappedValue: friendsVM)
         _notificationViewModel = StateObject(wrappedValue: notificationVM)
@@ -71,11 +77,11 @@ struct RootView: View {
                 if let user = rootViewModel.currentUser,
                    let displayName = user.displayName, !displayName.isEmpty {
                     MainAppView(
-                        container: container,
                         authRepository: authRepository,
                         rootViewModel: rootViewModel,
                         user: user,
                         friendRepository: friendRepository,
+                        scheduleViewModel: scheduleViewModel,
                         friendsScheduleViewModel: friendsScheduleViewModel,
                         friendsViewModel: friendsViewModel,
                         notificationViewModel: notificationViewModel
@@ -105,11 +111,11 @@ struct RootView: View {
 
 struct MainAppView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
-    let container: ModelContainer
     let authRepository: AuthRepository
     @ObservedObject var rootViewModel: RootViewModel
     let user: User
     let friendRepository: FriendRepositoryProtocol
+    let scheduleViewModel: MyScheduleViewModel
     let friendsScheduleViewModel: FriendsScheduleViewModel
     let friendsViewModel: FriendsViewModel
     @ObservedObject var notificationViewModel: NotificationViewModel
@@ -145,7 +151,7 @@ struct MainAppView: View {
         TabView(selection: $rootViewModel.activeTab) {
             // MARK: - Schedule Tab
             NavigationStack {
-                ScheduleContainer(container: container, rootViewModel: rootViewModel)
+                MyScheduleView(viewModel: scheduleViewModel, rootViewModel: rootViewModel)
                     .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
@@ -170,7 +176,7 @@ struct MainAppView: View {
             // MARK: - Add Friends Tab
             NavigationStack {
                 FriendsView(
-                    friendRepository: friendRepository,
+                    viewModel: friendsViewModel,
                     rootViewModel: rootViewModel
                 )
                 .navigationTitle("Friends")
@@ -205,7 +211,7 @@ struct MainAppView: View {
             switch rootViewModel.activeTab {
             case .schedule:
                 NavigationStack {
-                    ScheduleContainer(container: container, rootViewModel: rootViewModel)
+                    MyScheduleView(viewModel: scheduleViewModel, rootViewModel: rootViewModel)
                 }
             case .feed:
                 NavigationStack {
@@ -218,7 +224,7 @@ struct MainAppView: View {
             case .friends:
                 NavigationStack {
                     FriendsView(
-                        friendRepository: friendRepository,
+                        viewModel: friendsViewModel,
                         rootViewModel: rootViewModel
                     )
                     .navigationTitle("Friends")
@@ -336,31 +342,6 @@ struct ProfileResolutionView: View {
             errorMessage = "Failed to load profile"
             isLoading = false
         }
-    }
-}
-
-// MARK: - Schedule Container (Dependency Injection)
-
-struct ScheduleContainer: View {
-    let container: ModelContainer
-    @ObservedObject var rootViewModel: RootViewModel
-
-    var body: some View {
-        // Create the persistent repository and remote repository
-        let localRepository = SwiftDataAvailabilityRepository(container: container)
-        let remoteRepository = FirebaseAvailabilityRepository()
-
-        // Orchestrate with offline-first composite pattern
-        let repository = CompositeAvailabilityRepository(local: localRepository, remote: remoteRepository)
-
-        // Inject Repository into the Use Case
-        let useCase = UpdateMyStatusUseCase(repository: repository)
-
-        // Inject Use Case and Repository into the ViewModel
-        let viewModel = MyScheduleViewModel(updateUseCase: useCase, repository: repository)
-
-        // Pass ViewModel to the View
-        return MyScheduleView(viewModel: viewModel, rootViewModel: rootViewModel)
     }
 }
 

@@ -18,7 +18,7 @@ final class FriendsViewTests: XCTestCase {
     }
 
     override func tearDown() async throws {
-        scene.tearDown()
+        await releaseTestScene(scene)
         scene = nil
         await drainPendingTasks()
         try await super.tearDown()
@@ -150,7 +150,7 @@ final class DiscoveryCardViewTests: XCTestCase {
     }
 
     override func tearDown() async throws {
-        scene.tearDown()
+        await releaseTestScene(scene)
         scene = nil
         await drainPendingTasks()
         try await super.tearDown()

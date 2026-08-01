@@ -3,7 +3,6 @@
 //  UFreeTests
 //
 
-import SwiftData
 import SwiftUI
 import XCTest
 @testable import UFree
@@ -12,29 +11,26 @@ import XCTest
 final class MainAppViewTests: XCTestCase {
 
     private var scene: TestScene!
-    private var container: ModelContainer!
 
     override func setUp() {
         super.setUp()
         scene = TestScene()
-        container = TestContainerFactory.makeInMemoryContainer()
     }
 
     override func tearDown() async throws {
-        scene.tearDown()
+        await releaseTestScene(scene)
         scene = nil
-        container = nil
         await drainPendingTasks()
         try await super.tearDown()
     }
 
     private func makeView(user: User = User(id: "me", isAnonymous: false, displayName: "Alice")) -> some View {
         MainAppView(
-            container: container,
             authRepository: scene.authRepository,
             rootViewModel: scene.rootViewModel,
             user: user,
             friendRepository: scene.friendRepository,
+            scheduleViewModel: scene.scheduleViewModel,
             friendsScheduleViewModel: scene.friendsScheduleViewModel,
             friendsViewModel: scene.friendsViewModel,
             notificationViewModel: scene.notificationViewModel
@@ -113,7 +109,7 @@ final class ProfileResolutionViewTests: XCTestCase {
     }
 
     override func tearDown() async throws {
-        scene.tearDown()
+        await releaseTestScene(scene)
         scene = nil
         await drainPendingTasks()
         try await super.tearDown()
