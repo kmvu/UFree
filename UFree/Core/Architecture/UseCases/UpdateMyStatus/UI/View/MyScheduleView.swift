@@ -32,14 +32,18 @@ public struct MyScheduleView: View {
                         StatusBannerView(scheduleViewModel: viewModel)
                             .padding()
 
-                        // My Week Carousel - fades in second (delay 0.2s)
+                        // My Week Carousel - availability editing only
                         myWeekCarouselSection
                             .padding(.vertical, 24)
 
-                        // Who's free on... Filter - fades in last (delay 0.3s)
-                        whosFreOnFilterSection
-                            .padding(.vertical, 24)
-                            
+                        // Light invite CTA when still alone (Who's Free lives on home tab)
+                        if rootViewModel.friendsScheduleViewModel?.friendSchedules.isEmpty != false {
+                            OnboardingCardView {
+                                rootViewModel.activeTab = .friends
+                            }
+                            .padding(.horizontal)
+                            .padding(.bottom, 24)
+                        }
                     }
                     .opacity(isLoaded ? 1 : 0)
                     .offset(y: isLoaded ? 0 : 10)
@@ -161,148 +165,6 @@ public struct MyScheduleView: View {
         .onLongPressGesture {
             HapticManager.medium()
             selectedDayForSheet = day
-        }
-    }
-
-    private var whosFreOnFilterSection: some View {
-        Group {
-            if let friendSchedules = rootViewModel.friendsScheduleViewModel?.friendSchedules, !friendSchedules.isEmpty {
-                VStack(alignment: .leading, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(discoveryTitle)
-                            .font(.headline)
-                        
-                        if freeFriendsForSelectedDate.count > 0 {
-                            let count = freeFriendsForSelectedDate.count
-                            Text("\(count) \(count == 1 ? "friend is" : "friends are") free to hang out")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        } else {
-                            Text("No friends marked as free for this day yet")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding(.horizontal)
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(viewModel.weeklySchedule) { day in
-                                DayFilterButtonView(
-                                    date: day.date,
-                                    isSelected: rootViewModel.friendsScheduleViewModel?.selectedDate.map { Calendar.current.isDate($0, inSameDayAs: day.date) } ?? false,
-                                    freeCount: rootViewModel.friendsScheduleViewModel?.freeFriendCount(for: day.date, friendsSchedules: rootViewModel.friendsScheduleViewModel?.friendSchedules ?? []) ?? 0,
-                                    action: {
-                                        withAnimation(.spring()) {
-                                            rootViewModel.friendsScheduleViewModel?.toggleDate(day.date)
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.vertical, 4)
-                    }
-                    
-                    // Discovery Results
-                    if !freeFriendsForSelectedDate.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: -10) {
-                                        ForEach(freeFriendsForSelectedDate.prefix(5)) { friend in
-                                            ZStack {
-                                                Circle()
-                                                    .fill(Color.accentColor.opacity(0.1))
-                                                    .frame(width: 44, height: 44)
-                                                
-                                                Text(friend.displayName.prefix(1).uppercased())
-                                                    .font(.system(size: 18, weight: .bold))
-                                                    .foregroundColor(.accentColor)
-                                            }
-                                            .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 2))
-                                        }
-                                        
-                                        if freeFriendsForSelectedDate.count > 5 {
-                                            ZStack {
-                                                Circle()
-                                                    .fill(Color(.systemGray5))
-                                                    .frame(width: 44, height: 44)
-                                                
-                                                Text("+\(freeFriendsForSelectedDate.count - 5)")
-                                                    .font(.caption)
-                                                    .fontWeight(.bold)
-                                            }
-                                            .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 2))
-                                        }
-                                    }
-                                    .padding(.leading, 10)
-                                }
-                                
-                                Spacer()
-                                
-                                Button(action: {
-                                    if let date = rootViewModel.friendsScheduleViewModel?.selectedDate {
-                                        Task {
-                                            await rootViewModel.friendsScheduleViewModel?.nudgeAllFree(for: date)
-                                        }
-                                    }
-                                }) {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "hand.wave.fill")
-                                        Text("Nudge All")
-                                    }
-                                    .font(.system(size: 14, weight: .bold))
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(Color.accentColor)
-                                    .foregroundColor(.white)
-                                    .clipShape(Capsule())
-                                }
-                            }
-                            .padding(.horizontal)
-                        }
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                }
-            } else {
-                OnboardingCardView {
-                    rootViewModel.activeTab = .friends
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 24)
-            }
-        }
-    }
-
-    private var discoveryTitle: String {
-        guard let selectedDate = rootViewModel.friendsScheduleViewModel?.selectedDate else {
-            return "Who's free on..."
-        }
-        
-        if Calendar.current.isDateInToday(selectedDate) {
-            return "Free Right Now"
-        } else if Calendar.current.isDateInTomorrow(selectedDate) {
-            return "Free Tomorrow"
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "EEEE"
-            return "Free on \(formatter.string(from: selectedDate))"
-        }
-    }
-
-    private var freeFriendsForSelectedDate: [FriendsScheduleViewModel.FriendScheduleDisplay] {
-        guard let selectedDate = rootViewModel.friendsScheduleViewModel?.selectedDate,
-              let friendSchedules = rootViewModel.friendsScheduleViewModel?.friendSchedules else {
-            return []
-        }
-        
-        return friendSchedules.filter { friendSchedule in
-            // Check if friend has any "free" block on that day
-            if let dayStatus = friendSchedule.userSchedule.weeklyStatus.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) {
-                return dayStatus.timeBlocks.contains { $0.status == .free }
-            }
-            return false
         }
     }
 

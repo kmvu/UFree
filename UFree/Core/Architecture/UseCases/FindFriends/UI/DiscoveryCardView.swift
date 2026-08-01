@@ -13,14 +13,14 @@ struct DiscoveryCardView: View {
     
     var body: some View {
         ZStack {
-            if viewModel.showMyQRCard {
-                myQRView
+            if viewModel.showQRScanner {
+                scannerView
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .move(edge: .leading).combined(with: .opacity)
                     ))
             } else {
-                scannerView
+                myQRView
                     .transition(.asymmetric(
                         insertion: .move(edge: .leading).combined(with: .opacity),
                         removal: .move(edge: .trailing).combined(with: .opacity)
@@ -30,7 +30,13 @@ struct DiscoveryCardView: View {
         .frame(height: 330)
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
-        .animation(.easeInOut(duration: 0.4), value: viewModel.showMyQRCard)
+        .animation(.easeInOut(duration: 0.4), value: viewModel.showQRScanner)
+        .onAppear {
+            // Share-first: show My QR by default; scanner is opt-in
+            viewModel.showMyQRCard = true
+            viewModel.showQRScanner = false
+            viewModel.generateMyQRCode(from: userId)
+        }
     }
     
     private var scannerView: some View {
@@ -42,7 +48,7 @@ struct DiscoveryCardView: View {
                 Spacer()
                 Button {
                     HapticManager.light()
-                    viewModel.generateMyQRCode(from: userId)
+                    viewModel.showQRScanner = false
                     viewModel.showMyQRCard = true
                 } label: {
                     Text("Show My Code")
@@ -87,9 +93,10 @@ struct DiscoveryCardView: View {
                 
                 Button {
                     HapticManager.light()
+                    viewModel.showQRScanner = true
                     viewModel.showMyQRCard = false
                 } label: {
-                    Text("Scan Code")
+                    Text("Scan a Friend's Code")
                         .font(.subheadline).bold()
                         .padding(.vertical, 10)
                         .padding(.horizontal, 24)

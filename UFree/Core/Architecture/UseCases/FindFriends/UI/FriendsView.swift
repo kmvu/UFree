@@ -83,7 +83,12 @@ public struct FriendsView: View {
 
     @ViewBuilder
     private func shareInviteLinkButton(userId: String) -> some View {
-        ShareLink(item: URL(string: "https://ufree.app/profile/\(userId)")!) {
+        let inviteURL = URL(string: "https://ufree.app/profile/\(userId)")!
+        ShareLink(
+            item: inviteURL,
+            subject: Text("Join me on UFree"),
+            message: Text("Add me on UFree so we can find a free night: \(inviteURL.absoluteString)")
+        ) {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
@@ -95,9 +100,9 @@ public struct FriendsView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Invite Anyone via Link")
+                    Text("Share Invite Link")
                         .font(.headline)
-                    Text("Connect to see each other's schedules")
+                    Text("Add me on UFree so we can find a free night")
                         .font(.caption)
                         .opacity(0.9)
                 }
@@ -124,6 +129,7 @@ public struct FriendsView: View {
         .buttonStyle(InteractiveButtonStyle())
         .simultaneousGesture(TapGesture().onEnded {
             HapticManager.medium()
+            OnboardingProgressStore.shared.markInvitedFriend()
         })
     }
 

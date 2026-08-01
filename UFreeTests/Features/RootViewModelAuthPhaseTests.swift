@@ -54,8 +54,8 @@ final class RootViewModelAuthPhaseTests: XCTestCase {
         XCTAssertEqual(viewModel.authPhase, .unauthenticated)
     }
     
-    func test_activeTab_initialState_isSchedule() {
-        XCTAssertEqual(viewModel.activeTab, .schedule)
+    func test_activeTab_initialState_isFeed() {
+        XCTAssertEqual(viewModel.activeTab, .feed)
     }
     
     func test_activeTab_canBeChanged() {

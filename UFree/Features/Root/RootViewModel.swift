@@ -31,7 +31,10 @@ public final class RootViewModel: ObservableObject {
         case feed
         case friends
     }
-    @Published public var activeTab: Tab = .schedule
+    @Published public var activeTab: Tab = .feed
+    @Published public var showWeekendCTA = false
+    @Published public var showPairChecklist = false
+    @Published public var celebrationToast: String?
     
     // Feature ViewModels for navigation and cross-feature state
     @Published public var friendsScheduleViewModel: FriendsScheduleViewModel?

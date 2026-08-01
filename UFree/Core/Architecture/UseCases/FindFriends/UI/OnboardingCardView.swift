@@ -36,12 +36,12 @@ public struct OnboardingCardView: View {
             .padding(.top, 8)
             
             VStack(spacing: 10) {
-                Text("Schedule looks quiet!")
+                Text("Invite 1 friend to start")
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                 
-                Text("Add friends to see when they're free and start planning your next hangout.")
+                Text("UFree only works with people you trust. Share your link or QR, then mark when you're free.")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -53,7 +53,7 @@ public struct OnboardingCardView: View {
                 action()
             }) {
                 HStack(spacing: 10) {
-                    Text("Invite Friends")
+                    Text("Invite a Friend")
                         .fontWeight(.bold)
                     
                     Image(systemName: "arrow.right")
