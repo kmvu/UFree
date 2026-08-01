@@ -41,7 +41,7 @@ service cloud.firestore {
     }
 
     function allBlocksValid(blocks) {
-      return blocks == null || blocks.all(block =>
+      return blocks == null || blocks.all(block,
         block.startTime is timestamp
         && block.endTime is timestamp
         && block.startTime < block.endTime
