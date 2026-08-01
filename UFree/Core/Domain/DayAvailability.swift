@@ -62,12 +62,8 @@ public struct DayAvailability: Identifiable, Codable {
         if let timeBlocks = timeBlocks {
             self.timeBlocks = timeBlocks
         } else {
-            // Default to a single busy block covering the whole day
-            let startOfDay = Calendar.current.startOfDay(for: date)
-            let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? date
-            self.timeBlocks = [
-                TimeBlock(startTime: startOfDay, endTime: endOfDay, status: .busy)
-            ]
+            // Unset days are Unknown (no blocks) — not Busy — so heatmaps stay honest
+            self.timeBlocks = []
         }
     }
 

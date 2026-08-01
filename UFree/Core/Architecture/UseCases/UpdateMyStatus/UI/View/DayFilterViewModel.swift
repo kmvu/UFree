@@ -45,18 +45,14 @@ final class DayFilterViewModel: ObservableObject {
     
     // MARK: - Availability Heatmap (Phase 1 - Sprint 6)
     
-    /// Counts how many friends are "Free" on a specific date
-    /// - Parameters:
-    ///   - date: The date to check
-    ///   - friendsSchedules: Array of friend UserSchedule objects
-    /// - Returns: Count of friends with .free status on the given date
+    /// Counts friends with any free window on a specific date (full-day or partial).
     func freeFriendCount(for date: Date, friendsSchedules: [UserSchedule]) -> Int {
         let normalizedDate = Calendar.current.startOfDay(for: date)
         
         return friendsSchedules.filter { schedule in
             schedule.weeklyStatus.contains { dayAvail in
-                Calendar.current.isDate(dayAvail.date, inSameDayAs: normalizedDate) &&
-                dayAvail.status == .free
+                Calendar.current.isDate(dayAvail.date, inSameDayAs: normalizedDate)
+                    && dayAvail.isAvailable
             }
         }.count
     }

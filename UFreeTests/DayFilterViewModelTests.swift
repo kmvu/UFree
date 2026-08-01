@@ -148,11 +148,11 @@ final class DayFilterViewModelTests: XCTestCase {
         let todayFreeCount = viewModel.freeFriendCount(for: today, friendsSchedules: schedules)
         let tomorrowFreeCount = viewModel.freeFriendCount(for: tomorrow, friendsSchedules: schedules)
         
-        XCTAssertEqual(todayFreeCount, 1, "Today should have 1 free friend")
+        XCTAssertEqual(todayFreeCount, 2, "Today should count full-day free + afternoonOnly")
         XCTAssertEqual(tomorrowFreeCount, 1, "Tomorrow should have 1 free friend")
     }
 
-    func test_freeFriendCount_excludesPartialAvailability() async {
+    func test_freeFriendCount_includesPartialAvailability() async {
         let today = Calendar.current.startOfDay(for: Date())
         
         let schedules = [
@@ -163,7 +163,7 @@ final class DayFilterViewModelTests: XCTestCase {
         
         let count = viewModel.freeFriendCount(for: today, friendsSchedules: schedules)
         
-        XCTAssertEqual(count, 1, "Partial availability should not be counted")
+        XCTAssertEqual(count, 3, "Partial free windows should count as available")
     }
 
     func test_freeFriendCount_excludesBusyAndUnknown() async {

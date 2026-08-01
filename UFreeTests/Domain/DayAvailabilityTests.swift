@@ -13,13 +13,14 @@ final class DayAvailabilityTests: XCTestCase {
     
     // MARK: - Initialization Tests
     
-    func test_init_withDefaultValues_createsDayWithBusyStatus() {
+    func test_init_withDefaultValues_createsDayWithUnknownStatus() {
         let date = Date()
         let day = DayAvailability(date: date)
         
         XCTAssertEqual(day.date.timeIntervalSince1970, date.timeIntervalSince1970, accuracy: 0.001)
-        // Note: New logic defaults to a single busy block covering the whole day.
-        XCTAssertEqual(day.status, AvailabilityStatus.busy)
+        // Unset days are Unknown (empty blocks), not Busy
+        XCTAssertEqual(day.status, AvailabilityStatus.unknown)
+        XCTAssertTrue(day.timeBlocks.isEmpty)
         XCTAssertNil(day.note)
         XCTAssertNotNil(day.id)
     }

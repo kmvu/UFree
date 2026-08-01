@@ -37,7 +37,7 @@ final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
         let schedule = try await sut.getMySchedule()
         assertScheduleDefaults(schedule)
         XCTAssertEqual(schedule.weeklyStatus.count, 7)
-        schedule.weeklyStatus.forEach { XCTAssertEqual($0.status, .busy) }
+        schedule.weeklyStatus.forEach { XCTAssertEqual($0.status, .unknown) }
     }
     
     @MainActor

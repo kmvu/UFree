@@ -31,7 +31,7 @@ public final class MyScheduleViewModel: ObservableObject {
     nonisolated deinit {}
     
     private func setupInitialWeek() {
-        // Generate next 7 days starting from today with 'busy' status
+        // Generate next 7 days starting from today with 'unknown' status
         let calendar = Calendar.current
         let today = Date()
         
@@ -39,7 +39,7 @@ public final class MyScheduleViewModel: ObservableObject {
             guard let date = calendar.date(byAdding: .day, value: index, to: today) else {
                 return nil
             }
-            return DayAvailability(date: date, status: .busy)
+            return DayAvailability(date: date, status: .unknown)
         }
     }
     
@@ -86,6 +86,9 @@ public final class MyScheduleViewModel: ObservableObject {
         return Task {
             do {
                 try await updateUseCase.execute(day: day)
+                if day.isAvailable {
+                    OnboardingProgressStore.shared.markFreeDay()
+                }
             } catch {
                 weeklySchedule[index] = oldDay
                 errorMessage = "Failed to update status: \(error.localizedDescription)"
@@ -108,12 +111,45 @@ public final class MyScheduleViewModel: ObservableObject {
         return Task {
             do {
                 try await updateUseCase.execute(day: updatedDay)
+                if updatedDay.isAvailable {
+                    OnboardingProgressStore.shared.markFreeDay()
+                }
             } catch {
                 // Revert on error
                 weeklySchedule[index].status = day.status
                 errorMessage = "Failed to update status: \(error.localizedDescription)"
             }
         }
+    }
+
+    /// Marks the upcoming Saturday and Sunday as free (post-handshake CTA).
+    public func markWeekendFree() async {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let weekday = calendar.component(.weekday, from: today) // 1=Sun ... 7=Sat
+
+        // Next Saturday and Sunday from today (including today if already weekend)
+        var satOffset: Int
+        var sunOffset: Int
+        if weekday == 7 { // Saturday
+            satOffset = 0
+            sunOffset = 1
+        } else if weekday == 1 { // Sunday
+            satOffset = -1
+            sunOffset = 0
+        } else {
+            satOffset = 7 - weekday
+            sunOffset = satOffset + 1
+        }
+
+        for offset in [satOffset, sunOffset] where offset >= 0 {
+            guard let date = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
+            var day = weeklySchedule.first(where: { calendar.isDate($0.date, inSameDayAs: date) })
+                ?? DayAvailability(date: date, status: .free)
+            day.status = .free
+            await updateStatus(for: day).value
+        }
+        OnboardingProgressStore.shared.markFreeDay()
     }
     
     private func cycleStatus(_ current: AvailabilityStatus) -> AvailabilityStatus {
@@ -124,7 +160,7 @@ public final class MyScheduleViewModel: ObservableObject {
         case .afternoonOnly: return .eveningOnly
         case .eveningOnly: return .busy
         case .mixed: return .busy
-        case .unknown: return .busy  // Unknown defaults to busy when cycling
+        case .unknown: return .free  // First tap from unset marks free
         }
     }
 }

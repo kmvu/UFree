@@ -25,7 +25,7 @@ final class MyScheduleViewModelTests: XCTestCase {
     
     func test_setupInitialWeek_generatesSevenDays() {
         XCTAssertEqual(sut.weeklySchedule.count, 7)
-        XCTAssertEqual(sut.weeklySchedule.first?.status, .busy)
+        XCTAssertEqual(sut.weeklySchedule.first?.status, .unknown)
     }
     
     func test_updateStatus_callsUseCase() async {
@@ -42,9 +42,9 @@ final class MyScheduleViewModelTests: XCTestCase {
     
     func test_toggleStatus_cyclesCorrectly() async {
         let day = sut.weeklySchedule[0]
-        XCTAssertEqual(day.status, .busy)
+        XCTAssertEqual(day.status, .unknown)
         
-        // Busy -> Free
+        // Unknown -> Free
         await sut.toggleStatus(for: day).value
         XCTAssertEqual(sut.weeklySchedule[0].status, .free)
         
@@ -63,6 +63,10 @@ final class MyScheduleViewModelTests: XCTestCase {
         // EveningOnly -> Busy
         await sut.toggleStatus(for: sut.weeklySchedule[0]).value
         XCTAssertEqual(sut.weeklySchedule[0].status, .busy)
+
+        // Busy -> Free
+        await sut.toggleStatus(for: sut.weeklySchedule[0]).value
+        XCTAssertEqual(sut.weeklySchedule[0].status, .free)
     }
     
     func test_toggleStatus_fromMixed_cyclesToBusy() async {
