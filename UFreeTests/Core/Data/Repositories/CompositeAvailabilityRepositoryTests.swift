@@ -8,6 +8,7 @@
 import XCTest
 @testable import UFree
 
+@MainActor
 final class CompositeAvailabilityRepositoryTests: XCTestCase {
     private var localSpy: AvailabilityRepositorySpy!
     private var remoteSpy: AvailabilityRepositorySpy!
@@ -29,16 +30,10 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         XCTAssertEqual(localSpy.updateCallCount, 1)
         XCTAssertEqual(localSpy.lastUpdatedDay?.status, .free)
         
-        // Remote write is fire-and-forget; yield to allow task to start
-        await Task.yield()
-        
-        // Ensure remote spy eventually gets the update
-        let startDate = Date()
-        while remoteSpy.updateCallCount == 0 && Date().timeIntervalSince(startDate) < 1.0 {
-            await Task.yield()
+        await waitUntil("remote background sync") {
+            remoteSpy.updateCallCount == 1
         }
         
-        XCTAssertEqual(remoteSpy.updateCallCount, 1)
         XCTAssertEqual(remoteSpy.lastUpdatedDay?.status, .free)
     }
     
@@ -50,24 +45,20 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         let localSchedule = UserSchedule(id: "1", name: "L", weeklyStatus: [])
         localSpy.scheduleToReturn = localSchedule
         
-        // Act
         let returnedSchedule = try await sut.getMySchedule()
         
         // Local schedule should be returned immediately
         XCTAssertEqual(returnedSchedule.name, localSchedule.name)
         XCTAssertEqual(localSpy.getScheduleCallCount, 1)
-        // Note: We don't assert remoteSpy.getScheduleCallCount == 0 here because
-        // the background Task may have already started — this is non-deterministic
-        // in Swift's concurrency model.
         
-        // Wait for background task to fetch remote and update local
-        let startDate = Date()
-        while localSpy.updateCallCount == 0 && Date().timeIntervalSince(startDate) < 5.0 {
-            try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        await waitUntil("remote fetch during background refresh") {
+            remoteSpy.getScheduleCallCount == 1
         }
         
-        XCTAssertEqual(remoteSpy.getScheduleCallCount, 1)
-        XCTAssertEqual(localSpy.updateCallCount, 1) // Background sync updated local with remote day
+        await waitUntil("local write-back from remote refresh") {
+            localSpy.updateCallCount == 1
+        }
+        
         XCTAssertEqual(localSpy.lastUpdatedDay?.status, .busy)
     }
     
@@ -78,13 +69,11 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         
         _ = try await sut.getMySchedule()
         
-        let startDate = Date()
-        while remoteSpy.getScheduleCallCount == 0 && Date().timeIntervalSince(startDate) < 1.0 {
-            await Task.yield()
+        await waitUntil("remote fetch during background refresh") {
+            remoteSpy.getScheduleCallCount == 1
         }
         
-        // Wait a bit to ensure no local update happens
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await drainPendingTasks()
         
         // Should not update local with unknown day
         XCTAssertEqual(localSpy.updateCallCount, 0)
@@ -97,6 +86,8 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         var getScheduleCallCount = 0
         var lastUpdatedDay: DayAvailability?
         var scheduleToReturn: UserSchedule = UserSchedule(id: "test", name: "Test", weeklyStatus: [])
+
+        nonisolated deinit {}
         
         func updateMySchedule(for day: DayAvailability) async throws {
             updateCallCount += 1
