@@ -34,6 +34,21 @@ enum AnalyticsEvent {
 
     /// User opened a universal link or deep link
     case linkOpened(url: String)
+
+    /// Seconds from first launch to first mutual friend
+    case timeToFirstFriend(seconds: Int)
+
+    /// Seconds from first launch to first free-day mark
+    case timeToFirstFreeMark(seconds: Int)
+
+    /// User sent a nudge reply
+    case nudgeReplySent(response: String)
+
+    /// User received a nudge reply (opened inbox)
+    case nudgeReplyReceived(response: String)
+
+    /// App reopen after prior weekend activity (D7 / Friday habit)
+    case d7Reopen(daysSinceActivity: Int)
 }
 
 // MARK: - Analytics Manager
@@ -88,6 +103,36 @@ struct AnalyticsManager {
                 "url": url,
                 "timestamp": Date().timeIntervalSince1970
             ])
+
+        case .timeToFirstFriend(let seconds):
+            Analytics.logEvent("time_to_first_friend", parameters: [
+                "seconds": seconds,
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .timeToFirstFreeMark(let seconds):
+            Analytics.logEvent("time_to_first_free_mark", parameters: [
+                "seconds": seconds,
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .nudgeReplySent(let response):
+            Analytics.logEvent("nudge_reply_sent", parameters: [
+                "response": response,
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .nudgeReplyReceived(let response):
+            Analytics.logEvent("nudge_reply_received", parameters: [
+                "response": response,
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .d7Reopen(let days):
+            Analytics.logEvent("d7_reopen", parameters: [
+                "days_since_activity": days,
+                "timestamp": Date().timeIntervalSince1970
+            ])
         }
     }
     
@@ -128,5 +173,25 @@ extension AnalyticsManager {
     /// Log "Link Opened" - Tracks universal link engagement
     static func logLinkOpened(url: String) {
         AnalyticsManager.log(.linkOpened(url: url))
+    }
+
+    static func logTimeToFirstFriend(seconds: Int) {
+        AnalyticsManager.log(.timeToFirstFriend(seconds: seconds))
+    }
+
+    static func logTimeToFirstFreeMark(seconds: Int) {
+        AnalyticsManager.log(.timeToFirstFreeMark(seconds: seconds))
+    }
+
+    static func logNudgeReplySent(response: String) {
+        AnalyticsManager.log(.nudgeReplySent(response: response))
+    }
+
+    static func logNudgeReplyReceived(response: String) {
+        AnalyticsManager.log(.nudgeReplyReceived(response: response))
+    }
+
+    static func logD7Reopen(daysSinceActivity: Int) {
+        AnalyticsManager.log(.d7Reopen(daysSinceActivity: daysSinceActivity))
     }
 }
