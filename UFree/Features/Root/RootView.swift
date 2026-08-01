@@ -49,6 +49,11 @@ struct RootView: View {
         // 3. Inject dependencies into Root
         rootVM.friendsScheduleViewModel = friendsScheduleVM
         rootVM.friendsViewModel = friendsVM
+        notificationVM.bind(
+            friendsViewModel: friendsVM,
+            scheduleViewModel: scheduleVM,
+            rootViewModel: rootVM
+        )
 
         // 4. Wrap in StateObjects for SwiftUI lifecycle
         _rootViewModel = StateObject(wrappedValue: rootVM)
@@ -119,6 +124,7 @@ struct MainAppView: View {
     let friendsScheduleViewModel: FriendsScheduleViewModel
     let friendsViewModel: FriendsViewModel
     @ObservedObject var notificationViewModel: NotificationViewModel
+    @ObservedObject private var onboardingStore = OnboardingProgressStore.shared
 
     var body: some View {
         Group {
@@ -126,6 +132,27 @@ struct MainAppView: View {
                 adaptiveSidebarLayout
             } else {
                 tabBarLayout
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if rootViewModel.showPairChecklist
+                && onboardingStore.shouldShowPairChecklist(friendCount: friendsViewModel.friends.count) {
+                PairOnboardingChecklistView(
+                    hasInvited: onboardingStore.hasInvitedFriend,
+                    hasMarkedFree: onboardingStore.hasMarkedFreeDay,
+                    hasHandshake: onboardingStore.hasCompletedFirstHandshake,
+                    onInvite: {
+                        rootViewModel.activeTab = .friends
+                    },
+                    onMarkFree: {
+                        rootViewModel.activeTab = .schedule
+                        rootViewModel.showWeekendCTA = true
+                    },
+                    onDismiss: {
+                        rootViewModel.showPairChecklist = false
+                    }
+                )
+                .padding(.bottom, 8)
             }
         }
         .sheet(item: $rootViewModel.deepLinkProfileId) { userId in
@@ -138,9 +165,91 @@ struct MainAppView: View {
             .padding()
             .presentationDetents([.medium])
         }
+        .sheet(isPresented: $rootViewModel.showWeekendCTA) {
+            WeekendFreePromptView(
+                onMarkWeekendFree: {
+                    Task {
+                        await scheduleViewModel.markWeekendFree()
+                        OnboardingProgressStore.shared.consumeWeekendCTA()
+                        rootViewModel.showWeekendCTA = false
+                        rootViewModel.activeTab = .feed
+                    }
+                },
+                onDismiss: {
+                    OnboardingProgressStore.shared.consumeWeekendCTA()
+                    rootViewModel.showWeekendCTA = false
+                }
+            )
+            .presentationDetents([.medium])
+        }
+        .overlay(alignment: .top) {
+            if let toast = rootViewModel.celebrationToast {
+                Text(toast)
+                    .font(.subheadline.bold())
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                            withAnimation {
+                                rootViewModel.celebrationToast = nil
+                            }
+                        }
+                    }
+            }
+        }
         .environment(\.notificationViewModel, notificationViewModel)
         .onOpenURL { url in
             handleUniversalLink(url)
+        }
+        .onAppear {
+            wireHandshakeCallback()
+            friendsViewModel.listenToRequests()
+            onboardingStore.trackReopenIfNeeded()
+            Task {
+                if friendsViewModel.friends.isEmpty {
+                    await friendsViewModel.loadFriends()
+                }
+                syncPairChecklistVisibility()
+            }
+            if onboardingStore.pendingWeekendCTA {
+                rootViewModel.showWeekendCTA = true
+            }
+        }
+        .onChange(of: friendsViewModel.friends.count) { _, _ in
+            syncPairChecklistVisibility()
+        }
+    }
+
+    private func syncPairChecklistVisibility() {
+        let friendCount = friendsViewModel.friends.count
+        if friendCount > 0 {
+            onboardingStore.acknowledgeExistingFriends()
+            rootViewModel.showPairChecklist = false
+            return
+        }
+        rootViewModel.showPairChecklist = onboardingStore.shouldShowPairChecklist(friendCount: friendCount)
+    }
+
+    private func wireHandshakeCallback() {
+        friendsViewModel.onFirstHandshakeCompleted = {
+            let store = OnboardingProgressStore.shared
+            if !store.hasCelebratedFirstAccept {
+                store.markCelebratedFirstAccept()
+                HapticManager.success()
+                rootViewModel.celebrationToast = "You're connected — find a free night!"
+            }
+            rootViewModel.showPairChecklist = false
+            rootViewModel.activeTab = .feed
+            if store.pendingWeekendCTA {
+                rootViewModel.showWeekendCTA = true
+            }
+            Task {
+                await friendsScheduleViewModel.loadFriendsSchedules()
+            }
         }
     }
 
@@ -169,7 +278,7 @@ struct MainAppView: View {
                 .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
-                Label("Feed", systemImage: "person.2.fill")
+                Label("Who's Free?", systemImage: "person.2.fill")
             }
             .tag(RootViewModel.Tab.feed)
 
@@ -200,7 +309,7 @@ struct MainAppView: View {
                     Label("Schedule", systemImage: "calendar")
                 }
                 NavigationLink(value: RootViewModel.Tab.feed) {
-                    Label("Feed", systemImage: "person.2.fill")
+                    Label("Who's Free?", systemImage: "person.2.fill")
                 }
                 NavigationLink(value: RootViewModel.Tab.friends) {
                     Label("Add Friends", systemImage: "person.badge.plus")
