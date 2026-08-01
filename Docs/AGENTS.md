@@ -1,200 +1,38 @@
-# UFree Coding Standards & Setup
+# UFree working conventions
 
-**Code style, testing, setup, and project protocols**
+This is the concise, repository-specific checklist for contributors and coding assistants. Read the [engineering guide](ENGINEERING_GUIDE.md) for architecture and setup, the [testing guide](TESTING_GUIDE.md) for validation, and the [operations guide](OPERATIONS_GUIDE.md) for releases.
 
----
+## Change discipline
 
-## Path Format
+- Keep changes focused on the requested behavior.
+- Do not commit credentials, Firebase configuration, private keys, local `.env` files, or build artifacts.
+- Preserve the existing SwiftUI, async/await, `@MainActor`, dependency-injection, and repository-protocol patterns.
+- Add or update tests for behavior changes; documentation-only changes do not require test runs.
 
-Always use spaces naturally in paths (they work fine):
-```
-/Users/KhangVu/Documents/Development/git_project/Khang_business_projects/UFree
-```
+## Code and test conventions
 
----
+- Use `CamelCase` for types and `camelCase` for properties and functions.
+- Keep UI-facing view models on `@MainActor`.
+- Use `@Published` state for view models observed by SwiftUI.
+- Guard async user actions against rapid repeated taps.
+- Name tests `test_[method]_[expectedBehavior]()`.
+- View-model test setup should call `trackForMemoryLeaks()`; shared helpers belong in `UFreeTests/Helpers/`.
 
-## Testing Protocol
-
-**Skip tests for docs/comments. Run tests ONLY if code logic changes.**
-
-```bash
-# Quick validation (recommended)
-xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' 2>&1 | \
-  grep -E '(PASS|FAIL|passed|failed|warning)'
-
-# Single test suite
-xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -only-testing UFreeTests/MockAuthRepositoryTests
-```
-
----
-
-## Architecture & Layers
-
-| Layer | Key Components |
-|-------|---|
-| **Domain** | User, AvailabilityStatus, DayAvailability, Protocols |
-| **Data** | Firebase/SwiftData repos, CompositeRepository, Crypto |
-| **Presentation** | ViewModels (all @MainActor with @Published) |
-| **UI** | SwiftUI views only (no UIKit) |
-
-**Data Flow:** UI → ViewModel → CompositeRepository → SwiftData (instant) + Firestore (background)
-
----
-
-## Code Style
-
-**Swift Standards:**
-- SwiftUI only (no UIKit)
-- `@Published` for ViewModel state
-- Async/await (no Combine)
-- `@MainActor` on UI components
-- Protocol-based repos for testability
-- Dependency injection via init
-
-**Naming:** CamelCase types, camelCase properties/functions
-
-**Testing:** Tests follow AAA structure naturally without explicit comment labels. Test names: `test_[method]_[expectedBehavior]()`. All ViewModel tests call `trackForMemoryLeaks()` in `setUp()`. Shared helpers live under `UFreeTests/Helpers/`.
-
----
-
-## Environment Setup
-
-### Apple Silicon (M3) Ruby (15 min)
+## Validation
 
 ```bash
-# 1. Clean up
-rvm uninstall 3.3.0 && rvm cleanup all
-
-# 2. Install to correct path
-brew install openssl@3 libyaml
-
-# 3. M3 Magic Install (compile from source with explicit paths)
-rvm install 3.3.0 \
-  --disable-binary \
-  --with-openssl-dir=$(brew --prefix openssl@3) \
-  --with-libyaml-dir=$(brew --prefix libyaml)
-
-# 4. Verify
-ruby -ropenssl -e 'puts OpenSSL::OPENSSL_VERSION'
+bundle exec fastlane tests
 ```
 
-### New Machine Setup (20 min total)
+Run the smallest relevant test first when practical. The Fastlane lane uses the `UFreeUnitTests` scheme on an iPhone 17 Pro simulator. Follow the manual smoke checks in [TESTING_GUIDE.md](TESTING_GUIDE.md) when changing social, authentication, deep-link, or release behavior.
 
-```bash
-# 1. Ruby (use above if M3)
-# 2. Gems
-bundle install
+## Security
 
-# 3. Certificates
-export MATCH_PASSWORD="your-password"
-bundle exec fastlane match appstore
-```
+Never commit:
 
-### Fastlane Golden Configuration
+- `.env` files or passwords
+- `fastlane/Keys/*.p8` or other API keys
+- private SSH material
+- `GoogleService-Info.plist`
 
-**Key Settings:**
-```ruby
-build_app(
-  export_method: "app-store",        # NOT "app-store-connect"
-  export_options: {
-    signingStyle: "manual",           # Forces Xcode to use our profiles
-    provisioningProfiles: profile_mapping
-  }
-)
-```
-
----
-
-## Deep Linking & Navigation
-
-### Universal Links Setup
-
-**In Xcode:**
-1. Add "Associated Domains" capability to the app target.
-2. Ensure `UFree/UFree.entitlements` contains:
-   ```xml
-   <key>com.apple.developer.associated-domains</key>
-   <array>
-       <string>applinks:ufree.app</string>
-   </array>
-   ```
-3. Verify `CODE_SIGN_ENTITLEMENTS` in Build Settings points to `UFree/UFree.entitlements`.
-
-**Server side (host at https://ufree.app/.well-known/apple-app-site-association):**
-```json
-{
-  "applinks": {
-    "apps": [],
-    "details": [{
-      "appID": "SNUXAG727V.com.khangvu.UFree",
-      "paths": ["/notification/*", "/profile/*"]
-    }]
-  }
-}
-```
-
-**In Code:**
-```swift
-.onOpenURL { url in
-    let deepLink = DeepLink.parse(url)
-    handleNavigation(deepLink)
-}
-```
-
----
-
-## Security & Repository Safety
-
-### Public Repository Checklist
-
-- ✅ **No Hardcoded Secrets**: All API keys use `ENV["..."]` environment variables.
-- ✅ **GoogleService-Info.plist Protected**: `.gitignore` includes it; config is passed via base64 GitHub Secrets.
-- ✅ **Clean Git History**: No private keys or passwords in commit logs.
-- ✅ **GitHub Secrets**: Think of it as two doors — `SSH_PRIVATE_KEY` unlocks the house, `MATCH_PASSWORD` unlocks the safe.
-
-**GitHub Secrets Checklist:**
-
-| Secret | Source | Purpose |
-|--------|--------|---------|
-| `SSH_PRIVATE_KEY` | Generated key | Clone Bitbucket certs repo |
-| `MATCH_PASSWORD` | Your `.env` file | Decrypt certificates |
-| `ASC_KEY_CONTENT` | `base64 fastlane/AuthKey_*.p8` | Apple API authentication |
-| `ASC_KEY_ID` | Your `.env` file | Identify API key |
-| `ASC_ISSUER_ID` | Your `.env` file | Identify team |
-| `FASTLANE_USER` | Your `.env` file | Apple ID (fallback) |
-| `GOOGLE_SERVICE_INFO_PLIST` | `base64 GoogleService-Info.plist` | Firebase configuration |
-
-**Never Commit:**
-- `.env` (credentials)
-- `fastlane/Keys/*.p8` (API key)
-- Passwords in code
-
----
-
-## Build Automation
-
-**Commands:**
-```bash
-fastlane tests          # Run all unit tests
-fastlane alpha          # Build for Firebase
-fastlane beta           # Build for TestFlight
-fastlane sync_certs     # Refresh certificates
-```
-
----
-
-## Performance Targets
-
-| Operation | Expected |
-|-----------|----------|
-| Tests | ~60 sec |
-| Build (fresh) | ~8 min |
-| Real-time sync | < 3 sec |
-| Phone search | < 2 sec |
-
----
-
-**Last Updated:** July 30, 2026 | **Sprint:** 8.0 | **Status:** ✅ Optimized for Production
+Treat secret names and CI configuration in `fastlane/Fastfile` and `.github/workflows/` as implementation details that must be reviewed whenever automation changes.

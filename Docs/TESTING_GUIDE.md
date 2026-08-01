@@ -1,12 +1,14 @@
-# UFree Testing Guide
+# UFree testing guide
 
-**Status:** ✅ Production Ready | **Tests:** 519 | **Coverage:** 85.78% of the `UFree.app` target | **Quality:** Zero-Sleep Deterministic
+Use this guide for automated validation, two-person checks, and release sign-off. For the purpose and success criteria of the TestFlight pilot, read the [product overview](PRODUCT_OVERVIEW.md); for release steps, use the [operations guide](OPERATIONS_GUIDE.md).
+
+**Current inventory:** 528 test methods are present under `UFreeTests/`. Coverage must be measured from a fresh result bundle; do not treat an old percentage as a release gate.
 
 ---
 
 ## 1. 🤖 Automated Unit Tests (CI/CD)
 
-**519 tests, zero Firebase dependency**. Tests use `MockAuthRepository` + in-memory SwiftData. All ViewModel tests include `trackForMemoryLeaks()` in `setUp()`.
+Tests use mocks and in-memory SwiftData for deterministic coverage without requiring a live Firebase project. View-model tests should use the shared memory-leak tracking helper.
 
 ### Deterministic Async Testing
 We use a **Zero-Sleep Protocol**:
@@ -14,19 +16,15 @@ We use a **Zero-Sleep Protocol**:
 - **Awaitable Tasks**: ViewModels return `@discardableResult Task` objects so tests can `await` their completion precisely.
 - **Deterministic Stream Polling**: Use `Task.yield()` loops in tests to await `AsyncStream` emissions without fixed delays.
 
-**Run all unit tests from terminal (Fast - No Simulator):**
+**Run all unit tests from terminal:**
 ```bash
-xcodebuild test \
-  -scheme UFreeUnitTests \
-  -project UFree.xcodeproj \
-  -destination 'platform=macOS' \
-  CODE_SIGNING_ALLOWED=NO \
-  2>&1 | grep -E '(PASS|FAIL|passed|failed|error)'
+xcodebuild test -scheme UFreeUnitTests -project UFree.xcodeproj \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 
-**Via fastlane (Recommended - No Simulator):**
+**Via Fastlane (recommended):**
 ```bash
-fastlane tests
+bundle exec fastlane tests
 ```
 
 **Via Xcode:**
@@ -78,7 +76,7 @@ For testing social flows that require two real accounts without real SMS codes:
 
 ---
 
-## 3. 🔥 30-Minute Smoke Test (Core Flows)
+## Manual release smoke test
 
 Run these manually before any release to validate end-to-end stability.
 
@@ -122,23 +120,17 @@ Run these manually before any release to validate end-to-end stability.
 
 ---
 
-## 5. 👥 Dyad Smoke (MVP Launch Gate)
+## 5. 👥 Two-Person Pilot Smoke
 
-Run with two TestFlight (or DEBUG dual-simulator) users who already know each other (no coaching mid-flow).
+Run this with two TestFlight users or two debug simulators before recruiting pilot participants:
 
-**Cost note:** Stay on Spark. Do not deploy Cloud Functions. Expect **in-app inbox** updates while the app is open; background push and weekend digest cron are unavailable until Blaze is accepted.
+1. A shares a link or QR code; B sends or accepts the connection request.
+2. Both mark a weekend day free.
+3. Confirm **Who’s Free?** shows the other person, including partial availability.
+4. A sends a day-specific nudge; B replies **I’m in**.
+5. Confirm A sees the reply in the in-app notification center.
 
-1. A invites B via Share Link or QR (Friends tab shows My Code first).
-2. B accepts (Friends or Notification Center).
-3. Both mark weekend free (prompt or Schedule taps).
-4. Who’s Free shows each other as available (partial free counts).
-5. A sends a day-scoped nudge; B replies I’m in.
-6. A sees the reply reward in Notification Center (keep both apps foregrounded for Spark).
-7. Both reopen the following Friday without founder ping (or with a light founder SMS if needed).
-
-**Ready bar:** ≥50% of seeded dyads complete steps 1–6 in one weekend and reopen next Friday.
-
-See also: `Docs/TESTFLIGHT_DYAD_LAUNCH.md`
+For the actual recruiting, success threshold, and foreground-only limitation, use [Operations guide → TestFlight dyad pilot](OPERATIONS_GUIDE.md#testflight-dyad-pilot).
 
 ---
 
@@ -151,8 +143,9 @@ See also: `Docs/TESTFLIGHT_DYAD_LAUNCH.md`
 - [ ] Rapid-tap protection prevents duplicate nudges.
 - [ ] Cold start preserves user authentication.
 - [ ] App remains stable in Airplane mode.
-- [ ] Dyad smoke passes for 2–3 seeded pairs.
+- [ ] Two-person pilot smoke passes when a social flow changed.
+- [ ] The TestFlight release checklist in the operations guide is complete.
 
 ---
 
-**Last Updated:** August 1, 2026 | **Sprint:** 9.0 | **Status:** ✅ MVP workflow ready for TestFlight dyads
+**Last reviewed:** August 1, 2026

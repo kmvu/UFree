@@ -1,67 +1,37 @@
-# UFree - Weekly Availability Scheduler
+# UFree documentation
 
-**Status:** ✅ Production Ready | **Version:** 8.0.0 | **Tests:** 510 | **Coverage:** 85.78% of the `UFree.app` target
+This is the documentation hub for UFree. Start with the guide that matches your role instead of reading the repository history or engineering material first.
 
----
+## Choose your path
 
-## Documentation Quick Links
+| Audience or goal | Start here | Then use |
+|---|---|---|
+| Founder, product partner, or TestFlight participant | [Product overview](PRODUCT_OVERVIEW.md) | [Operations guide](OPERATIONS_GUIDE.md) for the pilot and release process |
+| Developer joining the app | [Engineering guide](ENGINEERING_GUIDE.md) | [Testing guide](TESTING_GUIDE.md) and [working conventions](AGENTS.md) |
+| QA or release owner | [Testing guide](TESTING_GUIDE.md) | [Operations guide](OPERATIONS_GUIDE.md) |
+| Developer fixing an environment, build, signing, or Firebase issue | [Troubleshooting runbook](TROUBLESHOOTING_RUNBOOK.md) | The relevant section of the engineering or operations guide |
+| Someone researching prior decisions | [Sprint history](SPRINT_HISTORY.md) | Current guides take priority over history |
 
-| I want to... | Go to... |
-|---|---|
-| **Setup & Standards** | `AGENTS.md` |
-| **Architecture** | This file → Architecture |
-| **Troubleshooting** | `TROUBLESHOOTING_RUNBOOK.md` |
-| **Testing & QA** | `TESTING_GUIDE.md` |
-| **Improvements & Hardening** | `IMPROVEMENTS.md` |
-| **History** | `SPRINT_HISTORY.md` |
+## Current documentation map
 
----
+| File | Purpose | Primary audience |
+|---|---|---|
+| [`../README.md`](../README.md) | Short project introduction and entry point | Everyone |
+| [`PRODUCT_OVERVIEW.md`](PRODUCT_OVERVIEW.md) | Problem, product loop, privacy promises, pilot success measures, and roadmap boundaries | Non-technical stakeholders |
+| [`ENGINEERING_GUIDE.md`](ENGINEERING_GUIDE.md) | Architecture, local setup, security, deep links, and code conventions | Engineers |
+| [`TESTING_GUIDE.md`](TESTING_GUIDE.md) | Automated tests, manual smoke testing, and release sign-off | Engineering and QA |
+| [`OPERATIONS_GUIDE.md`](OPERATIONS_GUIDE.md) | Firebase deployment boundaries, Fastlane, TestFlight, monitoring, and pilot operations | Release owners |
+| [`TROUBLESHOOTING_RUNBOOK.md`](TROUBLESHOOTING_RUNBOOK.md) | Symptom-based recovery steps | Engineers and release owners |
+| [`AGENTS.md`](AGENTS.md) | Concise repository working conventions for coding assistants and contributors | Contributors |
+| [`SPRINT_HISTORY.md`](SPRINT_HISTORY.md) | Compact record of completed milestones | Project team |
 
-## The Frictionless Handshake (Social Strategy)
+## Source-of-truth rules
 
-UFree uses a privacy-first connection model called **The Frictionless Handshake**:
-1.  **Just-In-Time Discovery**: Securely hash your contacts locally to find friends already on the app without exposing raw numbers.
-2.  **The In-Person Handshake**: Instantly connect by scanning a friend's personal QR code.
-3.  **Mutual Consent**: No schedule data is shared until both parties explicitly accept the connection request.
-4.  **Trust Indicators**: Reassuring badges ("✓ In your contacts") help verify identities before connecting.
+- Current guides describe how the project should be run today.
+- `Fastfile`, GitHub workflows, Firebase configuration, and the Xcode project are the implementation source of truth for automation and deployment behavior.
+- Sprint history records why work happened; it is not a replacement for current operating instructions.
+- Generated Fastlane documentation in `fastlane/README.md` is intentionally left alone and should not be used as the project guide.
 
----
+## Recent consolidation
 
-## Core Architecture
-
-**Data Flow (Offline-First):**
-```
-UI → ViewModel → CompositeRepository → SwiftData [instant]
-                       ↓ (background)
-                    Firestore [sync, non-blocking]
-```
-
-**Key Layers:**
-- **Domain**: Pure business logic and models (`DayAvailability`, `UserSchedule`).
-- **Data**: Repositories handling SwiftData (local) and Firestore (cloud) sync.
-- **Presentation**: ViewModels marked with `@MainActor` with rapid-tap protection.
-- **UI**: 100% SwiftUI with consistent haptic feedback.
-
----
-
-## Quick Reference: Features
-
-- ✅ **Offline-First**: Instant local updates with background cloud sync.
-- ✅ **Privacy Discovery**: Hash-based contact matching + QR scanning.
-- ✅ **Handshake Protocol**: Mutual consent enforced via real-time listeners.
-- ✅ **Nudge Feature**: Real-time engagement with haptic feedback.
-- ✅ **Availability Heatmap**: Visual summary of "Who's free on..." any given day.
-- ✅ **Universal Links**: Deep linking to notifications and profiles.
-
----
-
-## Technical Highlights
-
-- **@MainActor Isolation**: Guaranteed thread safety for UI updates.
-- **AsyncStream**: Reactive state management without the overhead of Combine.
-- **HapticManager**: Unified tactile feedback across all primary interactions.
-- **Zero Warnings**: Clean build with 510 automated unit tests.
-
----
-
-**Last Updated:** July 30, 2026 | **Sprint:** 8.0 | **Status:** ✅ Production Ready
+The previous start page, improvement plan, TestFlight checklist, and three overlapping Fastlane manuals were folded into the guides above. Old internal links now point to a current document or were removed with the retired document.
