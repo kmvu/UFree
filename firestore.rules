@@ -35,18 +35,9 @@ service cloud.firestore {
 
     function isValidAvailability() {
       let data = request.resource.data;
+      // Firestore rules cannot iterate list elements (no .all()); enforce caps only.
       return data.size() <= 10
-        && (data.timeBlocks == null || (data.timeBlocks is list && data.timeBlocks.size() <= 10))
-        && allBlocksValid(data.timeBlocks);
-    }
-
-    function allBlocksValid(blocks) {
-      return blocks == null || blocks.all(block,
-        block.startTime is timestamp
-        && block.endTime is timestamp
-        && block.startTime < block.endTime
-        && block.status is int && block.status >= 0 && block.status <= 5
-      );
+        && (data.timeBlocks == null || (data.timeBlocks is list && data.timeBlocks.size() <= 10));
     }
 
     // ── User Profiles ────────────────────────────────────────────────────────
