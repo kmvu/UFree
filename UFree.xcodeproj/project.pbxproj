@@ -542,9 +542,11 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = UFreeTests/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "UFree uses the camera to scan your friends' QR codes for instant connections.";
+				INFOPLIST_KEY_NSContactsUsageDescription = "UFree uses your contacts to find friends already on the app using privacy-safe hashing.";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.khang.vu.studio.UFreeTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.khangvu.UFreeTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -567,9 +569,11 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = UFreeTests/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "UFree uses the camera to scan your friends' QR codes for instant connections.";
+				INFOPLIST_KEY_NSContactsUsageDescription = "UFree uses your contacts to find friends already on the app using privacy-safe hashing.";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.khang.vu.studio.UFreeTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.khangvu.UFreeTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -591,7 +595,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.khang.vu.studio.UFreeUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.khangvu.UFreeUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -613,7 +617,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.khang.vu.studio.UFreeUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.khangvu.UFreeUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
