@@ -416,6 +416,35 @@ users/{auth_uid}
 
 ---
 
-**Last Updated:** June 28, 2026 | **Total Sprints:** 7.0 | **Tests:** 250+ | **Status:** Production Ready ✅
+---
 
-**Next Phase:** Group Chat & Shared Calendars
+## Sprint 9.0: MVP Dyad Retention Loop ✅
+
+**Theme:** Ship a lovable 2-person weekend habit before adding chat/calendars
+
+- **Availability truth**
+  - Unset days default to `.unknown` (not Busy)
+  - Heatmap / Nudge All count any free window (morning/afternoon/evening)
+  - Post-handshake “Mark this weekend free?” CTA
+
+- **IA & onboarding**
+  - Who’s Free is the default home tab
+  - Schedule is availability editing only (duplicate Who’s Free removed)
+  - Friends tab is share/QR-first; camera scanner is opt-in
+  - Pair-first checklist: invite → mark free → accept → land on Who’s Free
+
+- **Closed nudge loop**
+  - Day-scoped nudges (`targetDateString`)
+  - One-tap replies: I’m in / Maybe / Busy
+  - Inbox reward for the sender (in-app; remote push CF undeployed to stay on Spark)
+  - I’m in / Busy updates local availability for that day
+
+- **Habit analytics & digest**
+  - `time_to_first_friend`, `time_to_first_free_mark`, nudge reply events, D7 reopen
+  - Weekend digest CF written in `functions/index.js` but **not deployed** (requires Blaze)
+
+**Explicitly deferred:** Group Chat, Shared Calendars, EventKit import
+
+**Last Updated:** August 1, 2026 | **Total Sprints:** 9.0 | **Status:** MVP workflow ready for TestFlight dyads
+
+**Next Phase:** Validate dyad retention on TestFlight (≥50% Friday reopen) before any growth features

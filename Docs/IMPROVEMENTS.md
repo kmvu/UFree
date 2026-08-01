@@ -85,5 +85,17 @@ To ensure rapid development cycles and 100% CI reliability, the test suite was o
 - **setUp() Normalization**: Standardized all `setUp()` methods to synchronous form.
 - **Documentation Refresh**: Updated `AGENTS.md`, `TESTING_GUIDE.md`, `README.md`, and `IMPROVEMENTS.md` with accurate test counts (230+), scheme names, and helper organization.
 
+## 7. MVP Dyad Retention Loop (Sprint 9.0)
+
+Product-loop hardening for launch readiness (not more social features):
+
+- [x] Heatmap counts partial free windows; unset days are Unknown
+- [x] Who’s Free default home; share-first Friends; pair checklist
+- [x] Day-scoped nudge + I’m in / Maybe / Busy replies
+- [x] Retention analytics funnel (+ weekend digest CF code kept undeployed — Spark/no billing)
+- [ ] Founder-seeded TestFlight dyads prove uncoached weekend loop
+
+**Deferred until dyad retention:** Group Chat, Shared Calendars, EventKit.
+
 ---
-*Note: This plan was updated on 2026-07-30 based on the Sprint 8.0 Test Consistency audit.*
+*Note: This plan was updated on 2026-08-01 for the MVP workflow execution sprint.*
