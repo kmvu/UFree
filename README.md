@@ -7,6 +7,7 @@ UFree helps close friends make weekend plans with less back-and-forth. Each pers
 | If you are... | Read |
 |---|---|
 | A founder, tester, partner, or other non-technical stakeholder | [Product overview](Docs/PRODUCT_OVERVIEW.md) |
+| Planning problem framing or post-launch monetization | [Product strategy](Docs/PRODUCT_STRATEGY.md) |
 | Running the current TestFlight pilot | [Operations guide → TestFlight pilot](Docs/OPERATIONS_GUIDE.md#testflight-dyad-pilot) |
 | A developer joining the project | [Engineering guide](Docs/ENGINEERING_GUIDE.md) |
 | Testing or validating a release | [Testing guide](Docs/TESTING_GUIDE.md) |

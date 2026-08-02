@@ -6,7 +6,8 @@ This is the documentation hub for UFree. Start with the guide that matches your 
 
 | Audience or goal | Start here | Then use |
 |---|---|---|
-| Founder, product partner, or TestFlight participant | [Product overview](PRODUCT_OVERVIEW.md) | [Operations guide](OPERATIONS_GUIDE.md) for the pilot and release process |
+| Founder, product partner, or TestFlight participant | [Product overview](PRODUCT_OVERVIEW.md) | [Product strategy](PRODUCT_STRATEGY.md) for problem brief + monetization; [Operations guide](OPERATIONS_GUIDE.md) for the pilot |
+| Founder planning positioning or pricing | [Product strategy](PRODUCT_STRATEGY.md) | [Product overview](PRODUCT_OVERVIEW.md) for the short pilot summary |
 | Developer joining the app | [Engineering guide](ENGINEERING_GUIDE.md) | [Testing guide](TESTING_GUIDE.md) and [working conventions](AGENTS.md) |
 | QA or release owner | [Testing guide](TESTING_GUIDE.md) | [Operations guide](OPERATIONS_GUIDE.md) |
 | Developer fixing an environment, build, signing, or Firebase issue | [Troubleshooting runbook](TROUBLESHOOTING_RUNBOOK.md) | The relevant section of the engineering or operations guide |
@@ -18,6 +19,7 @@ This is the documentation hub for UFree. Start with the guide that matches your 
 |---|---|---|
 | [`../README.md`](../README.md) | Short project introduction and entry point | Everyone |
 | [`PRODUCT_OVERVIEW.md`](PRODUCT_OVERVIEW.md) | Problem, product loop, privacy promises, pilot success measures, and roadmap boundaries | Non-technical stakeholders |
+| [`PRODUCT_STRATEGY.md`](PRODUCT_STRATEGY.md) | Full problem brief, JTBD, success metrics, and post-launch monetization plan | Founders and product partners |
 | [`ENGINEERING_GUIDE.md`](ENGINEERING_GUIDE.md) | Architecture, local setup, security, deep links, and code conventions | Engineers |
 | [`TESTING_GUIDE.md`](TESTING_GUIDE.md) | Automated tests, manual smoke testing, and release sign-off | Engineering and QA |
 | [`OPERATIONS_GUIDE.md`](OPERATIONS_GUIDE.md) | Firebase deployment boundaries, Fastlane, TestFlight, monitoring, and pilot operations | Release owners |
