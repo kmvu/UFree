@@ -35,7 +35,7 @@ final class FriendsScheduleViewTests: XCTestCase {
 
     // MARK: - Empty and Loading
 
-    func test_render_withNoFriends_showsEmptyState() async {
+    func test_render_withNoFriends_showsIntentionHero() async {
         await ViewHost.renderAwaitingUpdates(makeView())
     }
 

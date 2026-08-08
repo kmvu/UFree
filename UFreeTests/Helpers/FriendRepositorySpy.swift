@@ -64,6 +64,14 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
         return myFriends
     }
 
+    func observeFriends() -> AsyncStream<[UserProfile]> {
+        let friends = myFriends
+        return AsyncStream { continuation in
+            continuation.yield(friends)
+            continuation.finish()
+        }
+    }
+
     func findUserByPhoneNumber(_ phoneNumber: String) async throws -> UserProfile? {
         if let findByPhoneError { throw findByPhoneError }
         return userByPhoneNumber

@@ -56,22 +56,63 @@ final class OnboardingProgressStoreTests: XCTestCase {
         XCTAssertFalse(sut.shouldShowPairOnboardingBanner(friendCount: 0))
     }
 
-    func test_markFirstHandshake_setsPendingWeekendCTA() {
+    func test_markFirstHandshake_setsPendingWeekendCTAWhenFreeDayUnmarked() {
         sut.markFirstHandshake()
         XCTAssertTrue(sut.pendingWeekendCTA)
+        XCTAssertTrue(sut.shouldPresentWeekendCTAAfterConnection)
+    }
+
+    func test_markFirstHandshake_skipsPendingWeekendCTAWhenFreeDayAlreadyMarked() {
+        sut.markFreeDay()
+        sut.markFirstHandshake()
+        XCTAssertFalse(sut.pendingWeekendCTA)
+        XCTAssertFalse(sut.shouldPresentWeekendCTAAfterConnection)
+    }
+
+    func test_shouldCelebrateFirstConnection_trueOnZeroToOneDuringOnboarding() {
+        XCTAssertTrue(sut.shouldCelebrateFirstConnection(previousFriendCount: 0, newFriendCount: 1))
+    }
+
+    func test_shouldCelebrateFirstConnection_trueEvenIfHandshakeAcknowledgedWithoutCelebration() {
+        // Silent ack must not block the inviter’s live 0→1 celebration.
+        sut.acknowledgeExistingFriends()
+        XCTAssertTrue(sut.shouldCelebrateFirstConnection(previousFriendCount: 0, newFriendCount: 1))
+    }
+
+    func test_shouldCelebrateFirstConnection_falseAfterAlreadyCelebrated() {
+        sut.markCelebratedFirstAccept()
+        XCTAssertFalse(sut.shouldCelebrateFirstConnection(previousFriendCount: 0, newFriendCount: 1))
+    }
+
+    func test_shouldCelebrateFirstConnection_falseWhenNotLeavingZero() {
+        XCTAssertFalse(sut.shouldCelebrateFirstConnection(previousFriendCount: 1, newFriendCount: 2))
+        XCTAssertFalse(sut.shouldCelebrateFirstConnection(previousFriendCount: 0, newFriendCount: 0))
     }
 
     func test_pairOnboardingBannerTitle_tracksNextStep() {
         XCTAssertEqual(sut.pairOnboardingBannerTitle, "Invite 1 friend to start")
         XCTAssertEqual(sut.pairOnboardingCompletedSteps, 0)
+        XCTAssertEqual(sut.pairOnboardingBannerSubtitle, "0/3 done · Next: Invite a friend")
 
         sut.markInvitedFriend()
         XCTAssertEqual(sut.pairOnboardingBannerTitle, "Mark when you're free")
         XCTAssertEqual(sut.pairOnboardingCompletedSteps, 1)
+        XCTAssertEqual(sut.pairOnboardingBannerSubtitle, "1/3 done · Next: Mark a free day")
 
         sut.markFreeDay()
         XCTAssertEqual(sut.pairOnboardingBannerTitle, "Waiting for them to accept")
         XCTAssertEqual(sut.pairOnboardingCompletedSteps, 2)
+        XCTAssertEqual(sut.pairOnboardingBannerSubtitle, "2/3 done · Next: Wait for accept")
+    }
+
+    func test_markInvitedFriend_returnsTrueOnlyFirstTime() {
+        XCTAssertTrue(sut.markInvitedFriend())
+        XCTAssertFalse(sut.markInvitedFriend())
+    }
+
+    func test_markFreeDay_returnsTrueOnlyFirstTime() {
+        XCTAssertTrue(sut.markFreeDay())
+        XCTAssertFalse(sut.markFreeDay())
     }
 
     func test_shouldShowPairChecklist_matchesBannerAPI() {

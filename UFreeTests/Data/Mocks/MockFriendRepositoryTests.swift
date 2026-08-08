@@ -143,6 +143,18 @@ final class MockFriendRepositoryTests: XCTestCase {
         XCTAssertEqual(emissions.first?.map(\.id), ["r1"])
     }
 
+    func test_observeFriends_yieldsSeededFriendsThenFinishes() async {
+        sut.addFriend(UserProfile(id: "u1", displayName: "Alice"))
+
+        var emissions: [[UserProfile]] = []
+        for await friends in sut.observeFriends() {
+            emissions.append(friends)
+        }
+
+        XCTAssertEqual(emissions.count, 1)
+        XCTAssertEqual(emissions.first?.map(\.id), ["u1"])
+    }
+
     func test_acceptFriendRequest_promotesSenderToFriend() async throws {
         let request = FriendRequest(
             id: "r1", fromId: "u1", fromName: "Alice", toId: "me", status: .pending, timestamp: Date()

@@ -48,7 +48,8 @@ public final class FriendsViewModel: ObservableObject {
     /// `nonisolated(unsafe)` so `deinit` can cancel without hopping to the MainActor.
     /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
     /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
-    nonisolated(unsafe) private var listenerTask: Task<Void, Never>?
+    nonisolated(unsafe) private var requestsListenerTask: Task<Void, Never>?
+    nonisolated(unsafe) private var friendsListenerTask: Task<Void, Never>?
 
     public let friendRepository: FriendRepositoryProtocol
     private let contactsRepository: ContactsRepositoryProtocol
@@ -59,7 +60,8 @@ public final class FriendsViewModel: ObservableObject {
     }
 
     nonisolated deinit {
-        listenerTask?.cancel()
+        requestsListenerTask?.cancel()
+        friendsListenerTask?.cancel()
     }
     
     // MARK: - Real-Time Listener Lifecycle
@@ -67,9 +69,9 @@ public final class FriendsViewModel: ObservableObject {
     /// Starts listening to incoming friend requests in real-time
     public func listenToRequests() {
         // Cancel existing listener if any
-        listenerTask?.cancel()
+        requestsListenerTask?.cancel()
         
-        listenerTask = Task { [weak self] in
+        requestsListenerTask = Task { [weak self] in
             guard let friendRepository = self?.friendRepository else { return }
             for await requests in friendRepository.observeIncomingRequests() {
                 guard !Task.isCancelled else { return }
@@ -79,11 +81,36 @@ public final class FriendsViewModel: ObservableObject {
             }
         }
     }
+
+    /// Starts listening to friends list updates so the inviter sees accept without a pull.
+    public func listenToFriends() {
+        friendsListenerTask?.cancel()
+
+        friendsListenerTask = Task { [weak self] in
+            guard let friendRepository = self?.friendRepository else { return }
+            for await latest in friendRepository.observeFriends() {
+                guard !Task.isCancelled else { return }
+                self?.friends = latest
+                self?.pruneSearchAndDiscoveryAgainstFriends()
+            }
+        }
+    }
+
+    /// Drop discovery rows for people who are already connected (search uses `isAlreadyFriend` in UI).
+    private func pruneSearchAndDiscoveryAgainstFriends() {
+        let friendIds = Set(friends.compactMap(\.id))
+        discoveredUsers.removeAll { user in
+            guard let id = user.id else { return false }
+            return friendIds.contains(id)
+        }
+    }
     
-    /// Stops listening to incoming friend requests
+    /// Stops listening to incoming friend requests and friends list
     public func stopListening() {
-        listenerTask?.cancel()
-        listenerTask = nil
+        requestsListenerTask?.cancel()
+        requestsListenerTask = nil
+        friendsListenerTask?.cancel()
+        friendsListenerTask = nil
     }
     
     public func loadFriends() async {
@@ -207,6 +234,12 @@ public final class FriendsViewModel: ObservableObject {
         return contactHashes.contains(hash)
     }
 
+    /// Whether this profile is already in the trusted circle (no second Request).
+    public func isAlreadyFriend(_ user: UserProfile) -> Bool {
+        guard let id = user.id else { return false }
+        return friends.contains { $0.id == id }
+    }
+
     /// Search for a user by phone number (privacy-safe via hash lookup)
     public func performPhoneSearch() async {
         guard !isProcessing else { return }
@@ -225,9 +258,10 @@ public final class FriendsViewModel: ObservableObject {
         }
 
         do {
-            self.searchResult = try await friendRepository.findUserByPhoneNumber(searchText)
+            let found = try await friendRepository.findUserByPhoneNumber(searchText)
+            self.searchResult = found
 
-            if searchResult == nil {
+            if found == nil {
                 self.errorMessage = "No user found with that phone number. They may not be on UFree yet."
             }
         } catch {
@@ -265,6 +299,10 @@ public final class FriendsViewModel: ObservableObject {
     
     public func sendFriendRequest(to user: UserProfile, source: String) async {
         guard !isProcessing else { return }
+        if isAlreadyFriend(user) {
+            errorMessage = "You're already connected with \(user.displayName)."
+            return
+        }
         isProcessing = true
         defer { isProcessing = false }
         

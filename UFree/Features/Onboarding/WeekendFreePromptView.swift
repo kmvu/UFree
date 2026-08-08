@@ -18,11 +18,11 @@ struct WeekendFreePromptView: View {
                 .foregroundStyle(.orange)
 
             Text("Mark this weekend free?")
-                .font(.title2.bold())
+                .font(UFreeType.heroTitle)
                 .multilineTextAlignment(.center)
 
             Text("Friends can only find you when you set free days. Tap once to free up Saturday and Sunday.")
-                .font(.subheadline)
+                .font(UFreeType.heroBody)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
@@ -31,16 +31,14 @@ struct WeekendFreePromptView: View {
                 onMarkWeekendFree()
             }) {
                 Text("I'm free Sat & Sun")
-                    .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.accentColor)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
             }
+            .ufreePrimaryButton()
 
             Button("Not now", action: onDismiss)
+                .font(UFreeType.ctaLabel)
                 .foregroundStyle(.secondary)
+                .frame(minHeight: 44)
         }
         .padding(24)
     }

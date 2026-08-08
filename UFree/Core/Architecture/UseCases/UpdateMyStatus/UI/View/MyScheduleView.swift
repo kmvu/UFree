@@ -42,12 +42,14 @@ public struct MyScheduleView: View {
                                 rootViewModel.activeTab = .friends
                             } label: {
                                 Label("Invite a friend to plan together", systemImage: "person.badge.plus")
-                                    .font(.subheadline.weight(.medium))
+                                    .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.bordered)
+                            .ufreeSecondaryButton()
+                            .padding(.horizontal)
                             .padding(.bottom, 24)
                         }
                     }
+                    .adaptiveContentWidth(AdaptiveLayout.scheduleContentMaxWidth)
                     .opacity(isLoaded ? 1 : 0)
                     .offset(y: isLoaded ? 0 : 10)
                 }
@@ -130,7 +132,19 @@ public struct MyScheduleView: View {
                 .padding(.horizontal)
 
             if horizontalSizeClass == .regular {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 16)], spacing: 16) {
+                LazyVGrid(
+                    columns: [
+                        GridItem(
+                            .adaptive(
+                                minimum: AdaptiveLayout.scheduleDayCardMinWidth,
+                                maximum: AdaptiveLayout.scheduleDayCardMaxWidth
+                            ),
+                            spacing: 12
+                        )
+                    ],
+                    alignment: .leading,
+                    spacing: 12
+                ) {
                     ForEach(viewModel.weeklySchedule) { day in
                         dayCard(for: day)
                     }

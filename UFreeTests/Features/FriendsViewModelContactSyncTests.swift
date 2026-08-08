@@ -189,6 +189,15 @@ final class FriendsViewModelContactSyncTests: XCTestCase {
         XCTAssertEqual(sut.incomingRequests.first?.fromName, "Alice")
     }
 
+    func test_listenToFriends_publishesFriends() async {
+        friendRepository.myFriends = [UserProfile(id: "u1", displayName: "Alice")]
+
+        sut.listenToFriends()
+
+        await waitUntil("friends published") { self.sut.friends.count == 1 }
+        XCTAssertEqual(sut.friends.first?.displayName, "Alice")
+    }
+
     func test_listenToRequests_calledTwice_replacesPreviousListener() async {
         friendRepository.incomingRequests = [
             FriendRequest(id: "r1", fromId: "u1", fromName: "Alice", toId: "me", status: .pending, timestamp: Date())

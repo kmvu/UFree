@@ -86,8 +86,35 @@ public final class OnboardingProgressStore: ObservableObject {
         return "Waiting for them to accept"
     }
 
+    /// Quest-style progress under the banner title.
     public var pairOnboardingBannerSubtitle: String {
-        "\(pairOnboardingCompletedSteps)/3 · Start your first hangout"
+        let nextHint: String
+        if !hasInvitedFriend {
+            nextHint = "Next: Invite a friend"
+        } else if !hasMarkedFreeDay {
+            nextHint = "Next: Mark a free day"
+        } else {
+            nextHint = "Next: Wait for accept"
+        }
+        return "\(pairOnboardingCompletedSteps)/3 done · \(nextHint)"
+    }
+
+    public static let inviteStepToastMessage = "1/3 — Invite sent"
+    public static let freeDayStepToastMessage = "2/3 — Weekend marked"
+    public static let firstConnectionToastMessage = "You're connected — find a free night!"
+
+    /// Live 0→1 while this install has not celebrated yet.
+    /// Does not require `hasCompletedFirstHandshake` — silent `acknowledgeExistingFriends`
+    /// must not block the inviter’s live accept celebration.
+    public func shouldCelebrateFirstConnection(previousFriendCount: Int, newFriendCount: Int) -> Bool {
+        previousFriendCount == 0
+            && newFriendCount >= 1
+            && !hasCelebratedFirstAccept
+    }
+
+    /// Weekend sheet after connection toast — skip if free day already marked.
+    public var shouldPresentWeekendCTAAfterConnection: Bool {
+        pendingWeekendCTA && !hasMarkedFreeDay && !hasShownWeekendCTA
     }
 
     /// Sync progress when friends already exist without firing weekend CTA.
@@ -102,13 +129,20 @@ public final class OnboardingProgressStore: ObservableObject {
         return Date(timeIntervalSince1970: defaults.double(forKey: Key.firstLaunchAt))
     }
 
-    public func markInvitedFriend() {
+    /// - Returns: `true` the first time invite progress is recorded.
+    @discardableResult
+    public func markInvitedFriend() -> Bool {
+        guard !hasInvitedFriend else { return false }
         hasInvitedFriend = true
         defaults.set(true, forKey: Key.hasInvitedFriend)
+        return true
     }
 
-    public func markFreeDay() {
-        if !hasMarkedFreeDay {
+    /// - Returns: `true` the first time a free day is recorded.
+    @discardableResult
+    public func markFreeDay() -> Bool {
+        let isFirst = !hasMarkedFreeDay
+        if isFirst {
             hasMarkedFreeDay = true
             defaults.set(true, forKey: Key.hasMarkedFreeDay)
             defaults.set(Date().timeIntervalSince1970, forKey: Key.firstFreeMarkAt)
@@ -118,6 +152,7 @@ public final class OnboardingProgressStore: ObservableObject {
             }
         }
         recordWeekendActivity()
+        return isFirst
     }
 
     public func markFirstHandshake() {
@@ -130,7 +165,8 @@ public final class OnboardingProgressStore: ObservableObject {
                 AnalyticsManager.logTimeToFirstFriend(seconds: seconds)
             }
         }
-        if !hasShownWeekendCTA {
+        // Only queue weekend CTA when a free day is still needed.
+        if !hasShownWeekendCTA && !hasMarkedFreeDay {
             pendingWeekendCTA = true
             defaults.set(true, forKey: Key.pendingWeekendCTA)
         }

@@ -91,8 +91,7 @@ struct PairOnboardingChecklistView: View {
 
             if !done, let actionTitle, let action {
                 Button(actionTitle, action: action)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                    .ufreeCompactButton()
             }
         }
     }

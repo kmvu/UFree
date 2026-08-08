@@ -81,7 +81,7 @@ Use this when you want **three different people** interacting at once. Mac runs 
 |---|---|---|
 | iPhone | Physical device or iPhone simulator | User 1 |
 | iPad | Physical device or iPad simulator | User 2 |
-| Mac | **My Mac (Designed for iPad)** | User 3 |
+| Mac | **My Mac (Designed for iPad)** — scheme **Debug** (Automatic signing) | User 3 |
 
 **Setup**
 
@@ -106,10 +106,12 @@ Accept friend requests on each side until all three are connected (or the dyads 
 **Interact in real time**
 
 1. Keep all three apps **foregrounded**. Background push is unavailable in the current pilot; in-app listeners need an active session.
-2. Mark free days on My Schedule on each account.
-3. Confirm **Who’s Free?** updates across devices.
-4. Send a day-scoped nudge from one account; reply from another via the in-app notification center (bell).
-5. On Mac/iPad regular width, expect sidebar + week matrix (same adaptive path as iPad).
+2. Connect: User A searches User B’s phone → **Request**; User B opens **Add Friends** (Friend Requests) or the **bell** → **Accept**.
+3. Inviter should toast **You’re connected**, jump to **Schedule**, and see a **bell** inbox item (“accepted — you're connected!”). Already-connected users must not show **Request** again in search.
+4. Mark free days on My Schedule on each account.
+5. Confirm **Who’s Free?** updates across devices.
+6. Send a day-scoped nudge from one account; reply from another via the in-app notification center (bell).
+7. On Mac/iPad regular width, expect sidebar + week matrix (same adaptive path as iPad).
 
 **Quick checklist**
 

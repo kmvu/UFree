@@ -115,4 +115,56 @@ final class RootViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.deepLinkProfileId, "test_user_id")
         cancellable.cancel()
     }
+
+    // MARK: - Onboarding celebration
+
+    func test_celebrateFirstConnection_setsToastAndIsIdempotent() {
+        let suiteName = "RootViewModelCelebration.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OnboardingProgressStore(defaults: defaults)
+
+        XCTAssertTrue(viewModel.celebrateFirstConnection(store: store))
+        XCTAssertEqual(viewModel.celebrationToast, OnboardingProgressStore.firstConnectionToastMessage)
+        XCTAssertTrue(store.hasCelebratedFirstAccept)
+        XCTAssertEqual(viewModel.activeTab, .schedule)
+        XCTAssertFalse(viewModel.showWeekendCTA)
+
+        XCTAssertFalse(viewModel.celebrateFirstConnection(store: store))
+    }
+
+    func test_celebrateFirstConnection_presentsWeekendCTAOnlyAfterToastDismiss() async {
+        let suiteName = "RootViewModelWeekendCTA.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OnboardingProgressStore(defaults: defaults)
+        store.markFirstHandshake()
+        viewModel.celebrationToastDurationNanoseconds = 50_000_000
+
+        XCTAssertTrue(viewModel.celebrateFirstConnection(store: store))
+        XCTAssertFalse(viewModel.showWeekendCTA)
+
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        XCTAssertNil(viewModel.celebrationToast)
+        XCTAssertTrue(viewModel.showWeekendCTA)
+    }
+
+    func test_celebrateFirstConnection_skipsWeekendCTAWhenFreeDayMarked() async {
+        let suiteName = "RootViewModelSkipWeekend.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OnboardingProgressStore(defaults: defaults)
+        store.markFreeDay()
+        store.markFirstHandshake()
+        viewModel.celebrationToastDurationNanoseconds = 50_000_000
+
+        XCTAssertTrue(viewModel.celebrateFirstConnection(store: store))
+        try? await Task.sleep(nanoseconds: 120_000_000)
+        XCTAssertFalse(viewModel.showWeekendCTA)
+    }
+
+    func test_presentOnboardingStepFeedback_setsToast() {
+        viewModel.presentOnboardingStepFeedback(OnboardingProgressStore.inviteStepToastMessage)
+        XCTAssertEqual(viewModel.celebrationToast, OnboardingProgressStore.inviteStepToastMessage)
+    }
 }

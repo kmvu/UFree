@@ -89,9 +89,7 @@ struct NotificationRow: View {
                 Button("Accept") {
                     Task { await viewModel.acceptFriendRequest(from: note) }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .controlSize(.small)
+                .ufreeCompactButton(tint: .green)
             }
 
             if note.type == .nudge && !note.hasResponded {
@@ -100,9 +98,10 @@ struct NotificationRow: View {
                         Button(response.displayLabel) {
                             Task { await viewModel.replyToNudge(note, response: response) }
                         }
-                        .buttonStyle(.bordered)
-                        .tint(response == .imIn ? .green : (response == .busy ? .red : .orange))
-                        .controlSize(.small)
+                        .ufreeCompactButton(
+                            prominent: response == .imIn,
+                            tint: response == .imIn ? .green : (response == .busy ? .red : .orange)
+                        )
                         .disabled(viewModel.isProcessing)
                     }
                 }
@@ -123,6 +122,7 @@ struct NotificationRow: View {
         case .nudge: return "hand.wave.fill"
         case .nudgeReply: return "checkmark.bubble.fill"
         case .friendRequest: return "person.badge.plus"
+        case .friendAccepted: return "person.2.fill"
         }
     }
 
@@ -131,6 +131,7 @@ struct NotificationRow: View {
         case .nudge: return .orange
         case .nudgeReply: return .green
         case .friendRequest: return .blue
+        case .friendAccepted: return .green
         }
     }
 
@@ -143,6 +144,8 @@ struct NotificationRow: View {
         switch note.type {
         case .friendRequest:
             return "\(note.senderName) sent you a friend request."
+        case .friendAccepted:
+            return "\(note.senderName) accepted — you're connected!"
         case .nudge:
             if let day {
                 return "\(note.senderName) asked if you're free \(day)"

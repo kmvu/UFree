@@ -38,6 +38,9 @@ public final class RootViewModel: ObservableObject {
     /// Checklist bottom sheet — opened only when the user taps the banner.
     @Published public var showPairOnboardingSheet = false
     @Published public var celebrationToast: String?
+
+    /// Duration before celebration toast clears (and optional weekend CTA presents).
+    public var celebrationToastDurationNanoseconds: UInt64 = 2_500_000_000
     
     // Feature ViewModels for navigation and cross-feature state
     @Published public var friendsScheduleViewModel: FriendsScheduleViewModel?
@@ -48,12 +51,62 @@ public final class RootViewModel: ObservableObject {
     /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
     /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
     nonisolated(unsafe) private var authStateTask: Task<Void, Never>?
+    nonisolated(unsafe) private var celebrationDismissTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     
     public init(authRepository: AuthRepository) {
         self.authRepository = authRepository
         setupAuthStateListener()
         setupDeepLinkObserver()
+    }
+
+    // MARK: - Onboarding celebration
+
+    /// Shared inviter + acceptor first-connection toast + haptic.
+    /// Weekend CTA (if any) is presented only after the toast dismisses.
+    @discardableResult
+    public func celebrateFirstConnection(
+        store: OnboardingProgressStore = .shared
+    ) -> Bool {
+        guard !store.hasCelebratedFirstAccept else { return false }
+        store.markCelebratedFirstAccept()
+        HapticManager.success()
+        showPairOnboardingBanner = false
+        showPairOnboardingSheet = false
+        // Land on Schedule so both people can mark free days next.
+        activeTab = .schedule
+
+        let offerWeekendCTA = store.shouldPresentWeekendCTAAfterConnection
+        presentCelebrationToast(OnboardingProgressStore.firstConnectionToastMessage) { [weak self] in
+            guard let self else { return }
+            if offerWeekendCTA && store.shouldPresentWeekendCTAAfterConnection {
+                self.showWeekendCTA = true
+            } else if store.pendingWeekendCTA && store.hasMarkedFreeDay {
+                store.consumeWeekendCTA()
+            }
+        }
+        return true
+    }
+
+    /// Light haptic + brief toast for first-time invite / free-day steps (banner stays; no sheet).
+    public func presentOnboardingStepFeedback(_ message: String) {
+        HapticManager.light()
+        presentCelebrationToast(message)
+    }
+
+    public func presentCelebrationToast(
+        _ message: String,
+        afterDismiss: (() -> Void)? = nil
+    ) {
+        celebrationDismissTask?.cancel()
+        celebrationToast = message
+        let nanoseconds = celebrationToastDurationNanoseconds
+        celebrationDismissTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: nanoseconds)
+            guard !Task.isCancelled else { return }
+            self?.celebrationToast = nil
+            afterDismiss?()
+        }
     }
 
     private func setupDeepLinkObserver() {
@@ -116,6 +169,7 @@ public final class RootViewModel: ObservableObject {
     
     nonisolated deinit {
         authStateTask?.cancel()
+        celebrationDismissTask?.cancel()
     }
 }
 

@@ -215,15 +215,9 @@ struct MainAppView: View {
                     .clipShape(Capsule())
                     .padding(.top, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                            withAnimation {
-                                rootViewModel.celebrationToast = nil
-                            }
-                        }
-                    }
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: rootViewModel.celebrationToast)
         .environment(\.notificationViewModel, notificationViewModel)
         .onOpenURL { url in
             handleUniversalLink(url)
@@ -231,6 +225,7 @@ struct MainAppView: View {
         .onAppear {
             wireHandshakeCallback()
             friendsViewModel.listenToRequests()
+            friendsViewModel.listenToFriends()
             onboardingStore.trackReopenIfNeeded()
             Task {
                 if friendsViewModel.friends.isEmpty {
@@ -238,18 +233,51 @@ struct MainAppView: View {
                 }
                 syncPairChecklistVisibility()
             }
-            if onboardingStore.pendingWeekendCTA {
+            // Present pending weekend CTA only when no celebration toast is active
+            // (avoids stacking with first-connection toast).
+            if onboardingStore.shouldPresentWeekendCTAAfterConnection,
+               rootViewModel.celebrationToast == nil {
                 rootViewModel.showWeekendCTA = true
             }
         }
-        .onChange(of: friendsViewModel.friends.count) { _, _ in
-            syncPairChecklistVisibility()
+        .onChange(of: friendsViewModel.friends.count) { oldCount, newCount in
+            handleFriendsCountChange(from: oldCount, to: newCount)
         }
+        .onChange(of: onboardingStore.hasInvitedFriend) { wasInvited, isInvited in
+            if !wasInvited && isInvited {
+                rootViewModel.presentOnboardingStepFeedback(
+                    OnboardingProgressStore.inviteStepToastMessage
+                )
+            }
+        }
+        .onChange(of: onboardingStore.hasMarkedFreeDay) { wasMarked, isMarked in
+            if !wasMarked && isMarked {
+                rootViewModel.presentOnboardingStepFeedback(
+                    OnboardingProgressStore.freeDayStepToastMessage
+                )
+            }
+        }
+    }
+
+    private func handleFriendsCountChange(from oldCount: Int, to newCount: Int) {
+        if onboardingStore.shouldCelebrateFirstConnection(
+            previousFriendCount: oldCount,
+            newFriendCount: newCount
+        ) {
+            onboardingStore.markFirstHandshake()
+            rootViewModel.celebrateFirstConnection(store: onboardingStore)
+            Task {
+                await friendsScheduleViewModel.loadFriendsSchedules()
+            }
+            return
+        }
+        syncPairChecklistVisibility()
     }
 
     private func syncPairChecklistVisibility() {
         let friendCount = friendsViewModel.friends.count
         if friendCount > 0 {
+            // Returning users / already-connected: sync progress without celebration.
             onboardingStore.acknowledgeExistingFriends()
             rootViewModel.showPairOnboardingBanner = false
             rootViewModel.showPairOnboardingSheet = false
@@ -263,19 +291,12 @@ struct MainAppView: View {
     }
 
     private func wireHandshakeCallback() {
+        // Acceptor path — same celebration helper as inviter 0→1 (idempotent).
         friendsViewModel.onFirstHandshakeCompleted = {
-            let store = OnboardingProgressStore.shared
-            if !store.hasCelebratedFirstAccept {
-                store.markCelebratedFirstAccept()
-                HapticManager.success()
-                rootViewModel.celebrationToast = "You're connected — find a free night!"
-            }
-            rootViewModel.showPairOnboardingBanner = false
-            rootViewModel.showPairOnboardingSheet = false
-            rootViewModel.activeTab = .feed
-            if store.pendingWeekendCTA {
-                rootViewModel.showWeekendCTA = true
-            }
+            rootViewModel.celebrateFirstConnection(store: onboardingStore)
+            // TODO(onboarding-game-loop item 4): Post-connect nudge banner after first
+            // connection (e.g. “Nudge them when you’re both free”) — deferred so toast +
+            // weekend CTA + soft banner don’t crowd the first viewport.
             Task {
                 await friendsScheduleViewModel.loadFriendsSchedules()
             }
@@ -453,7 +474,7 @@ struct ProfileResolutionView: View {
                         await friendsViewModel.sendFriendRequest(to: user, source: "deep_link")
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .ufreePrimaryButton(isEnabled: !friendsViewModel.isProcessing)
                 .disabled(friendsViewModel.isProcessing)
             } else {
                 Image(systemName: "person.fill.questionmark")

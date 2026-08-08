@@ -11,6 +11,7 @@ public struct FriendsScheduleView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @ObservedObject var viewModel: FriendsScheduleViewModel
     @ObservedObject var rootViewModel: RootViewModel
+    @ObservedObject private var onboardingStore = OnboardingProgressStore.shared
 
     // Display next 5 days
     private var daysToShow: [Date] {
@@ -36,22 +37,25 @@ public struct FriendsScheduleView: View {
 
                 nudgeAllSection
 
-                if viewModel.isLoading && viewModel.friendSchedules.isEmpty {
-                    ProgressView()
-                        .padding()
-                } else if viewModel.friendSchedules.isEmpty {
-                    ContentUnavailableView {
-                        Label("No friends yet", systemImage: "person.2")
-                    } description: {
-                        Text("When someone joins you, their free days show up here.")
-                    } actions: {
-                        Button("Add friends") {
+                if viewModel.friendSchedules.isEmpty {
+                    // Keep the hero mounted while loading so large title / layout don't
+                    // collapse to a blank screen with a truncated "Who's Free?" title.
+                    WhoIsFreeEmptyHeroView(
+                        completedSteps: onboardingStore.pairOnboardingCompletedSteps,
+                        showsQuestDots: onboardingStore.shouldShowPairOnboardingBanner(friendCount: 0),
+                        onInvite: {
                             rootViewModel.activeTab = .friends
                         }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .padding(.top, 24)
+                    )
+                    .padding(.top, 16)
                     .adaptiveContentWidth()
+                    .overlay(alignment: .top) {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .padding(.top, 8)
+                        }
+                    }
+                    .accessibilityElement(children: .contain)
                 } else if isRegularWidth {
                     friendsMatrixSection
                 } else {
@@ -64,6 +68,11 @@ public struct FriendsScheduleView: View {
         }
         .navigationTitle("Who's Free?")
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NotificationBellButton(isPresented: .constant(false))
+            }
+        }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {

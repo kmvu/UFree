@@ -60,11 +60,16 @@ public struct FriendsView: View {
         .navigationTitle("Friends")
         .overlay { if viewModel.isLoading { ProgressView() } }
         .task {
+            // Warm listeners if this tab is opened before MainAppView.onAppear finishes.
+            // Do not stopListening on disappear — MainAppView owns the shared VM lifecycle.
             viewModel.listenToRequests()
+            viewModel.listenToFriends()
             await viewModel.loadFriends()
         }
-        .onDisappear {
-            viewModel.stopListening()
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NotificationBellButton(isPresented: .constant(false))
+            }
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") { viewModel.errorMessage = nil }
@@ -91,44 +96,16 @@ public struct FriendsView: View {
             subject: Text("Join me on UFree"),
             message: Text("Add me on UFree so we can find a free night: \(inviteURL.absoluteString)")
         ) {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.2))
-                        .frame(width: 44, height: 44)
-                    
-                    Image(systemName: "link")
-                        .font(.title3)
-                }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Share Invite Link")
-                        .font(.headline)
-                    Text("Add me on UFree so we can find a free night")
-                        .font(.caption)
-                        .opacity(0.9)
-                }
-                
-                Spacer()
-                
+            HStack(spacing: 12) {
                 Image(systemName: "square.and.arrow.up")
-                    .font(.subheadline)
+                Text("Share invite link")
+                Spacer(minLength: 0)
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 14, weight: .bold))
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
-            .background(
-                LinearGradient(
-                    colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .foregroundColor(.white)
-            .cornerRadius(24)
-            .shadow(color: Color.accentColor.opacity(0.3), radius: 10, x: 0, y: 5)
         }
-        .buttonStyle(InteractiveButtonStyle())
+        .ufreePrimaryButton()
         .simultaneousGesture(TapGesture().onEnded {
             HapticManager.medium()
             OnboardingProgressStore.shared.markInvitedFriend()
@@ -161,9 +138,7 @@ public struct FriendsView: View {
                                 HapticManager.success()
                                 Task { await viewModel.acceptRequest(request) }
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.green)
-                            .controlSize(.small)
+                            .ufreeCompactButton(tint: .green)
                             
                             Button(role: .destructive) {
                                 HapticManager.warning()
@@ -171,8 +146,7 @@ public struct FriendsView: View {
                             } label: {
                                 Image(systemName: "xmark")
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                            .ufreeCompactButton(prominent: false, tint: .secondary)
                         }
                     }
                     .padding(.vertical, 4)
@@ -259,14 +233,9 @@ public struct FriendsView: View {
                         Task { await viewModel.findFriendsFromContacts() }
                     }) {
                         Label("Sync Contacts", systemImage: "person.2.badge.gearshape")
-                            .font(.subheadline).bold()
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.accentColor.opacity(0.1))
-                            .foregroundColor(.accentColor)
-                            .cornerRadius(20)
                     }
-                    .buttonStyle(InteractiveButtonStyle())
+                    .ufreeSecondaryButton()
                 } else {
                     ForEach(viewModel.discoveredUsers) { user in
                         friendRow(for: user, isDiscovered: true, source: "contact_sync")
@@ -303,21 +272,29 @@ public struct FriendsView: View {
                             .help("In your contacts")
                     }
                 }
-                Text(isDiscovered ? "UFree Member" : "Connected").font(.caption).foregroundStyle(.secondary)
+                Text(
+                    viewModel.isAlreadyFriend(user) || !isDiscovered
+                        ? "Connected"
+                        : "UFree Member"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             
             Spacer()
             
             if isDiscovered {
-                if viewModel.isProcessing && viewModel.isSearching {
+                if viewModel.isAlreadyFriend(user) {
+                    Text("Connected")
+                        .font(UFreeType.compactCTALabel)
+                        .foregroundStyle(.secondary)
+                } else if viewModel.isProcessing && viewModel.isSearching {
                     ProgressView().controlSize(.small)
                 } else {
                     Button("Request") { 
                         Task { await viewModel.sendFriendRequest(to: user, source: source) } 
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .tint(.green)
+                    .ufreeCompactButton(tint: .green)
                     .disabled(viewModel.isProcessing)
                 }
             }

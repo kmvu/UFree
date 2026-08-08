@@ -11,6 +11,7 @@ Use the smallest safe fix first. Do not remove test gates, force-refresh signing
 | Simulator is missing | List devices with `xcrun simctl list devices available` | Choose an installed simulator or update the Fastlane device setting |
 | Fastlane needs credentials | Check that untracked `fastlane/.env` values and key path are present | Verify App Store Connect key IDs and the certificate-repository SSH access |
 | Signing or profile fails | Run `bundle exec fastlane sync_certs` | Confirm bundle ID and Match configuration before using `match --force` |
+| Mac Designed for iPad: *integrity could not be verified* / `0xe8008015` | Use **Debug** (Automatic + Apple Development). Do not run that destination with the App Store Match profile | Release stays Manual/`match AppStore` for TestFlight only |
 | TestFlight upload fails | Run `bundle exec fastlane beta --verbose` | Check App Store Connect status, signing, and the returned upload error |
 | Friend request or QR connection fails | Deploy current Firestore rules and indexes | Inspect the Firestore permission or index error |
 | A request never appears | Deploy indexes and check active user sessions | Confirm the `friendRequests` query/index and Firestore rules |
@@ -67,6 +68,10 @@ firebase deploy --only firestore:rules,firestore:indexes
 ```
 
 If a friend request fails with a permission error, inspect `firestore.rules`. If the request write succeeds but a recipient never sees it, inspect `firestore.indexes.json` and the Firestore console’s index link. The current pilot supports in-app updates while the app is active; it does not deploy server-side Functions for background push.
+
+### Find by Phone says “No user found” for a DEBUG test user
+
+Usually the peer signed in with **User N** and a profile doc exists, but decoding used to fail when `friendIds` / `hashedPhoneNumbers` were omitted on first write. Current `UserProfile` decodes those as empty arrays. Re-login both DEBUG users after updating, then search with `+15550000001` (or formatted `+1 555-000-0001`).
 
 ### DEBUG User 1 / 2 / 3 login fails
 

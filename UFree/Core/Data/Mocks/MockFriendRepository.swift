@@ -30,6 +30,14 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
     public func getMyFriends() async throws -> [UserProfile] {
         return myFriends
     }
+
+    public func observeFriends() -> AsyncStream<[UserProfile]> {
+        let friends = myFriends
+        return AsyncStream { continuation in
+            continuation.yield(friends)
+            continuation.finish()
+        }
+    }
     
     public func findUserByPhoneNumber(_ phoneNumber: String) async throws -> UserProfile? {
         // Generate candidate hashes the same way as the real implementation

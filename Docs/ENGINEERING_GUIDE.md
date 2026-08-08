@@ -73,10 +73,12 @@ Use the untracked local environment file expected by `fastlane/Fastfile`; do not
 Adapt by **size class / available width**, not device idiom (`UFree/Core/UI/Adaptive/`):
 
 - Compact → `TabView` + phone layouts; regular → `NavigationSplitView` + grids/matrices (Schedule, Who’s Free).
+- Cap Schedule detail with `AdaptiveLayout.scheduleContentMaxWidth` so status/week cards don’t stretch edge-to-edge on iPad/Mac.
 - Regular presentations use popovers and readable form width; compact uses sheets.
 - Landscape: shorten chrome when `verticalSizeClass == .compact`. Gate camera/QR with `QRScannerCapability`.
-- Mac today is Designed for iPad only (`SUPPORTS_MAC_DESIGNED_FOR_IPAD` in Debug); Catalyst is deferred and would reuse the same layouts. For a three-account iPhone + iPad + Mac loop, see [TESTING_GUIDE.md](TESTING_GUIDE.md#three-platform-real-time-loop-iphone--ipad--mac).
-- First-hangout coach: soft banner on Who’s Free → opt-in checklist sheet (`PairOnboardingBannerView` / `PairOnboardingChecklistView`). **Not now** closes the sheet; **Don’t show again** persists via `OnboardingProgressStore.dismissPairChecklistPermanently()`.
+- Mac today is Designed for iPad only (`SUPPORTS_MAC_DESIGNED_FOR_IPAD` in Debug); Catalyst is deferred and would reuse the same layouts. For a three-account iPhone + iPad + Mac loop, see [TESTING_GUIDE.md](TESTING_GUIDE.md#three-platform-real-time-loop-iphone--ipad--mac). Debug uses Automatic + Apple Development so My Mac can install; Release keeps Manual/`match AppStore` for TestFlight.
+- First-hangout coach: soft banner on Who’s Free → opt-in checklist sheet (`PairOnboardingBannerView` / `PairOnboardingChecklistView`). Empty Who’s Free uses intention hero (`WhoIsFreeEmptyHeroView`) plus banner — not a second checklist. **Not now** closes the sheet; **Don’t show again** persists via `OnboardingProgressStore.dismissPairChecklistPermanently()`. First invite / free-day completions get a light haptic + toast (no auto-sheet). Inviter and acceptor share `RootViewModel.celebrateFirstConnection` (toast + haptic); weekend CTA waits for toast dismiss and only if a free day is still unmarked. Friends list is observed so the inviter can celebrate without a manual pull.
+- Product CTAs: use `UFreePrimaryButtonStyle` / `UFreeSecondaryButtonStyle` / `UFreeCompactButtonStyle` and `UFreeType` (`Core/UI/Theme/`) for consistent padding, radius, and typography. Leave day chips / status banner on their own control language.
 
 ## Firebase, links, and observability
 

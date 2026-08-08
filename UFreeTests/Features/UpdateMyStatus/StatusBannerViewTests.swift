@@ -168,6 +168,18 @@ final class StatusBannerViewTests: XCTestCase {
         XCTAssertTrue(bannerViewModel.isExpanded)
     }
 
+    func test_render_expanded_regularWidth_clustersStatusOptions() async {
+        setStatus(.free, onDayAt: 0)
+        bannerViewModel.isExpanded = true
+
+        await ViewHost.renderAwaitingUpdates(
+            makeView().environment(\.horizontalSizeClass, .regular),
+            size: ViewHost.regularPadSize
+        )
+
+        XCTAssertTrue(bannerViewModel.isExpanded)
+    }
+
     func test_render_collapsed_compactLandscape_usesShorterBanner() async {
         setStatus(.free, onDayAt: 0)
 

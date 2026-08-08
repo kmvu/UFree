@@ -27,6 +27,24 @@ final class NotificationCenterViewTests: XCTestCase {
         
         NotificationTestAssertions.assertFriendRequestMessage(message, senderName: "Alice")
     }
+
+    func test_notificationRowMessage_friendAccepted_formatsCorrectly() {
+        let vm = NotificationViewModel(
+            repository: MockNotificationRepository(),
+            observesSceneLifecycle: false
+        )
+        defer { vm.stopListening() }
+        let notification = AppNotification(
+            recipientId: "me",
+            senderId: "u1",
+            senderName: "Test User 1",
+            type: .friendAccepted,
+            date: Date()
+        )
+        let row = NotificationRow(note: notification, viewModel: vm)
+
+        XCTAssertEqual(row.message, "Test User 1 accepted — you're connected!")
+    }
     
     func test_notificationRowMessage_nudge_formatsCorrectly() {
         let vm = NotificationViewModel(

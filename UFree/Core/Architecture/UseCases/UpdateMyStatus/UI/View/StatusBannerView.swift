@@ -9,10 +9,15 @@ import SwiftUI
 
 struct StatusBannerView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var viewModel: StatusBannerViewModel
     let scheduleViewModel: MyScheduleViewModel
 
     private let statusOptions: [UserStatus] = [.free, .morning, .afternoon, .evening, .busy]
+
+    private var isRegularWidth: Bool {
+        horizontalSizeClass == .regular
+    }
 
     init(scheduleViewModel: MyScheduleViewModel) {
         self.init(scheduleViewModel: scheduleViewModel, viewModel: StatusBannerViewModel())
@@ -137,23 +142,36 @@ struct StatusBannerView: View {
             .padding(.top, isCompactHeight ? 12 : 20)
             .padding(.horizontal, 24)
 
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 12) {
-                    ForEach(statusOptions, id: \.self) { status in
-                        statusOptionButton(status)
+            Group {
+                if isRegularWidth {
+                    // Keep chips clustered — don't let HStack expand across a wide iPad/Mac pane.
+                    HStack(spacing: 16) {
+                        ForEach(statusOptions, id: \.self) { status in
+                            statusOptionButton(status, expands: false)
+                        }
                     }
-                }
+                    .frame(maxWidth: AdaptiveLayout.statusOptionsClusterMaxWidth)
+                    .frame(maxWidth: .infinity)
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) {
+                            ForEach(statusOptions, id: \.self) { status in
+                                statusOptionButton(status, expands: true)
+                            }
+                        }
 
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible()),
-                        GridItem(.flexible()),
-                        GridItem(.flexible())
-                    ],
-                    spacing: 12
-                ) {
-                    ForEach(statusOptions, id: \.self) { status in
-                        statusOptionButton(status)
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ],
+                            spacing: 12
+                        ) {
+                            ForEach(statusOptions, id: \.self) { status in
+                                statusOptionButton(status, expands: true)
+                            }
+                        }
                     }
                 }
             }
@@ -162,7 +180,7 @@ struct StatusBannerView: View {
         }
     }
 
-    private func statusOptionButton(_ status: UserStatus) -> some View {
+    private func statusOptionButton(_ status: UserStatus, expands: Bool) -> some View {
         Button(action: {
             HapticManager.medium()
             viewModel.setStatus(status)
@@ -184,7 +202,8 @@ struct StatusBannerView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .frame(maxWidth: .infinity)
+            .frame(width: expands ? nil : 64)
+            .frame(maxWidth: expands ? .infinity : nil)
         }
         .buttonStyle(NoInteractionButtonStyle())
     }

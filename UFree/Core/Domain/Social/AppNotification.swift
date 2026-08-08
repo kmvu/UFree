@@ -25,6 +25,8 @@ public struct AppNotification: Identifiable, Codable {
 
     public enum NotificationType: String, Codable {
         case friendRequest
+        /// Recipient accepted — shown in the inviter’s inbox.
+        case friendAccepted
         case nudge
         case nudgeReply
     }
