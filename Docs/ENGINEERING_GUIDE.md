@@ -76,6 +76,7 @@ Adapt by **size class / available width**, not device idiom (`UFree/Core/UI/Adap
 - Regular presentations use popovers and readable form width; compact uses sheets.
 - Landscape: shorten chrome when `verticalSizeClass == .compact`. Gate camera/QR with `QRScannerCapability`.
 - Mac today is Designed for iPad only (`SUPPORTS_MAC_DESIGNED_FOR_IPAD` in Debug); Catalyst is deferred and would reuse the same layouts. For a three-account iPhone + iPad + Mac loop, see [TESTING_GUIDE.md](TESTING_GUIDE.md#three-platform-real-time-loop-iphone--ipad--mac).
+- First-hangout coach: soft banner on Who’s Free → opt-in checklist sheet (`PairOnboardingBannerView` / `PairOnboardingChecklistView`). **Not now** closes the sheet; **Don’t show again** persists via `OnboardingProgressStore.dismissPairChecklistPermanently()`.
 
 ## Firebase, links, and observability
 

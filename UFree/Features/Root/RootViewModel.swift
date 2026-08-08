@@ -33,7 +33,10 @@ public final class RootViewModel: ObservableObject {
     }
     @Published public var activeTab: Tab = .feed
     @Published public var showWeekendCTA = false
-    @Published public var showPairChecklist = false
+    /// Soft bottom banner on Who's Free (does not auto-present the sheet).
+    @Published public var showPairOnboardingBanner = false
+    /// Checklist bottom sheet — opened only when the user taps the banner.
+    @Published public var showPairOnboardingSheet = false
     @Published public var celebrationToast: String?
     
     // Feature ViewModels for navigation and cross-feature state

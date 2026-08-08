@@ -18,6 +18,7 @@ public final class OnboardingProgressStore: ObservableObject {
         static let hasInvitedFriend = "ufree.onboarding.hasInvitedFriend"
         static let hasMarkedFreeDay = "ufree.onboarding.hasMarkedFreeDay"
         static let hasCompletedFirstHandshake = "ufree.onboarding.hasCompletedFirstHandshake"
+        static let hasDismissedPairChecklist = "ufree.onboarding.hasDismissedPairChecklist"
         static let hasShownWeekendCTA = "ufree.onboarding.hasShownWeekendCTA"
         static let hasCelebratedFirstAccept = "ufree.onboarding.hasCelebratedFirstAccept"
         static let firstLaunchAt = "ufree.onboarding.firstLaunchAt"
@@ -30,6 +31,7 @@ public final class OnboardingProgressStore: ObservableObject {
     @Published public private(set) var hasInvitedFriend: Bool
     @Published public private(set) var hasMarkedFreeDay: Bool
     @Published public private(set) var hasCompletedFirstHandshake: Bool
+    @Published public private(set) var hasDismissedPairChecklist: Bool
     @Published public private(set) var hasShownWeekendCTA: Bool
     @Published public private(set) var hasCelebratedFirstAccept: Bool
     @Published public private(set) var pendingWeekendCTA: Bool
@@ -42,6 +44,7 @@ public final class OnboardingProgressStore: ObservableObject {
         self.hasInvitedFriend = defaults.bool(forKey: Key.hasInvitedFriend)
         self.hasMarkedFreeDay = defaults.bool(forKey: Key.hasMarkedFreeDay)
         self.hasCompletedFirstHandshake = defaults.bool(forKey: Key.hasCompletedFirstHandshake)
+        self.hasDismissedPairChecklist = defaults.bool(forKey: Key.hasDismissedPairChecklist)
         self.hasShownWeekendCTA = defaults.bool(forKey: Key.hasShownWeekendCTA)
         self.hasCelebratedFirstAccept = defaults.bool(forKey: Key.hasCelebratedFirstAccept)
         self.pendingWeekendCTA = defaults.bool(forKey: Key.pendingWeekendCTA)
@@ -52,14 +55,39 @@ public final class OnboardingProgressStore: ObservableObject {
         defaults.set(true, forKey: Key.hasCelebratedFirstAccept)
     }
 
-    /// Prefer `shouldShowPairChecklist(friendCount:)` so returning users with friends
-    /// (or cleared UserDefaults) are not shown a first-run overlay.
+    /// Soft bottom banner: incomplete first hangout, not permanently dismissed, no friends yet.
+    public func shouldShowPairOnboardingBanner(friendCount: Int) -> Bool {
+        !hasDismissedPairChecklist && !hasCompletedFirstHandshake && friendCount == 0
+    }
+
+    /// Prefer `shouldShowPairOnboardingBanner(friendCount:)` for UI.
     public var shouldShowPairChecklist: Bool {
-        shouldShowPairChecklist(friendCount: 0)
+        shouldShowPairOnboardingBanner(friendCount: 0)
     }
 
     public func shouldShowPairChecklist(friendCount: Int) -> Bool {
-        !hasCompletedFirstHandshake && friendCount == 0
+        shouldShowPairOnboardingBanner(friendCount: friendCount)
+    }
+
+    /// Permanently hide banner + checklist sheet (“Don’t show again”).
+    public func dismissPairChecklistPermanently() {
+        hasDismissedPairChecklist = true
+        defaults.set(true, forKey: Key.hasDismissedPairChecklist)
+    }
+
+    public var pairOnboardingCompletedSteps: Int {
+        [hasInvitedFriend, hasMarkedFreeDay, hasCompletedFirstHandshake].filter(\.self).count
+    }
+
+    /// Primary banner line — next incomplete step.
+    public var pairOnboardingBannerTitle: String {
+        if !hasInvitedFriend { return "Invite 1 friend to start" }
+        if !hasMarkedFreeDay { return "Mark when you're free" }
+        return "Waiting for them to accept"
+    }
+
+    public var pairOnboardingBannerSubtitle: String {
+        "\(pairOnboardingCompletedSteps)/3 · Start your first hangout"
     }
 
     /// Sync progress when friends already exist without firing weekend CTA.

@@ -68,6 +68,14 @@ firebase deploy --only firestore:rules,firestore:indexes
 
 If a friend request fails with a permission error, inspect `firestore.rules`. If the request write succeeds but a recipient never sees it, inspect `firestore.indexes.json` and the Firestore console’s index link. The current pilot supports in-app updates while the app is active; it does not deploy server-side Functions for background push.
 
+### DEBUG User 1 / 2 / 3 login fails
+
+DEBUG personas use **anonymous Auth** (not Phone Auth), then attach display name + phone hashes. They should not show Phone Auth / APNs / verification-ID errors.
+
+1. Confirm `GoogleService-Info.plist` is present and `FirebaseApp.configure()` succeeds.
+2. Confirm the device/simulator has network access to Firebase.
+3. If an old Phone Auth error still appears, do a clean rebuild — older DEBUG builds still called `verifyPhoneNumber`.
+
 ## Escalation checklist
 
 When asking for help, include:

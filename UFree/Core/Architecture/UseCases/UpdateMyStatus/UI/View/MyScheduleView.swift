@@ -36,12 +36,15 @@ public struct MyScheduleView: View {
                         myWeekCarouselSection
                             .padding(.vertical, 24)
 
-                        // Light invite CTA when still alone (Who's Free lives on home tab)
+                        // Light invite hint when still alone (first-hangout coach lives on Who's Free)
                         if rootViewModel.friendsScheduleViewModel?.friendSchedules.isEmpty != false {
-                            OnboardingCardView {
+                            Button {
                                 rootViewModel.activeTab = .friends
+                            } label: {
+                                Label("Invite a friend to plan together", systemImage: "person.badge.plus")
+                                    .font(.subheadline.weight(.medium))
                             }
-                            .padding(.horizontal)
+                            .buttonStyle(.bordered)
                             .padding(.bottom, 24)
                         }
                     }

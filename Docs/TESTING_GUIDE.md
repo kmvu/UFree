@@ -68,11 +68,10 @@ For testing social flows that require two real accounts without real SMS codes:
    firebase deploy --only firestore:rules,firestore:indexes
    ```
    Without `friendRequests` rules, every invite fails with a permission error dialog.
-2. **Add Firebase test phone numbers** (Firebase Console > Authentication > Phone):
-   - `+1 555-000-0001`, `+1 555-000-0002`, `+1 555-000-0003` (All code: `123456`)
-3. **Use Developer Tools** in `LoginView` (DEBUG builds only):
+2. **Use Developer Tools** in `LoginView` (DEBUG builds only):
    - Run the app on two simulators (or simulator + device).
-   - Tap "User 1", "User 2", or "User 3" to bypass SMS auth and login instantly.
+   - Tap **User 1**, **User 2**, or **User 3**. Each uses anonymous Firebase Auth (same as Get Started) and saves a fixed phone hash (`+15550000001`…`03`) so you can Find by Phone across devices.
+   - No Firebase Console “Phone numbers for testing” setup is required for these buttons.
 
 ### Three-platform real-time loop (iPhone + iPad + Mac)
 

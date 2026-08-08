@@ -40,10 +40,17 @@ public struct FriendsScheduleView: View {
                     ProgressView()
                         .padding()
                 } else if viewModel.friendSchedules.isEmpty {
-                    OnboardingCardView {
-                        rootViewModel.activeTab = .friends
+                    ContentUnavailableView {
+                        Label("No friends yet", systemImage: "person.2")
+                    } description: {
+                        Text("When someone joins you, their free days show up here.")
+                    } actions: {
+                        Button("Add friends") {
+                            rootViewModel.activeTab = .friends
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    .padding(.top, 40)
+                    .padding(.top, 24)
                     .adaptiveContentWidth()
                 } else if isRegularWidth {
                     friendsMatrixSection

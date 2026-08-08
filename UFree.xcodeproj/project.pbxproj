@@ -41,6 +41,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		234B43D02F0E8EDC00D51A03 /* Exceptions for "UFree" folder in "UFree" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 237D8FC32EF53F24006BAE5F /* UFree */;
+		};
 		234B43D12F0E8EDC00D51A03 /* Exceptions for "UFreeTests" folder in "UFreeTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -53,6 +60,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		237D8FC62EF53F24006BAE5F /* UFree */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				234B43D02F0E8EDC00D51A03 /* Exceptions for "UFree" folder in "UFree" target */,
+			);
 			path = UFree;
 			sourceTree = "<group>";
 		};
@@ -451,6 +461,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = UFree/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSCameraUsageDescription = "UFree uses the camera solely to scan friends' QR codes to connect in person.";
@@ -498,6 +509,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = UFree/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSCameraUsageDescription = "UFree uses the camera solely to scan friends' QR codes to connect in person.";

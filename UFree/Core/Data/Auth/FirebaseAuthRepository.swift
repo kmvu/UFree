@@ -105,18 +105,18 @@ public final class FirebaseAuthRepository: AuthRepository {
     #if DEBUG
     // MARK: - Debug Methods
     
+    /// DEBUG multi-account helper: anonymous Firebase Auth (same path as production “Get Started”).
+    ///
+    /// Avoids Phone Auth’s APNs / reCAPTCHA / URL-scheme requirements, which are unreliable on
+    /// Simulator. `phoneNumber` is unused here — `LoginViewModel` attaches discoverable phone
+    /// hashes via `saveUserProfile` after sign-in.
     public func signInAsTestUser(phoneNumber: String) async throws -> User {
-        /// Firebase allows signing in with test phone numbers without SMS verification.
-        /// These are configured in the Firebase Console > Authentication > Phone
-        let verificationID = "test_verification_id_\(UUID().uuidString)"
-        
-        let credential = PhoneAuthProvider.provider()
-            .credential(withVerificationID: verificationID, verificationCode: "123456")
-        
-        let result = try await auth.signIn(with: credential)
-        let user = mapFirebaseUserToUser(result.user)
-        authStateContinuation.yield(user)
-        return user
+        _ = phoneNumber
+        if auth.currentUser != nil {
+            try auth.signOut()
+            authStateContinuation.yield(nil)
+        }
+        return try await signInAnonymously()
     }
     #endif
 }

@@ -135,28 +135,46 @@ struct MainAppView: View {
                 tabBarLayout
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            if rootViewModel.showPairChecklist
-                && onboardingStore.shouldShowPairChecklist(friendCount: friendsViewModel.friends.count)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if rootViewModel.showPairOnboardingBanner
+                && rootViewModel.activeTab == .feed
+                && onboardingStore.shouldShowPairOnboardingBanner(friendCount: friendsViewModel.friends.count)
                 && verticalSizeClass != .compact {
-                PairOnboardingChecklistView(
-                    hasInvited: onboardingStore.hasInvitedFriend,
-                    hasMarkedFree: onboardingStore.hasMarkedFreeDay,
-                    hasHandshake: onboardingStore.hasCompletedFirstHandshake,
-                    onInvite: {
-                        rootViewModel.activeTab = .friends
-                    },
-                    onMarkFree: {
-                        rootViewModel.activeTab = .schedule
-                        rootViewModel.showWeekendCTA = true
-                    },
-                    onDismiss: {
-                        rootViewModel.showPairChecklist = false
+                PairOnboardingBannerView(
+                    title: onboardingStore.pairOnboardingBannerTitle,
+                    subtitle: onboardingStore.pairOnboardingBannerSubtitle,
+                    onTap: {
+                        rootViewModel.showPairOnboardingSheet = true
                     }
                 )
-                .adaptiveContentWidth()
-                .padding(.bottom, 8)
             }
+        }
+        .sheet(isPresented: $rootViewModel.showPairOnboardingSheet) {
+            PairOnboardingChecklistView(
+                hasInvited: onboardingStore.hasInvitedFriend,
+                hasMarkedFree: onboardingStore.hasMarkedFreeDay,
+                hasHandshake: onboardingStore.hasCompletedFirstHandshake,
+                onInvite: {
+                    rootViewModel.showPairOnboardingSheet = false
+                    rootViewModel.activeTab = .friends
+                },
+                onMarkFree: {
+                    rootViewModel.showPairOnboardingSheet = false
+                    rootViewModel.activeTab = .schedule
+                    rootViewModel.showWeekendCTA = true
+                },
+                onNotNow: {
+                    rootViewModel.showPairOnboardingSheet = false
+                },
+                onDontShowAgain: {
+                    onboardingStore.dismissPairChecklistPermanently()
+                    rootViewModel.showPairOnboardingSheet = false
+                    rootViewModel.showPairOnboardingBanner = false
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.regularMaterial)
         }
         .sheet(item: $rootViewModel.deepLinkProfileId) { userId in
             // Profile Card View for Deep Links
@@ -233,10 +251,15 @@ struct MainAppView: View {
         let friendCount = friendsViewModel.friends.count
         if friendCount > 0 {
             onboardingStore.acknowledgeExistingFriends()
-            rootViewModel.showPairChecklist = false
+            rootViewModel.showPairOnboardingBanner = false
+            rootViewModel.showPairOnboardingSheet = false
             return
         }
-        rootViewModel.showPairChecklist = onboardingStore.shouldShowPairChecklist(friendCount: friendCount)
+        let show = onboardingStore.shouldShowPairOnboardingBanner(friendCount: friendCount)
+        rootViewModel.showPairOnboardingBanner = show
+        if !show {
+            rootViewModel.showPairOnboardingSheet = false
+        }
     }
 
     private func wireHandshakeCallback() {
@@ -247,7 +270,8 @@ struct MainAppView: View {
                 HapticManager.success()
                 rootViewModel.celebrationToast = "You're connected — find a free night!"
             }
-            rootViewModel.showPairChecklist = false
+            rootViewModel.showPairOnboardingBanner = false
+            rootViewModel.showPairOnboardingSheet = false
             rootViewModel.activeTab = .feed
             if store.pendingWeekendCTA {
                 rootViewModel.showWeekendCTA = true
