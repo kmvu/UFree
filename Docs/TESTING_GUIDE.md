@@ -74,6 +74,52 @@ For testing social flows that require two real accounts without real SMS codes:
    - Run the app on two simulators (or simulator + device).
    - Tap "User 1", "User 2", or "User 3" to bypass SMS auth and login instantly.
 
+### Three-platform real-time loop (iPhone + iPad + Mac)
+
+Use this when you want **three different people** interacting at once. Mac runs as **Designed for iPad** (Debug already has `SUPPORTS_MAC_DESIGNED_FOR_IPAD = YES`). Mac Catalyst is deferred; see [ENGINEERING_GUIDE.md](ENGINEERING_GUIDE.md) Adaptive layout.
+
+| Platform | Destination | DEBUG account |
+|---|---|---|
+| iPhone | Physical device or iPhone simulator | User 1 |
+| iPad | Physical device or iPad simulator | User 2 |
+| Mac | **My Mac (Designed for iPad)** | User 3 |
+
+**Setup**
+
+1. Complete the Firebase test-user prep above (rules/indexes + phone numbers).
+2. In Xcode, select the `UFree` scheme (Debug).
+3. Run three destinations, one at a time or with multiple run destinations if configured:
+   - iPhone → tap **User 1**
+   - iPad → tap **User 2**
+   - Mac → destination **My Mac (Designed for iPad)** → tap **User 3**
+4. One install = one auth session. Do not expect multiple Mac accounts from a single Mac window.
+
+**Connect without relying on Mac camera**
+
+Mac QR **scan** is soft-gated when no usable camera is available. Prefer:
+
+- Phone search: User A finds User B by `+1555000000X`, or
+- Invite / profile link: share `https://ufree.app/profile/{userId}`, or
+- Show QR on Mac, scan from iPhone/iPad (scan direction toward a device with a camera).
+
+Accept friend requests on each side until all three are connected (or the dyads you care about).
+
+**Interact in real time**
+
+1. Keep all three apps **foregrounded**. Background push is unavailable in the current pilot; in-app listeners need an active session.
+2. Mark free days on My Schedule on each account.
+3. Confirm **Who’s Free?** updates across devices.
+4. Send a day-scoped nudge from one account; reply from another via the in-app notification center (bell).
+5. On Mac/iPad regular width, expect sidebar + week matrix (same adaptive path as iPad).
+
+**Quick checklist**
+
+- [ ] User 1 / 2 / 3 each logged in on a different platform.
+- [ ] At least one friend edge between each pair you intend to test (or a full triangle).
+- [ ] Schedule changes appear on the other devices without relaunch.
+- [ ] Nudge + reply works with all three apps open.
+- [ ] Mac does not block the loop when QR scan is unavailable.
+
 ---
 
 ## Manual release smoke test
@@ -145,6 +191,7 @@ For the actual recruiting, success threshold, and foreground-only limitation, us
 - [ ] Cold start preserves user authentication.
 - [ ] App remains stable in Airplane mode.
 - [ ] Two-person pilot smoke passes when a social flow changed.
+- [ ] Three-platform loop (iPhone + iPad + Mac Designed for iPad) when cross-device social behavior changed.
 - [ ] Large-screen smoke (row 11) when layout or navigation chrome changed.
 - [ ] The TestFlight release checklist in the operations guide is complete.
 

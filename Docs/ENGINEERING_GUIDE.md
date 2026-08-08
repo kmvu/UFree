@@ -75,7 +75,7 @@ Adapt by **size class / available width**, not device idiom (`UFree/Core/UI/Adap
 - Compact → `TabView` + phone layouts; regular → `NavigationSplitView` + grids/matrices (Schedule, Who’s Free).
 - Regular presentations use popovers and readable form width; compact uses sheets.
 - Landscape: shorten chrome when `verticalSizeClass == .compact`. Gate camera/QR with `QRScannerCapability`.
-- Mac today is Designed for iPad only; Catalyst later reuses the same layouts.
+- Mac today is Designed for iPad only (`SUPPORTS_MAC_DESIGNED_FOR_IPAD` in Debug); Catalyst is deferred and would reuse the same layouts. For a three-account iPhone + iPad + Mac loop, see [TESTING_GUIDE.md](TESTING_GUIDE.md#three-platform-real-time-loop-iphone--ipad--mac).
 
 ## Firebase, links, and observability
 
