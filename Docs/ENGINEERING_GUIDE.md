@@ -68,6 +68,15 @@ Use the untracked local environment file expected by `fastlane/Fastfile`; do not
 - Use descriptive `CamelCase` type names and `camelCase` members.
 - Follow the test naming and helper guidance in [AGENTS.md](AGENTS.md).
 
+## Adaptive layout
+
+Adapt by **size class / available width**, not device idiom (`UFree/Core/UI/Adaptive/`):
+
+- Compact → `TabView` + phone layouts; regular → `NavigationSplitView` + grids/matrices (Schedule, Who’s Free).
+- Regular presentations use popovers and readable form width; compact uses sheets.
+- Landscape: shorten chrome when `verticalSizeClass == .compact`. Gate camera/QR with `QRScannerCapability`.
+- Mac today is Designed for iPad only; Catalyst later reuses the same layouts.
+
 ## Firebase, links, and observability
 
 - Firestore rules and indexes are configured through `firebase.json`.

@@ -77,7 +77,7 @@ public struct MyScheduleView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingSettings) {
+        .adaptiveSheet(isPresented: $showingSettings) {
             if let friendRepo = rootViewModel.friendsViewModel?.friendRepository {
                 SettingsView(viewModel: SettingsViewModel(
                     authRepository: rootViewModel.authRepository,
@@ -85,7 +85,6 @@ public struct MyScheduleView: View {
                 ))
             }
         }
-
         .task {
             await viewModel.loadSchedule()
 
@@ -94,11 +93,11 @@ public struct MyScheduleView: View {
                 isLoaded = true
             }
         }
-        .modifier(AdaptiveSheetModifier(item: $selectedDayForSheet) { day in
+        .adaptiveSheet(item: $selectedDayForSheet) { day in
             DayDetailsBottomSheet(day: day) { updatedDay in
                 viewModel.updateStatus(for: updatedDay)
             }
-        })
+        }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
                 viewModel.errorMessage = nil
@@ -203,28 +202,6 @@ public struct MyScheduleView: View {
             Spacer()
         }
         .padding()
-    }
-}
-
-// MARK: - Adaptive Presentation Modifier
-
-struct AdaptiveSheetModifier<Item: Identifiable, SheetContent: View>: ViewModifier {
-    @Binding var item: Item?
-    let content: (Item) -> SheetContent
-
-    func body(content: Content) -> some View {
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            content
-                .popover(item: $item) { value in
-                    self.content(value)
-                }
-        } else {
-            content
-                .sheet(item: $item) { value in
-                    self.content(value)
-                        .presentationDetents([.medium, .large])
-                }
-        }
     }
 }
 

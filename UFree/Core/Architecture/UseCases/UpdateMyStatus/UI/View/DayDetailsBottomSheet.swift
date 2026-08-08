@@ -27,7 +27,7 @@ struct DayDetailsBottomSheet: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollViewReader { proxy in
                 List {
                     Section(header: Text("Add Free Time")) {

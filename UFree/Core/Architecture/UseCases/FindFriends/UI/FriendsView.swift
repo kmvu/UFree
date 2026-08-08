@@ -24,60 +24,62 @@ public struct FriendsView: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(spacing: 24) {
-                        if let userId = rootViewModel.currentUser?.id {
-                            DiscoveryCardView(viewModel: viewModel, userId: userId)
-                            
-                            shareInviteLinkButton(userId: userId)
-                        }
-                        
-                        VStack(spacing: 12) {
-                            incomingRequestsSection
-                            myFriendsSection
-                            suggestedFromContactsSection
-                                .id("bottomOfPage")
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 24) {
+                    if let userId = rootViewModel.currentUser?.id {
+                        DiscoveryCardView(viewModel: viewModel, userId: userId)
+                            .adaptiveContentWidth()
+
+                        shareInviteLinkButton(userId: userId)
+                            .adaptiveContentWidth()
+                    }
+
+                    VStack(spacing: 12) {
+                        incomingRequestsSection
+                        myFriendsSection
+                        suggestedFromContactsSection
+                            .id("bottomOfPage")
+                    }
+                    .adaptiveContentWidth()
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+            }
+            .onChange(of: isSearchFocused) { _, focused in
+                if focused {
+                    // Small delay to allow keyboard to begin appearing and ScrollView to adjust
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            proxy.scrollTo("bottomOfPage", anchor: .bottom)
                         }
                     }
-                    .padding()
-                }
-                .onChange(of: isSearchFocused) { _, focused in
-                    if focused {
-                        // Small delay to allow keyboard to begin appearing and ScrollView to adjust
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation(.easeOut(duration: 0.3)) {
-                                proxy.scrollTo("bottomOfPage", anchor: .bottom)
-                            }
-                        }
-                    }
                 }
             }
-            .navigationTitle("Friends")
-            .overlay { if viewModel.isLoading { ProgressView() } }
-            .task {
-                viewModel.listenToRequests()
-                await viewModel.loadFriends()
-            }
-            .onDisappear {
-                viewModel.stopListening()
-            }
-            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-                Button("OK") { viewModel.errorMessage = nil }
-            } message: {
-                if let error = viewModel.errorMessage { Text(error) }
-            }
-            .alert("Permission Needed", isPresented: $viewModel.showPermissionAlert) {
-                Button("Settings", role: .cancel) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
+        }
+        .navigationTitle("Friends")
+        .overlay { if viewModel.isLoading { ProgressView() } }
+        .task {
+            viewModel.listenToRequests()
+            await viewModel.loadFriends()
+        }
+        .onDisappear {
+            viewModel.stopListening()
+        }
+        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+            Button("OK") { viewModel.errorMessage = nil }
+        } message: {
+            if let error = viewModel.errorMessage { Text(error) }
+        }
+        .alert("Permission Needed", isPresented: $viewModel.showPermissionAlert) {
+            Button("Settings", role: .cancel) {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
                 }
-                Button("Cancel", role: .destructive) {}
-            } message: {
-                Text("Please allow Contacts access in Settings to find friends.")
             }
+            Button("Cancel", role: .destructive) {}
+        } message: {
+            Text("Please allow Contacts access in Settings to find friends.")
         }
     }
 

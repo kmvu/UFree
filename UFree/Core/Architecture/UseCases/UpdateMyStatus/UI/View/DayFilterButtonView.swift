@@ -11,6 +11,8 @@ struct DayFilterButtonView: View {
     let date: Date
     let isSelected: Bool
     let freeCount: Int
+    /// When true, the button fills available width (regular-width day filters).
+    var expandsHorizontally: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -50,7 +52,9 @@ struct DayFilterButtonView: View {
                         .padding(.top, 4)
                 }
             }
-            .frame(width: 64, height: 94)
+            .frame(width: expandsHorizontally ? nil : 64)
+            .frame(maxWidth: expandsHorizontally ? .infinity : nil)
+            .frame(height: 94)
             .background(
                 ZStack {
                     if isSelected {

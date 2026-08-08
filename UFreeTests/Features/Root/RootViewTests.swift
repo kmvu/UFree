@@ -79,20 +79,20 @@ final class MainAppViewTests: XCTestCase {
     func test_render_regularWidth_scheduleTab_usesSidebarLayout() async {
         scene.rootViewModel.activeTab = .schedule
 
-        await ViewHost.renderAwaitingUpdates(makeSidebarView())
+        await ViewHost.renderAwaitingUpdates(makeSidebarView(), size: ViewHost.regularPadSize)
     }
 
     func test_render_regularWidth_feedTab_usesSidebarLayout() async {
         scene.rootViewModel.activeTab = .feed
         scene.addFriendSchedules(count: 2, status: .free)
 
-        await ViewHost.renderAwaitingUpdates(makeSidebarView())
+        await ViewHost.renderAwaitingUpdates(makeSidebarView(), size: ViewHost.regularPadSize)
     }
 
     func test_render_regularWidth_friendsTab_usesSidebarLayout() async {
         scene.rootViewModel.activeTab = .friends
 
-        await ViewHost.renderAwaitingUpdates(makeSidebarView())
+        await ViewHost.renderAwaitingUpdates(makeSidebarView(), size: ViewHost.regularPadSize)
     }
 }
 

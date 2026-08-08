@@ -134,4 +134,26 @@ final class FriendsScheduleViewTests: XCTestCase {
 
         await ViewHost.renderAwaitingUpdates(makeView())
     }
+
+    // MARK: - Adaptive Layout
+
+    func test_render_regularWidth_withFriends_showsMatrixLayout() async {
+        scene.addFriendSchedules(count: 3, status: .free)
+
+        await ViewHost.renderAwaitingUpdates(
+            makeView().environment(\.horizontalSizeClass, .regular),
+            size: ViewHost.regularPadSize
+        )
+    }
+
+    func test_render_compactLandscape_withFriends_keepsCarouselLayout() async {
+        scene.addFriendSchedules(count: 2, status: .free)
+
+        await ViewHost.renderAwaitingUpdates(
+            makeView()
+                .environment(\.horizontalSizeClass, .compact)
+                .environment(\.verticalSizeClass, .compact),
+            size: ViewHost.compactLandscapeSize
+        )
+    }
 }

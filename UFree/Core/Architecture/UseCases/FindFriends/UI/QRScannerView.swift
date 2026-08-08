@@ -137,6 +137,15 @@ class ScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDel
     }
 
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        return .portrait
+        // Compact phones keep a portrait capture UX; regular-width (iPad / landscape) can rotate.
+        if traitCollection.horizontalSizeClass == .compact {
+            return .portrait
+        }
+        return .allButUpsideDown
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        previewLayer?.frame = view.layer.bounds
     }
 }

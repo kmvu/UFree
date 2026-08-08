@@ -116,6 +116,7 @@ struct RootView: View {
 
 struct MainAppView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @Environment(\.verticalSizeClass) var verticalSizeClass
     let authRepository: AuthRepository
     @ObservedObject var rootViewModel: RootViewModel
     let user: User
@@ -136,7 +137,8 @@ struct MainAppView: View {
         }
         .safeAreaInset(edge: .bottom) {
             if rootViewModel.showPairChecklist
-                && onboardingStore.shouldShowPairChecklist(friendCount: friendsViewModel.friends.count) {
+                && onboardingStore.shouldShowPairChecklist(friendCount: friendsViewModel.friends.count)
+                && verticalSizeClass != .compact {
                 PairOnboardingChecklistView(
                     hasInvited: onboardingStore.hasInvitedFriend,
                     hasMarkedFree: onboardingStore.hasMarkedFreeDay,
@@ -152,6 +154,7 @@ struct MainAppView: View {
                         rootViewModel.showPairChecklist = false
                     }
                 )
+                .adaptiveContentWidth()
                 .padding(.bottom, 8)
             }
         }
@@ -163,7 +166,8 @@ struct MainAppView: View {
                 Button("Cancel") { rootViewModel.deepLinkProfileId = nil }.foregroundStyle(.secondary)
             }
             .padding()
-            .presentationDetents([.medium])
+            .adaptiveContentWidth(AdaptiveLayout.formContentMaxWidth)
+            .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $rootViewModel.showWeekendCTA) {
             WeekendFreePromptView(
@@ -180,7 +184,8 @@ struct MainAppView: View {
                     rootViewModel.showWeekendCTA = false
                 }
             )
-            .presentationDetents([.medium])
+            .adaptiveContentWidth(AdaptiveLayout.formContentMaxWidth)
+            .presentationDetents([.medium, .large])
         }
         .overlay(alignment: .top) {
             if let toast = rootViewModel.celebrationToast {

@@ -182,4 +182,15 @@ final class DiscoveryCardViewTests: XCTestCase {
             DiscoveryCardView(viewModel: scene.friendsViewModel, userId: "me")
         )
     }
+
+    func test_render_regularWidth_scalesQRCard() async {
+        scene.friendsViewModel.generateMyQRCode(from: "me")
+        scene.friendsViewModel.showMyQRCard = true
+
+        await ViewHost.renderAwaitingUpdates(
+            DiscoveryCardView(viewModel: scene.friendsViewModel, userId: "me")
+                .environment(\.horizontalSizeClass, .regular),
+            size: ViewHost.regularPadSize
+        )
+    }
 }

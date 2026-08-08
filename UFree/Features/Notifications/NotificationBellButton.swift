@@ -32,7 +32,7 @@ struct NotificationBellButton: View {
                 }
             }
         }
-        .sheet(isPresented: $showSheet) {
+        .adaptiveSheet(isPresented: $showSheet) {
             if let vm = notificationViewModel {
                 NotificationCenterView(viewModel: vm)
             }

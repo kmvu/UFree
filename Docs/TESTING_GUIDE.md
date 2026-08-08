@@ -2,7 +2,7 @@
 
 Use this guide for automated validation, two-person checks, and release sign-off. For the purpose and success criteria of the TestFlight pilot, read the [product overview](PRODUCT_OVERVIEW.md); for release steps, use the [operations guide](OPERATIONS_GUIDE.md).
 
-**Current inventory:** 528 test methods are present under `UFreeTests/`. Coverage must be measured from a fresh result bundle; do not treat an old percentage as a release gate.
+**Current inventory:** 534 test methods are present under `UFreeTests/`. Coverage must be measured from a fresh result bundle; do not treat an old percentage as a release gate.
 
 ---
 
@@ -47,7 +47,7 @@ For a per-file breakdown, add `--files-for-target UFree.app`.
 
 Most of the app's line count lives in view bodies, and SwiftUI is lazy: constructing a view value runs no `body` code at all. Views are therefore covered by attaching them to a real `UIWindow` and forcing layout, via two helpers:
 
-- **`ViewHost`** (`UFreeTests/Helpers/ViewHost.swift`) renders a view in a visible window and forces layout passes. Use `renderAwaitingUpdates` when the view has `.task` or `.onAppear` work whose result should appear in a second body pass.
+- **`ViewHost`** (`UFreeTests/Helpers/ViewHost.swift`) renders a view in a visible window and forces layout passes. Use `renderAwaitingUpdates` when the view has `.task` or `.onAppear` work whose result should appear in a second body pass. For size-class branches, pass `ViewHost.regularPadSize` or `ViewHost.compactLandscapeSize` and override `.environment(\.horizontalSizeClass, …)` (and vertical size class when needed).
 - **`TestScene`** (`UFreeTests/Helpers/TestScene.swift`) assembles the whole mock-backed ViewModel graph the way `RootView` does, because views read across each other — `MyScheduleView` reaches into `rootViewModel.friendsScheduleViewModel`, for instance.
 
 Two things to know when writing these tests:
@@ -93,6 +93,7 @@ Run these manually before any release to validate end-to-end stability.
 | 8 | **Deep Linking** | Visit `https://ufree.app/profile/{userId}` in Safari. | App opens to specific user's card. |
 | 9 | **Cold Start** | Force-quit app → reopen. | User stays logged in. Local data loads from SwiftData cache. |
 | 10 | **Notification Bell** | Tap bell after receiving nudge. | Inbox opens; unread count resets to 0. |
+| 11 | **Large screen** | Run on iPad (or iPhone landscape). | Sidebar on regular width; Who’s Free uses a week matrix; status banner doesn’t crowd the schedule. |
 
 ---
 
@@ -144,8 +145,9 @@ For the actual recruiting, success threshold, and foreground-only limitation, us
 - [ ] Cold start preserves user authentication.
 - [ ] App remains stable in Airplane mode.
 - [ ] Two-person pilot smoke passes when a social flow changed.
+- [ ] Large-screen smoke (row 11) when layout or navigation chrome changed.
 - [ ] The TestFlight release checklist in the operations guide is complete.
 
 ---
 
-**Last reviewed:** August 1, 2026
+**Last reviewed:** August 8, 2026

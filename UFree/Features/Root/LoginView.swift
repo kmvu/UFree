@@ -136,6 +136,7 @@ struct LoginView: View {
                 #endif
             }
             .padding()
+            .adaptiveContentWidth(AdaptiveLayout.formContentMaxWidth)
         }
         .alert("Login Failed", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) { }
