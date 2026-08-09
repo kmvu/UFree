@@ -306,6 +306,43 @@ final class FriendsViewModelContactSyncTests: XCTestCase {
         XCTAssertEqual(sut.incomingRequests.count, 1)
     }
 
+    func test_acceptRequest_staleListenerSnapshot_doesNotRestoreHandledRequest() async {
+        let request = FriendRequest(
+            id: "r1", fromId: "u1", fromName: "Alice", toId: "me", status: .pending, timestamp: Date()
+        )
+        friendRepository.incomingRequests = [request]
+        sut.listenToRequests()
+        await waitUntil("incoming requests published") { self.sut.incomingRequests.count == 1 }
+
+        await sut.acceptRequest(request)
+
+        XCTAssertTrue(sut.incomingRequests.isEmpty)
+        XCTAssertEqual(sut.friends.count, 1)
+
+        friendRepository.emitIncomingRequests([request])
+
+        XCTAssertTrue(sut.incomingRequests.isEmpty)
+        friendRepository.finishIncomingRequestsStream()
+    }
+
+    func test_acceptRequest_staleFriendsSnapshot_keepsOptimisticFriend() async {
+        let request = FriendRequest(
+            id: "r1", fromId: "u1", fromName: "Alice", toId: "me", status: .pending, timestamp: Date()
+        )
+        sut.incomingRequests = [request]
+        sut.listenToFriends()
+        await waitUntil("friends listener attached") { true }
+
+        await sut.acceptRequest(request)
+
+        XCTAssertEqual(sut.friends.count, 1)
+        friendRepository.emitFriends([])
+
+        XCTAssertEqual(sut.friends.count, 1)
+        XCTAssertEqual(sut.friends.first?.displayName, "Alice")
+        friendRepository.finishFriendsStream()
+    }
+
     func test_removeFriend_failure_restoresOriginalList() async {
         let alice = UserProfile(id: "u1", displayName: "Alice")
         friendRepository.myFriends = [alice]

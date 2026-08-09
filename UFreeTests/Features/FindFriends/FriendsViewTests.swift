@@ -51,6 +51,17 @@ final class FriendsViewTests: XCTestCase {
         await ViewHost.renderAwaitingUpdates(makeView())
     }
 
+    func test_render_withConnectedDiscoveredUser_showsRemoveAction() async {
+        scene.friendsViewModel.friends = [
+            UserProfile(id: "u1", displayName: "Alice", hashedPhoneNumber: "hash_a")
+        ]
+        scene.friendsViewModel.discoveredUsers = [
+            UserProfile(id: "u1", displayName: "Alice", hashedPhoneNumber: "hash_a")
+        ]
+
+        await ViewHost.renderAwaitingUpdates(makeView())
+    }
+
     func test_render_withIncomingRequests_showsRequestRows() async {
         scene.friendsViewModel.incomingRequests = scene.makeFriendRequests(count: 2)
 

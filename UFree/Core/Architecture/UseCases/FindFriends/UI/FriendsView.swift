@@ -11,6 +11,7 @@ public struct FriendsView: View {
     @StateObject private var viewModel: FriendsViewModel
     @ObservedObject var rootViewModel: RootViewModel
     @FocusState private var isSearchFocused: Bool
+    @State private var friendPendingRemoval: UserProfile?
 
     public init(friendRepository: FriendRepositoryProtocol, rootViewModel: RootViewModel) {
         self.init(viewModel: FriendsViewModel(friendRepository: friendRepository), rootViewModel: rootViewModel)
@@ -86,6 +87,32 @@ public struct FriendsView: View {
         } message: {
             Text("Please allow Contacts access in Settings to find friends.")
         }
+        .alert("Remove Friend?", isPresented: removalConfirmationIsPresented) {
+            Button("Remove", role: .destructive) {
+                if let friend = friendPendingRemoval {
+                    Task { await viewModel.removeFriend(friend) }
+                }
+                friendPendingRemoval = nil
+            }
+            Button("Cancel", role: .cancel) {
+                friendPendingRemoval = nil
+            }
+        } message: {
+            if let friend = friendPendingRemoval {
+                Text("\(friend.displayName) will be removed from your trusted circle. You can add them again anytime.")
+            }
+        }
+    }
+
+    private var removalConfirmationIsPresented: Binding<Bool> {
+        Binding(
+            get: { friendPendingRemoval != nil },
+            set: { isPresented in
+                if !isPresented {
+                    friendPendingRemoval = nil
+                }
+            }
+        )
     }
 
     @ViewBuilder
@@ -96,16 +123,44 @@ public struct FriendsView: View {
             subject: Text("Join me on UFree"),
             message: Text("Add me on UFree so we can find a free night: \(inviteURL.absoluteString)")
         ) {
-            HStack(spacing: 12) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.2))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "link")
+                        .font(.title3)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Share Invite Link")
+                        .font(.headline)
+                    Text("Add me on UFree so we can find a free night")
+                        .font(.caption)
+                        .opacity(0.9)
+                }
+
+                Spacer()
+
                 Image(systemName: "square.and.arrow.up")
-                Text("Share invite link")
-                Spacer(minLength: 0)
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.subheadline)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
             .frame(maxWidth: .infinity)
+            .background(
+                LinearGradient(
+                    colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .foregroundColor(.white)
+            .cornerRadius(24)
+            .shadow(color: Color.accentColor.opacity(0.3), radius: 10, x: 0, y: 5)
         }
-        .ufreePrimaryButton()
+        .buttonStyle(InteractiveButtonStyle())
         .simultaneousGesture(TapGesture().onEnded {
             HapticManager.medium()
             OnboardingProgressStore.shared.markInvitedFriend()
@@ -134,19 +189,31 @@ public struct FriendsView: View {
                         Spacer()
                         
                         HStack(spacing: 8) {
-                            Button("Accept") {
-                                HapticManager.success()
+                            Button {
                                 Task { await viewModel.acceptRequest(request) }
+                            } label: {
+                                if viewModel.isProcessingRequest(request) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Text("Accept")
+                                }
                             }
                             .ufreeCompactButton(tint: .green)
-                            
+                            .disabled(viewModel.hasActiveRequestAction)
+
                             Button(role: .destructive) {
-                                HapticManager.warning()
                                 Task { await viewModel.declineRequest(request) }
                             } label: {
-                                Image(systemName: "xmark")
+                                if viewModel.isProcessingRequest(request) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Image(systemName: "xmark")
+                                }
                             }
                             .ufreeCompactButton(prominent: false, tint: .secondary)
+                            .disabled(viewModel.hasActiveRequestAction)
                         }
                     }
                     .padding(.vertical, 4)
@@ -167,13 +234,6 @@ public struct FriendsView: View {
                 ForEach(viewModel.friends) { friend in
                     friendRow(for: friend, isDiscovered: false)
                         .padding(.horizontal)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                Task { await viewModel.removeFriend(friend) }
-                            } label: {
-                                Label("Remove Friend", systemImage: "person.badge.minus")
-                            }
-                        }
                 }
             }
         }
@@ -285,9 +345,7 @@ public struct FriendsView: View {
             
             if isDiscovered {
                 if viewModel.isAlreadyFriend(user) {
-                    Text("Connected")
-                        .font(UFreeType.compactCTALabel)
-                        .foregroundStyle(.secondary)
+                    removeFriendButton(for: user)
                 } else if viewModel.isProcessing && viewModel.isSearching {
                     ProgressView().controlSize(.small)
                 } else {
@@ -297,9 +355,21 @@ public struct FriendsView: View {
                     .ufreeCompactButton(tint: .green)
                     .disabled(viewModel.isProcessing)
                 }
+            } else {
+                removeFriendButton(for: user)
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private func removeFriendButton(for user: UserProfile) -> some View {
+        Button("Remove") {
+            HapticManager.warning()
+            friendPendingRemoval = user
+        }
+        .ufreeCompactButton(prominent: false, tint: .red)
+        .disabled(viewModel.isProcessing)
+        .accessibilityHint("Removes \(user.displayName) from your trusted circle")
     }
 }
 

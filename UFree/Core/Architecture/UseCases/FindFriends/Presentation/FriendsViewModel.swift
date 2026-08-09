@@ -43,8 +43,12 @@ public final class FriendsViewModel: ObservableObject {
     
     // Friend requests (handshake)
     @Published public var incomingRequests: [FriendRequest] = []
-    /// Separate from `isProcessing` so Accept works while friends are still loading.
-    private var isHandlingHandshake = false
+    /// Which incoming row is running Accept / Decline (spinner stays on that row only).
+    @Published public private(set) var processingRequestKey: String?
+    /// Locally handled requests kept out of the list until Firestore stops echoing them as pending.
+    private var handledIncomingRequestKeys = Set<String>()
+    /// Friends added optimistically until the friends listener / fetch catches up.
+    private var optimisticFriendsById: [String: UserProfile] = [:]
     /// `nonisolated(unsafe)` so `deinit` can cancel without hopping to the MainActor.
     /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
     /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
@@ -77,7 +81,7 @@ public final class FriendsViewModel: ObservableObject {
                 guard !Task.isCancelled else { return }
                 // Avoid `withAnimation` during hosted-view teardown (iOS 26.2 XCTest
                 // allocator abort when an animation transaction outlives the hierarchy).
-                self?.incomingRequests = requests
+                self?.applyIncomingRequestsUpdate(requests)
             }
         }
     }
@@ -90,8 +94,7 @@ public final class FriendsViewModel: ObservableObject {
             guard let friendRepository = self?.friendRepository else { return }
             for await latest in friendRepository.observeFriends() {
                 guard !Task.isCancelled else { return }
-                self?.friends = latest
-                self?.pruneSearchAndDiscoveryAgainstFriends()
+                self?.applyFriendsUpdate(latest)
             }
         }
     }
@@ -102,6 +105,49 @@ public final class FriendsViewModel: ObservableObject {
         discoveredUsers.removeAll { user in
             guard let id = user.id else { return false }
             return friendIds.contains(id)
+        }
+    }
+
+    func isProcessingRequest(_ request: FriendRequest) -> Bool {
+        processingRequestKey == incomingRequestKey(request)
+    }
+
+    var hasActiveRequestAction: Bool {
+        processingRequestKey != nil
+    }
+
+    private func incomingRequestKey(_ request: FriendRequest) -> String {
+        if let id = request.id, !id.isEmpty {
+            return id
+        }
+        return "\(request.fromId)-pending"
+    }
+
+    private func applyIncomingRequestsUpdate(_ requests: [FriendRequest]) {
+        let pendingKeys = Set(requests.map(incomingRequestKey))
+        handledIncomingRequestKeys = handledIncomingRequestKeys.intersection(pendingKeys)
+        incomingRequests = requests.filter { !handledIncomingRequestKeys.contains(incomingRequestKey($0)) }
+    }
+
+    private func applyFriendsUpdate(_ latest: [UserProfile]) {
+        let latestIds = Set(latest.compactMap(\.id))
+        var merged = latest
+        for (id, profile) in optimisticFriendsById where !latestIds.contains(id) {
+            merged.append(profile)
+        }
+        for id in latestIds {
+            optimisticFriendsById.removeValue(forKey: id)
+        }
+        friends = merged
+        pruneSearchAndDiscoveryAgainstFriends()
+    }
+
+    private func markIncomingRequestHandled(_ request: FriendRequest) {
+        handledIncomingRequestKeys.insert(incomingRequestKey(request))
+        if let index = incomingRequests.firstIndex(where: { $0.id == request.id }) {
+            incomingRequests.remove(at: index)
+        } else if let index = incomingRequests.firstIndex(where: { $0.fromId == request.fromId }) {
+            incomingRequests.remove(at: index)
         }
     }
     
@@ -122,7 +168,7 @@ public final class FriendsViewModel: ObservableObject {
             isProcessing = false
         }
         do {
-            self.friends = try await friendRepository.getMyFriends()
+            applyFriendsUpdate(try await friendRepository.getMyFriends())
         } catch {
             self.errorMessage = "Failed to load friends: \(error.localizedDescription)"
         }
@@ -327,8 +373,9 @@ public final class FriendsViewModel: ObservableObject {
         }
     }
     
-    /// Fired after a successful mutual accept so the host can jump to Who's Free + weekend CTA.
-    public var onFirstHandshakeCompleted: (() -> Void)?
+    /// Fired after a successful accept so the host can run the post-accept quest
+    /// (first-connection celebration vs subsequent Who's Free toast).
+    public var onAcceptCompleted: ((_ friendName: String, _ wasFirstFriend: Bool) -> Void)?
 
     /// Resolves a pending request for Notification Center Accept.
     /// Prefers `relatedRequestId`, then in-memory listener cache, then a one-shot fetch.
@@ -358,42 +405,38 @@ public final class FriendsViewModel: ObservableObject {
 
     @discardableResult
     public func acceptRequest(_ request: FriendRequest) async -> Bool {
-        guard !isHandlingHandshake else { return false }
-        isHandlingHandshake = true
-        defer { isHandlingHandshake = false }
-        
+        guard processingRequestKey == nil else { return false }
+        let key = incomingRequestKey(request)
+        processingRequestKey = key
+        defer { processingRequestKey = nil }
+
         do {
             HapticManager.success()
             try await friendRepository.acceptFriendRequest(request)
-            
-            let wasFirstFriend = friends.isEmpty
 
-            // Remove from incoming requests and add to friends
+            let wasFirstFriend = friends.isEmpty
+            let newFriend = UserProfile(
+                id: request.fromId,
+                displayName: request.fromName,
+                hashedPhoneNumber: ""
+            )
+
             withAnimation {
-                if let index = incomingRequests.firstIndex(where: { $0.id == request.id }) {
-                    incomingRequests.remove(at: index)
-                } else if let index = incomingRequests.firstIndex(where: { $0.fromId == request.fromId }) {
-                    incomingRequests.remove(at: index)
-                }
+                markIncomingRequestHandled(request)
                 if !friends.contains(where: { $0.id == request.fromId }) {
-                    let newFriend = UserProfile(
-                        id: request.fromId,
-                        displayName: request.fromName,
-                        hashedPhoneNumber: ""
-                    )
+                    optimisticFriendsById[request.fromId] = newFriend
                     friends.append(newFriend)
                 }
             }
 
             OnboardingProgressStore.shared.markFirstHandshake()
-            if wasFirstFriend {
-                onFirstHandshakeCompleted?()
-            }
-            
-            // Contextual Permission Prompt: Request APNs permission after first handshake
+            onAcceptCompleted?(request.fromName, wasFirstFriend)
+
             requestNotificationPermissions()
             return true
         } catch {
+            handledIncomingRequestKeys.remove(key)
+            optimisticFriendsById.removeValue(forKey: request.fromId)
             self.errorMessage = "Failed to accept request: \(error.localizedDescription)"
             return false
         }
@@ -412,21 +455,20 @@ public final class FriendsViewModel: ObservableObject {
     }
     
     public func declineRequest(_ request: FriendRequest) async {
-        guard !isHandlingHandshake else { return }
-        isHandlingHandshake = true
-        defer { isHandlingHandshake = false }
-        
+        guard processingRequestKey == nil else { return }
+        let key = incomingRequestKey(request)
+        processingRequestKey = key
+        defer { processingRequestKey = nil }
+
         do {
             HapticManager.warning()
             try await friendRepository.declineFriendRequest(request)
-            
-            // Remove from incoming requests
+
             withAnimation {
-                if let index = incomingRequests.firstIndex(where: { $0.id == request.id }) {
-                    incomingRequests.remove(at: index)
-                }
+                markIncomingRequestHandled(request)
             }
         } catch {
+            handledIncomingRequestKeys.remove(key)
             self.errorMessage = "Failed to decline request."
         }
     }

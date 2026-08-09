@@ -65,12 +65,23 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
     }
 
     func observeFriends() -> AsyncStream<[UserProfile]> {
-        let friends = myFriends
-        return AsyncStream { continuation in
-            continuation.yield(friends)
-            continuation.finish()
+        AsyncStream { continuation in
+            continuation.yield(myFriends)
+            friendsContinuation = continuation
         }
     }
+
+    func emitFriends(_ friends: [UserProfile]) {
+        myFriends = friends
+        friendsContinuation?.yield(friends)
+    }
+
+    func finishFriendsStream() {
+        friendsContinuation?.finish()
+        friendsContinuation = nil
+    }
+
+    private var friendsContinuation: AsyncStream<[UserProfile]>.Continuation?
 
     func findUserByPhoneNumber(_ phoneNumber: String) async throws -> UserProfile? {
         if let findByPhoneError { throw findByPhoneError }
@@ -95,12 +106,23 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
     }
 
     func observeIncomingRequests() -> AsyncStream<[FriendRequest]> {
-        let requests = incomingRequests
-        return AsyncStream { continuation in
-            continuation.yield(requests)
-            continuation.finish()
+        AsyncStream { continuation in
+            continuation.yield(incomingRequests)
+            incomingRequestsContinuation = continuation
         }
     }
+
+    func emitIncomingRequests(_ requests: [FriendRequest]) {
+        incomingRequests = requests
+        incomingRequestsContinuation?.yield(requests)
+    }
+
+    func finishIncomingRequestsStream() {
+        incomingRequestsContinuation?.finish()
+        incomingRequestsContinuation = nil
+    }
+
+    private var incomingRequestsContinuation: AsyncStream<[FriendRequest]>.Continuation?
 
     func pendingFriendRequest(from fromId: String) async throws -> FriendRequest? {
         pendingRequestLookups.append(fromId)
