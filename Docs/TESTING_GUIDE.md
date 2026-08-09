@@ -173,10 +173,11 @@ Run these manually before any release to validate end-to-end stability.
 Run this with two TestFlight users or two debug simulators before recruiting pilot participants:
 
 1. A shares a link or QR code; B sends or accepts the connection request.
-2. Both mark a weekend day free.
-3. Confirm **Who’s Free?** shows the other person, including partial availability.
-4. A sends a day-specific nudge; B replies **I’m in**.
-5. Confirm A sees the reply in the in-app notification center.
+2. Both mark a weekend day free (e.g. Saturday).
+3. Open **Who’s Free?** on each device **without pull-to-refresh** — each should see the other’s free day.
+4. When both are free the same day, that day should show a mutual cue (day chip **Both** and/or friend cell **Both**).
+5. A sends a day-specific nudge from that day; B replies **I’m in**.
+6. Confirm A sees the reply in the in-app notification center (and on Who’s Free).
 
 For the actual recruiting, success threshold, and foreground-only limitation, use [Operations guide → TestFlight dyad pilot](OPERATIONS_GUIDE.md#testflight-dyad-pilot).
 

@@ -10,6 +10,7 @@ import SwiftUI
 public struct FriendsScheduleView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @ObservedObject var viewModel: FriendsScheduleViewModel
+    @ObservedObject var scheduleViewModel: MyScheduleViewModel
     @ObservedObject var rootViewModel: RootViewModel
     @ObservedObject private var onboardingStore = OnboardingProgressStore.shared
 
@@ -23,8 +24,17 @@ public struct FriendsScheduleView: View {
         horizontalSizeClass == .regular
     }
 
-    public init(viewModel: FriendsScheduleViewModel, rootViewModel: RootViewModel) {
+    private var showsWaitingForFriendsCopy: Bool {
+        viewModel.hasUnknownOnlyFriends(in: viewModel.friendSchedules, days: daysToShow)
+    }
+
+    public init(
+        viewModel: FriendsScheduleViewModel,
+        scheduleViewModel: MyScheduleViewModel,
+        rootViewModel: RootViewModel
+    ) {
         self.viewModel = viewModel
+        self.scheduleViewModel = scheduleViewModel
         self.rootViewModel = rootViewModel
     }
 
@@ -35,6 +45,15 @@ public struct FriendsScheduleView: View {
                     dayFilterSection
                 }
 
+                if showsWaitingForFriendsCopy {
+                    Text("Waiting for them to mark free days.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal)
+                }
+
+                notFreeHintSection
                 nudgeAllSection
 
                 if viewModel.friendSchedules.isEmpty {
@@ -60,7 +79,12 @@ public struct FriendsScheduleView: View {
                     friendsMatrixSection
                 } else {
                     ForEach(viewModel.friendSchedules) { friendDisplay in
-                        FriendScheduleRow(display: friendDisplay, days: daysToShow, viewModel: viewModel)
+                        FriendScheduleRow(
+                            display: friendDisplay,
+                            days: daysToShow,
+                            viewModel: viewModel,
+                            mySchedule: scheduleViewModel.weeklySchedule
+                        )
                     }
                 }
             }
@@ -89,6 +113,12 @@ public struct FriendsScheduleView: View {
         }
         .refreshable {
             await viewModel.loadFriendsSchedules()
+        }
+        .task(id: rootViewModel.activeTab) {
+            guard rootViewModel.activeTab == .feed else { return }
+            await viewModel.loadFriendsSchedules(
+                showLoading: viewModel.friendSchedules.isEmpty
+            )
         }
     }
 
@@ -124,15 +154,41 @@ public struct FriendsScheduleView: View {
 
     private func dayFilterButton(for date: Date) -> some View {
         let freeCount = viewModel.freeFriendCount(for: date, friendsSchedules: viewModel.friendSchedules)
+        let isMutualFree = freeCount > 0
+            && viewModel.isMeFree(on: date, mySchedule: scheduleViewModel.weeklySchedule)
         return DayFilterButtonView(
             date: date,
             isSelected: viewModel.selectedDate.map { Calendar.current.isDate($0, inSameDayAs: date) } ?? false,
             freeCount: freeCount,
+            isMutualFree: isMutualFree,
             expandsHorizontally: isRegularWidth,
             action: {
                 viewModel.toggleDate(date)
             }
         )
+    }
+
+    // MARK: - Not-free hint
+
+    @ViewBuilder
+    private var notFreeHintSection: some View {
+        if let selectedDate = viewModel.selectedDate {
+            let freeCount = viewModel.freeFriendCount(
+                for: selectedDate,
+                friendsSchedules: viewModel.friendSchedules
+            )
+            let meFree = viewModel.isMeFree(
+                on: selectedDate,
+                mySchedule: scheduleViewModel.weeklySchedule
+            )
+            if freeCount > 0 && !meFree {
+                Text("You're not free this day — mark Schedule to match.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+            }
+        }
     }
 
     // MARK: - Nudge All
@@ -207,6 +263,13 @@ public struct FriendsScheduleView: View {
                     days: daysToShow,
                     selectedDate: viewModel.selectedDate,
                     isNudging: viewModel.isNudging,
+                    isBothFree: { date in
+                        viewModel.isBothFree(
+                            friendDisplay: friendDisplay,
+                            on: date,
+                            mySchedule: scheduleViewModel.weeklySchedule
+                        )
+                    },
                     replyForDate: { date in
                         viewModel.nudgeReply(forFriendId: friendDisplay.id, date: date)
                     },
@@ -232,6 +295,7 @@ private struct FriendScheduleRow: View {
     let display: FriendsScheduleViewModel.FriendScheduleDisplay
     let days: [Date]
     let viewModel: FriendsScheduleViewModel
+    let mySchedule: [DayAvailability]
 
     private var selectedDayReplyCaption: String? {
         guard let selected = viewModel.selectedDate,
@@ -295,7 +359,17 @@ private struct FriendScheduleRow: View {
                     ForEach(days, id: \.self) { date in
                         let status = display.status(for: date)
                         let reply = viewModel.nudgeReply(forFriendId: display.id, date: date)
-                        FriendStatusPill(date: date, status: status, reply: reply)
+                        let bothFree = viewModel.isBothFree(
+                            friendDisplay: display,
+                            on: date,
+                            mySchedule: mySchedule
+                        )
+                        FriendStatusPill(
+                            date: date,
+                            status: status,
+                            reply: reply,
+                            isBothFree: bothFree
+                        )
                     }
                 }
             }
@@ -322,6 +396,7 @@ private struct FriendScheduleMatrixRow: View {
     let days: [Date]
     let selectedDate: Date?
     let isNudging: Bool
+    let isBothFree: (Date) -> Bool
     let replyForDate: (Date) -> AppNotification.NudgeResponse?
     let onNudge: () -> Void
 
@@ -349,7 +424,8 @@ private struct FriendScheduleMatrixRow: View {
                 FriendMatrixStatusCell(
                     status: status,
                     reply: replyForDate(date),
-                    isSelected: isSelected
+                    isSelected: isSelected,
+                    isBothFree: isBothFree(date)
                 )
                     .frame(maxWidth: .infinity)
                     .frame(minWidth: AdaptiveLayout.dayCellMinWidth)
@@ -378,6 +454,9 @@ private struct FriendMatrixStatusCell: View {
     let status: AvailabilityStatus
     let reply: AppNotification.NudgeResponse?
     let isSelected: Bool
+    let isBothFree: Bool
+
+    private static let bothFreeColor = Color(hex: "2fbf71")
 
     var body: some View {
         VStack(spacing: 4) {
@@ -389,7 +468,7 @@ private struct FriendMatrixStatusCell: View {
                         Image(systemName: reply.whosFreeSymbolName)
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.white)
-                    } else if status == .free {
+                    } else if isBothFree || status == .free {
                         Image(systemName: "checkmark")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.white)
@@ -402,7 +481,7 @@ private struct FriendMatrixStatusCell: View {
 
             Text(shortStatusLabel)
                 .font(.caption2)
-                .foregroundStyle(reply != nil ? circleColor : .secondary)
+                .foregroundStyle(labelColor)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -413,11 +492,20 @@ private struct FriendMatrixStatusCell: View {
     }
 
     private var circleColor: Color {
-        reply?.whosFreeColor ?? status.displayColor
+        if let reply { return reply.whosFreeColor }
+        if isBothFree { return Self.bothFreeColor }
+        return status.displayColor
+    }
+
+    private var labelColor: Color {
+        if reply != nil { return circleColor }
+        if isBothFree { return Self.bothFreeColor }
+        return .secondary
     }
 
     private var shortStatusLabel: String {
         if let reply { return reply.shortLabel }
+        if isBothFree { return "Both" }
         switch status {
         case .free: return "Free"
         case .busy: return "Busy"
@@ -436,11 +524,20 @@ private struct FriendStatusPill: View {
     let date: Date
     let status: AvailabilityStatus
     let reply: AppNotification.NudgeResponse?
+    let isBothFree: Bool
 
-    init(date: Date, status: AvailabilityStatus, reply: AppNotification.NudgeResponse? = nil) {
+    private static let bothFreeColor = Color(hex: "2fbf71")
+
+    init(
+        date: Date,
+        status: AvailabilityStatus,
+        reply: AppNotification.NudgeResponse? = nil,
+        isBothFree: Bool = false
+    ) {
         self.date = date
         self.status = status
         self.reply = reply
+        self.isBothFree = isBothFree
     }
 
     private var dayFormatter: DateFormatter = {
@@ -463,7 +560,7 @@ private struct FriendStatusPill: View {
                         Image(systemName: reply.whosFreeSymbolName)
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(.white)
-                    } else if status == .free {
+                    } else if isBothFree || status == .free {
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(.white)
@@ -474,16 +571,30 @@ private struct FriendStatusPill: View {
                     }
                 }
 
-            Text(reply?.shortLabel ?? status.displayName)
+            Text(statusLabel)
                 .font(.caption)
-                .foregroundStyle(reply != nil ? circleColor : .secondary)
+                .foregroundStyle(labelColor)
                 .lineLimit(1)
         }
         .frame(width: 50)
     }
 
     private var circleColor: Color {
-        reply?.whosFreeColor ?? status.displayColor
+        if let reply { return reply.whosFreeColor }
+        if isBothFree { return Self.bothFreeColor }
+        return status.displayColor
+    }
+
+    private var labelColor: Color {
+        if reply != nil { return circleColor }
+        if isBothFree { return Self.bothFreeColor }
+        return .secondary
+    }
+
+    private var statusLabel: String {
+        if let reply { return reply.shortLabel }
+        if isBothFree { return "Both" }
+        return status.displayName
     }
 }
 
@@ -521,9 +632,14 @@ private extension AppNotification.NudgeResponse {
         availabilityRepository: mockAvailabilityRepo,
         notificationRepository: mockNotificationRepo
     )
+    let scheduleViewModel = MyScheduleViewModel(
+        updateUseCase: UpdateMyStatusUseCase(repository: mockAvailabilityRepo),
+        repository: mockAvailabilityRepo
+    )
 
     return FriendsScheduleView(
         viewModel: viewModel,
+        scheduleViewModel: scheduleViewModel,
         rootViewModel: RootViewModel(authRepository: MockAuthRepository())
     )
 }

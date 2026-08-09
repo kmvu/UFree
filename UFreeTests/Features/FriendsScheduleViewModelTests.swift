@@ -701,4 +701,163 @@ final class FriendsScheduleViewModelTests: XCTestCase {
         XCTAssertEqual(sut.friendSchedules.first?.status(for: today), .free)
         XCTAssertEqual(sut.nudgeReply(forFriendId: "friend1", date: today), .imIn)
     }
+
+    // MARK: - Reload / silent refresh
+
+    func test_loadFriendsSchedules_reloadIncrementsGetSchedulesCallCount() async {
+        let today = Calendar.current.startOfDay(for: Date())
+        let friend = UserProfile(id: "friend1", displayName: "Alex", hashedPhoneNumber: "h1")
+        let schedule = UserSchedule(
+            id: "friend1",
+            name: "Alex",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        await mockFriendRepo.addFriend(friend)
+        mockAvailabilityRepo.addFriendSchedule(schedule)
+
+        await sut.loadFriendsSchedules()
+        XCTAssertEqual(mockAvailabilityRepo.getSchedulesCallCount, 1)
+
+        await sut.loadFriendsSchedules(showLoading: false)
+        XCTAssertEqual(mockAvailabilityRepo.getSchedulesCallCount, 2)
+        XCTAssertEqual(sut.friendSchedules.count, 1)
+        XCTAssertFalse(sut.isLoading)
+    }
+
+    func test_loadFriendsSchedules_showLoadingFalse_doesNotLeaveLoadingTrue() async {
+        let today = Calendar.current.startOfDay(for: Date())
+        let friend = UserProfile(id: "friend1", displayName: "Alex", hashedPhoneNumber: "h1")
+        mockAvailabilityRepo.addFriendSchedule(
+            UserSchedule(
+                id: "friend1",
+                name: "Alex",
+                avatarURL: nil,
+                weeklyStatus: [DayAvailability(date: today, status: .free)]
+            )
+        )
+        await mockFriendRepo.addFriend(friend)
+        await sut.loadFriendsSchedules()
+
+        sut.isLoading = false
+        await sut.loadFriendsSchedules(showLoading: false)
+
+        XCTAssertFalse(sut.isLoading)
+        XCTAssertFalse(sut.friendSchedules.isEmpty)
+    }
+
+    // MARK: - Overlap helpers
+
+    func test_isMeFree_onlyMe_returnsTrueWhenMyDayIsFree() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let mySchedule = [DayAvailability(date: today, status: .free)]
+        XCTAssertTrue(sut.isMeFree(on: today, mySchedule: mySchedule))
+    }
+
+    func test_isBothFree_bothFree_returnsTrue() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let friend = FriendsScheduleViewModel.FriendScheduleDisplay(
+            id: "f1",
+            displayName: "Alex",
+            userSchedule: UserSchedule(
+                id: "f1",
+                name: "Alex",
+                avatarURL: nil,
+                weeklyStatus: [DayAvailability(date: today, status: .free)]
+            )
+        )
+        let mySchedule = [DayAvailability(date: today, status: .morningOnly)]
+
+        XCTAssertTrue(sut.isBothFree(friendDisplay: friend, on: today, mySchedule: mySchedule))
+    }
+
+    func test_isBothFree_onlyThem_returnsFalse() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let friend = FriendsScheduleViewModel.FriendScheduleDisplay(
+            id: "f1",
+            displayName: "Alex",
+            userSchedule: UserSchedule(
+                id: "f1",
+                name: "Alex",
+                avatarURL: nil,
+                weeklyStatus: [DayAvailability(date: today, status: .free)]
+            )
+        )
+        let mySchedule = [DayAvailability(date: today, status: .busy)]
+
+        XCTAssertFalse(sut.isBothFree(friendDisplay: friend, on: today, mySchedule: mySchedule))
+        XCTAssertFalse(sut.isMeFree(on: today, mySchedule: mySchedule))
+    }
+
+    func test_isBothFree_onlyMe_returnsFalse() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let friend = FriendsScheduleViewModel.FriendScheduleDisplay(
+            id: "f1",
+            displayName: "Alex",
+            userSchedule: UserSchedule(
+                id: "f1",
+                name: "Alex",
+                avatarURL: nil,
+                weeklyStatus: [DayAvailability(date: today, status: .busy)]
+            )
+        )
+        let mySchedule = [DayAvailability(date: today, status: .free)]
+
+        XCTAssertFalse(sut.isBothFree(friendDisplay: friend, on: today, mySchedule: mySchedule))
+        XCTAssertTrue(sut.isMeFree(on: today, mySchedule: mySchedule))
+    }
+
+    func test_isBothFree_unknown_returnsFalse() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let friend = FriendsScheduleViewModel.FriendScheduleDisplay(
+            id: "f1",
+            displayName: "Alex",
+            userSchedule: UserSchedule(
+                id: "f1",
+                name: "Alex",
+                avatarURL: nil,
+                weeklyStatus: [DayAvailability(date: today, status: .unknown)]
+            )
+        )
+        let mySchedule = [DayAvailability(date: today, status: .unknown)]
+
+        XCTAssertFalse(sut.isBothFree(friendDisplay: friend, on: today, mySchedule: mySchedule))
+        XCTAssertFalse(sut.isMeFree(on: today, mySchedule: mySchedule))
+    }
+
+    func test_hasUnknownOnlyFriends_allUnknown_returnsTrue() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let days = (0..<5).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: today) }
+        let friend = FriendsScheduleViewModel.FriendScheduleDisplay(
+            id: "f1",
+            displayName: "Alex",
+            userSchedule: UserSchedule(
+                id: "f1",
+                name: "Alex",
+                avatarURL: nil,
+                weeklyStatus: days.map { DayAvailability(date: $0, status: .unknown) }
+            )
+        )
+
+        XCTAssertTrue(sut.hasUnknownOnlyFriends(in: [friend], days: days))
+    }
+
+    func test_hasUnknownOnlyFriends_whenFriendIsFree_returnsFalse() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let days = (0..<5).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: today) }
+        var weekly = days.map { DayAvailability(date: $0, status: .unknown) }
+        weekly[0] = DayAvailability(date: today, status: .free)
+        let friend = FriendsScheduleViewModel.FriendScheduleDisplay(
+            id: "f1",
+            displayName: "Alex",
+            userSchedule: UserSchedule(
+                id: "f1",
+                name: "Alex",
+                avatarURL: nil,
+                weeklyStatus: weekly
+            )
+        )
+
+        XCTAssertFalse(sut.hasUnknownOnlyFriends(in: [friend], days: days))
+    }
 }

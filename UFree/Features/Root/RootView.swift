@@ -389,6 +389,7 @@ struct MainAppView: View {
             NavigationStack {
                 FriendsScheduleView(
                     viewModel: friendsScheduleViewModel,
+                    scheduleViewModel: scheduleViewModel,
                     rootViewModel: rootViewModel
                 )
                 .navigationTitle("Who's Free?")
@@ -443,6 +444,7 @@ struct MainAppView: View {
                 NavigationStack {
                     FriendsScheduleView(
                         viewModel: friendsScheduleViewModel,
+                        scheduleViewModel: scheduleViewModel,
                         rootViewModel: rootViewModel
                     )
                     .navigationTitle("Who's Free?")

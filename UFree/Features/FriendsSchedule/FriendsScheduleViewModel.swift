@@ -177,11 +177,61 @@ public final class FriendsScheduleViewModel: ObservableObject {
             return day.isAvailable
         }.count
     }
+
+    /// True when my schedule has any free window on `date`.
+    public func isMeFree(on date: Date, mySchedule: [DayAvailability]) -> Bool {
+        guard let day = mySchedule.first(where: {
+            Calendar.current.isDate($0.date, inSameDayAs: date)
+        }) else {
+            return false
+        }
+        return day.isAvailable
+    }
+
+    /// True when the friend is available on `date` and I am also free that day.
+    public func isBothFree(
+        friendDisplay: FriendScheduleDisplay,
+        on date: Date,
+        mySchedule: [DayAvailability]
+    ) -> Bool {
+        guard isMeFree(on: date, mySchedule: mySchedule) else { return false }
+        guard let day = friendDisplay.userSchedule.weeklyStatus.first(where: {
+            Calendar.current.isDate($0.date, inSameDayAs: date)
+        }) else {
+            return false
+        }
+        return day.isAvailable
+    }
+
+    /// True when friends exist but every day in `days` is still unset (unknown).
+    public func hasUnknownOnlyFriends(
+        in friendsSchedules: [FriendScheduleDisplay],
+        days: [Date]
+    ) -> Bool {
+        guard !friendsSchedules.isEmpty, !days.isEmpty else { return false }
+        return friendsSchedules.allSatisfy { display in
+            days.allSatisfy { date in
+                let day = display.userSchedule.weeklyStatus.first(where: {
+                    Calendar.current.isDate($0.date, inSameDayAs: date)
+                })
+                let status = day?.status ?? .unknown
+                let blocks = day?.timeBlocks ?? []
+                return status == .unknown
+                    && !AvailabilityTruth.isAvailable(status: status, timeBlocks: blocks)
+            }
+        }
+    }
     
-    public func loadFriendsSchedules() async {
-        isLoading = true
+    public func loadFriendsSchedules(showLoading: Bool = true) async {
+        if showLoading {
+            isLoading = true
+        }
         errorMessage = nil
-        defer { isLoading = false }
+        defer {
+            if showLoading {
+                isLoading = false
+            }
+        }
 
         do {
             // 1. Get my friends list

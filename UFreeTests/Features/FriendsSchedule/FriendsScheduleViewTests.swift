@@ -28,6 +28,7 @@ final class FriendsScheduleViewTests: XCTestCase {
         NavigationStack {
             FriendsScheduleView(
                 viewModel: scene.friendsScheduleViewModel,
+                scheduleViewModel: scene.scheduleViewModel,
                 rootViewModel: scene.rootViewModel
             )
         }
