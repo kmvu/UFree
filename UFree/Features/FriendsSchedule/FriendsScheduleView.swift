@@ -207,6 +207,9 @@ public struct FriendsScheduleView: View {
                     days: daysToShow,
                     selectedDate: viewModel.selectedDate,
                     isNudging: viewModel.isNudging,
+                    replyForDate: { date in
+                        viewModel.nudgeReply(forFriendId: friendDisplay.id, date: date)
+                    },
                     onNudge: {
                         HapticManager.medium()
                         Task {
@@ -230,6 +233,19 @@ private struct FriendScheduleRow: View {
     let days: [Date]
     let viewModel: FriendsScheduleViewModel
 
+    private var selectedDayReplyCaption: String? {
+        guard let selected = viewModel.selectedDate,
+              let reply = viewModel.nudgeReply(forFriendId: display.id, date: selected) else {
+            return nil
+        }
+        let weekday = selected.formatted(.dateTime.weekday(.abbreviated))
+        switch reply {
+        case .imIn: return "In for \(weekday)"
+        case .maybe: return "Maybe for \(weekday)"
+        case .busy: return "Busy for \(weekday)"
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
@@ -242,8 +258,15 @@ private struct FriendScheduleRow: View {
                             .foregroundColor(.blue)
                     }
 
-                Text(display.displayName)
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(display.displayName)
+                        .font(.headline)
+                    if let caption = selectedDayReplyCaption {
+                        Text(caption)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(replyCaptionColor)
+                    }
+                }
 
                 Spacer()
 
@@ -271,7 +294,8 @@ private struct FriendScheduleRow: View {
                 HStack(spacing: 12) {
                     ForEach(days, id: \.self) { date in
                         let status = display.status(for: date)
-                        FriendStatusPill(date: date, status: status)
+                        let reply = viewModel.nudgeReply(forFriendId: display.id, date: date)
+                        FriendStatusPill(date: date, status: status, reply: reply)
                     }
                 }
             }
@@ -280,6 +304,14 @@ private struct FriendScheduleRow: View {
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(12)
         .padding(.horizontal)
+    }
+
+    private var replyCaptionColor: Color {
+        guard let selected = viewModel.selectedDate,
+              let reply = viewModel.nudgeReply(forFriendId: display.id, date: selected) else {
+            return .secondary
+        }
+        return reply.whosFreeColor
     }
 }
 
@@ -290,6 +322,7 @@ private struct FriendScheduleMatrixRow: View {
     let days: [Date]
     let selectedDate: Date?
     let isNudging: Bool
+    let replyForDate: (Date) -> AppNotification.NudgeResponse?
     let onNudge: () -> Void
 
     var body: some View {
@@ -313,7 +346,11 @@ private struct FriendScheduleMatrixRow: View {
             ForEach(days, id: \.self) { date in
                 let status = display.status(for: date)
                 let isSelected = selectedDate.map { Calendar.current.isDate($0, inSameDayAs: date) } ?? false
-                FriendMatrixStatusCell(status: status, isSelected: isSelected)
+                FriendMatrixStatusCell(
+                    status: status,
+                    reply: replyForDate(date),
+                    isSelected: isSelected
+                )
                     .frame(maxWidth: .infinity)
                     .frame(minWidth: AdaptiveLayout.dayCellMinWidth)
             }
@@ -339,15 +376,20 @@ private struct FriendScheduleMatrixRow: View {
 
 private struct FriendMatrixStatusCell: View {
     let status: AvailabilityStatus
+    let reply: AppNotification.NudgeResponse?
     let isSelected: Bool
 
     var body: some View {
         VStack(spacing: 4) {
             Circle()
-                .fill(status.displayColor)
+                .fill(circleColor)
                 .frame(width: 28, height: 28)
                 .overlay {
-                    if status == .free {
+                    if let reply {
+                        Image(systemName: reply.whosFreeSymbolName)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else if status == .free {
                         Image(systemName: "checkmark")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(.white)
@@ -360,7 +402,7 @@ private struct FriendMatrixStatusCell: View {
 
             Text(shortStatusLabel)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(reply != nil ? circleColor : .secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -370,7 +412,12 @@ private struct FriendMatrixStatusCell: View {
         .cornerRadius(10)
     }
 
+    private var circleColor: Color {
+        reply?.whosFreeColor ?? status.displayColor
+    }
+
     private var shortStatusLabel: String {
+        if let reply { return reply.shortLabel }
         switch status {
         case .free: return "Free"
         case .busy: return "Busy"
@@ -388,10 +435,12 @@ private struct FriendMatrixStatusCell: View {
 private struct FriendStatusPill: View {
     let date: Date
     let status: AvailabilityStatus
+    let reply: AppNotification.NudgeResponse?
 
-    init(date: Date, status: AvailabilityStatus) {
+    init(date: Date, status: AvailabilityStatus, reply: AppNotification.NudgeResponse? = nil) {
         self.date = date
         self.status = status
+        self.reply = reply
     }
 
     private var dayFormatter: DateFormatter = {
@@ -407,10 +456,14 @@ private struct FriendStatusPill: View {
                 .foregroundStyle(.secondary)
 
             Circle()
-                .fill(status.displayColor)
+                .fill(circleColor)
                 .frame(width: 32, height: 32)
                 .overlay {
-                    if status == .free {
+                    if let reply {
+                        Image(systemName: reply.whosFreeSymbolName)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else if status == .free {
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(.white)
@@ -421,12 +474,34 @@ private struct FriendStatusPill: View {
                     }
                 }
 
-            Text(status.displayName)
+            Text(reply?.shortLabel ?? status.displayName)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(reply != nil ? circleColor : .secondary)
                 .lineLimit(1)
         }
         .frame(width: 50)
+    }
+
+    private var circleColor: Color {
+        reply?.whosFreeColor ?? status.displayColor
+    }
+}
+
+private extension AppNotification.NudgeResponse {
+    var whosFreeColor: Color {
+        switch self {
+        case .imIn: return .green
+        case .maybe: return .orange
+        case .busy: return .red
+        }
+    }
+
+    var whosFreeSymbolName: String {
+        switch self {
+        case .imIn: return "checkmark"
+        case .maybe: return "questionmark"
+        case .busy: return "xmark"
+        }
     }
 }
 

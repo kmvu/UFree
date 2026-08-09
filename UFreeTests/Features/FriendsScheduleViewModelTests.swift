@@ -606,4 +606,99 @@ final class FriendsScheduleViewModelTests: XCTestCase {
         XCTAssertNotNil(sut.successMessage, "Success message should be set")
         XCTAssertTrue(sut.successMessage?.contains("Asked all 1 friend about") ?? false, "Should use singular 'friend'")
     }
+
+    // MARK: - Nudge replies on Who's Free
+
+    func test_applyNudgeReply_storesReplyFocusesDayAndPatchesFree() async {
+        let today = Calendar.current.startOfDay(for: Date())
+        let friend = UserProfile(id: "friend1", displayName: "Alex", hashedPhoneNumber: "h1")
+        let schedule = UserSchedule(
+            id: "friend1",
+            name: "Alex",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .unknown)]
+        )
+        await mockFriendRepo.addFriend(friend)
+        mockAvailabilityRepo.addFriendSchedule(schedule)
+        await sut.loadFriendsSchedules()
+
+        sut.applyNudgeReply(from: "friend1", response: .imIn, targetDate: today)
+
+        XCTAssertEqual(sut.nudgeReply(forFriendId: "friend1", date: today), .imIn)
+        XCTAssertEqual(sut.selectedDate, today)
+        XCTAssertEqual(sut.friendSchedules.first?.status(for: today), .free)
+    }
+
+    func test_applyNudgeReply_maybe_doesNotPatchAvailability() async {
+        let today = Calendar.current.startOfDay(for: Date())
+        let friend = UserProfile(id: "friend1", displayName: "Alex", hashedPhoneNumber: "h1")
+        let schedule = UserSchedule(
+            id: "friend1",
+            name: "Alex",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .free)]
+        )
+        await mockFriendRepo.addFriend(friend)
+        mockAvailabilityRepo.addFriendSchedule(schedule)
+        await sut.loadFriendsSchedules()
+
+        sut.applyNudgeReply(from: "friend1", response: .maybe, targetDate: today)
+
+        XCTAssertEqual(sut.nudgeReply(forFriendId: "friend1", date: today), .maybe)
+        XCTAssertEqual(sut.friendSchedules.first?.status(for: today), .free)
+    }
+
+    func test_applyNudgeReply_fromNote_parsesTargetDay() async {
+        let tomorrow = Calendar.current.startOfDay(
+            for: Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        )
+        var note = AppNotification(
+            recipientId: "me",
+            senderId: "friend1",
+            senderName: "Alex",
+            type: .nudgeReply,
+            date: Date(),
+            targetDateString: AppNotification.dateString(from: tomorrow),
+            nudgeResponse: AppNotification.NudgeResponse.busy.rawValue
+        )
+        note.id = "reply-busy"
+
+        let friend = UserProfile(id: "friend1", displayName: "Alex", hashedPhoneNumber: "h1")
+        let schedule = UserSchedule(
+            id: "friend1",
+            name: "Alex",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: tomorrow, status: .free)]
+        )
+        await mockFriendRepo.addFriend(friend)
+        mockAvailabilityRepo.addFriendSchedule(schedule)
+        await sut.loadFriendsSchedules()
+
+        sut.applyNudgeReply(from: note)
+
+        XCTAssertEqual(sut.nudgeReply(forFriendId: "friend1", date: tomorrow), .busy)
+        XCTAssertEqual(sut.selectedDate, tomorrow)
+        XCTAssertEqual(sut.friendSchedules.first?.status(for: tomorrow), .busy)
+    }
+
+    func test_loadFriendsSchedules_reappliesOptimisticReplyPatches() async {
+        let today = Calendar.current.startOfDay(for: Date())
+        let friend = UserProfile(id: "friend1", displayName: "Alex", hashedPhoneNumber: "h1")
+        let schedule = UserSchedule(
+            id: "friend1",
+            name: "Alex",
+            avatarURL: nil,
+            weeklyStatus: [DayAvailability(date: today, status: .unknown)]
+        )
+        await mockFriendRepo.addFriend(friend)
+        mockAvailabilityRepo.addFriendSchedule(schedule)
+        await sut.loadFriendsSchedules()
+
+        sut.applyNudgeReply(from: "friend1", response: .imIn, targetDate: today)
+        // Remote still unknown — reload should keep the optimistic free patch.
+        await sut.loadFriendsSchedules()
+
+        XCTAssertEqual(sut.friendSchedules.first?.status(for: today), .free)
+        XCTAssertEqual(sut.nudgeReply(forFriendId: "friend1", date: today), .imIn)
+    }
 }

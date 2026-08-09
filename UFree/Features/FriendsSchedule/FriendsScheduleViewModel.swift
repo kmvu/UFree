@@ -16,6 +16,8 @@ public final class FriendsScheduleViewModel: ObservableObject {
     @Published public var successMessage: String?
     @Published public var isNudging: Bool = false
     @Published public var selectedDate: Date?
+    /// Latest nudge replies keyed by `friendId|yyyy-MM-dd`.
+    @Published public private(set) var nudgeRepliesByFriendDay: [String: AppNotification.NudgeResponse] = [:]
 
     private let friendRepository: FriendRepositoryProtocol
     private let availabilityRepository: AvailabilityRepository
@@ -25,7 +27,7 @@ public final class FriendsScheduleViewModel: ObservableObject {
     public struct FriendScheduleDisplay: Identifiable {
         public let id: String
         public let displayName: String
-        public let userSchedule: UserSchedule
+        public var userSchedule: UserSchedule
 
         public init(id: String, displayName: String, userSchedule: UserSchedule) {
             self.id = id
@@ -64,6 +66,99 @@ public final class FriendsScheduleViewModel: ObservableObject {
             selectedDate = nil
         } else {
             selectedDate = normalizedDate
+        }
+    }
+
+    /// Focus a day chip without toggling off when already selected.
+    public func focusDate(_ date: Date) {
+        selectedDate = Calendar.current.startOfDay(for: date)
+    }
+
+    /// Next free day for a friend (today or later), if any.
+    public func nextFreeDate(forFriendId friendId: String, from reference: Date = Date()) -> Date? {
+        let start = Calendar.current.startOfDay(for: reference)
+        guard let display = friendSchedules.first(where: { $0.id == friendId }) else { return nil }
+        return display.userSchedule.weeklyStatus
+            .filter { $0.isAvailable && Calendar.current.startOfDay(for: $0.date) >= start }
+            .sorted { $0.date < $1.date }
+            .first
+            .map { Calendar.current.startOfDay(for: $0.date) }
+    }
+
+    /// Resolve friend id by display name for mission-chip targeting.
+    public func friendId(named displayName: String) -> String? {
+        friendSchedules.first(where: { $0.displayName == displayName })?.id
+            ?? friendSchedules.first?.id
+    }
+
+    // MARK: - Nudge replies (inviter Who's Free)
+
+    public func nudgeReplyKey(friendId: String, date: Date) -> String {
+        "\(friendId)|\(AppNotification.dateString(from: date))"
+    }
+
+    public func nudgeReply(forFriendId friendId: String, date: Date) -> AppNotification.NudgeResponse? {
+        nudgeRepliesByFriendDay[nudgeReplyKey(friendId: friendId, date: date)]
+    }
+
+    /// Apply an incoming `.nudgeReply` so Who's Free shows In/Maybe/Busy immediately.
+    public func applyNudgeReply(from note: AppNotification) {
+        guard note.type == .nudgeReply,
+              let response = note.nudgeResponse.flatMap(AppNotification.NudgeResponse.init(rawValue:)) else {
+            return
+        }
+        let targetDate = note.targetDateString.flatMap(AppNotification.date(from:))
+        applyNudgeReply(from: note.senderId, response: response, targetDate: targetDate)
+    }
+
+    public func applyNudgeReply(
+        from senderId: String,
+        response: AppNotification.NudgeResponse,
+        targetDate: Date?
+    ) {
+        let day = Calendar.current.startOfDay(for: targetDate ?? selectedDate ?? Date())
+        nudgeRepliesByFriendDay[nudgeReplyKey(friendId: senderId, date: day)] = response
+        focusDate(day)
+
+        if response == .imIn || response == .busy {
+            patchFriendAvailability(
+                friendId: senderId,
+                date: day,
+                status: response == .imIn ? .free : .busy
+            )
+        }
+    }
+
+    private func patchFriendAvailability(
+        friendId: String,
+        date: Date,
+        status: AvailabilityStatus
+    ) {
+        guard let index = friendSchedules.firstIndex(where: { $0.id == friendId }) else { return }
+        var display = friendSchedules[index]
+        var schedule = display.userSchedule
+        if let dayIndex = schedule.weeklyStatus.firstIndex(where: {
+            Calendar.current.isDate($0.date, inSameDayAs: date)
+        }) {
+            schedule.weeklyStatus[dayIndex].status = status
+        } else {
+            schedule.weeklyStatus.append(DayAvailability(date: date, status: status))
+        }
+        display.userSchedule = schedule
+        friendSchedules[index] = display
+    }
+
+    private func reapplyNudgeReplyPatches() {
+        for (key, response) in nudgeRepliesByFriendDay {
+            let parts = key.split(separator: "|", maxSplits: 1).map(String.init)
+            guard parts.count == 2,
+                  let date = AppNotification.date(from: parts[1]),
+                  response == .imIn || response == .busy else { continue }
+            patchFriendAvailability(
+                friendId: parts[0],
+                date: date,
+                status: response == .imIn ? .free : .busy
+            )
         }
     }
 
@@ -114,6 +209,9 @@ public final class FriendsScheduleViewModel: ObservableObject {
                 )
             }
 
+            // Keep optimistic In/Busy patches if the remote schedule is still catching up.
+            reapplyNudgeReplyPatches()
+
             // If no schedules found for any friends, log it but don't error
             if friendSchedules.isEmpty && !friends.isEmpty {
                 print("⚠️ No schedules found for \(friends.count) friends")
@@ -144,6 +242,7 @@ public final class FriendsScheduleViewModel: ObservableObject {
             try await notificationRepository.sendNudge(to: userId, targetDate: day)
             AnalyticsManager.logNudgeSent(isBatch: false)
             OnboardingProgressStore.shared.recordWeekendActivity()
+            OnboardingProgressStore.shared.dismissPostConnectCoach()
             HapticManager.success()
         } catch {
             self.errorMessage = "Failed to send nudge: \(error.localizedDescription)"
@@ -223,6 +322,7 @@ public final class FriendsScheduleViewModel: ObservableObject {
             if successCount > 0 {
                 AnalyticsManager.logNudgeSent(isBatch: true)
                 AnalyticsManager.logBatchNudge(recipientCount: successCount)
+                OnboardingProgressStore.shared.dismissPostConnectCoach()
             }
             
             let dayLabel = normalizedDate.formatted(.dateTime.weekday(.abbreviated))

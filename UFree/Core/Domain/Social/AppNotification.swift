@@ -43,6 +43,15 @@ public struct AppNotification: Identifiable, Codable {
             case .busy: return "Busy"
             }
         }
+
+        /// Compact label for Who's Free day cells.
+        public var shortLabel: String {
+            switch self {
+            case .imIn: return "In"
+            case .maybe: return "Maybe"
+            case .busy: return "Busy"
+            }
+        }
     }
 
     public init(
