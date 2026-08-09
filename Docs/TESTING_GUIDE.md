@@ -107,9 +107,9 @@ Accept friend requests on each side until all three are connected (or the dyads 
 
 1. Keep all three apps **foregrounded**. Background push is unavailable in the current pilot; in-app listeners need an active session.
 2. Connect: User A searches User B’s phone → **Request**; User B opens **Add Friends** (Friend Requests) or the **bell** → **Accept**.
-3. Inviter should toast **You’re connected**, jump to **Schedule**, and see a **bell** inbox item (“accepted — you're connected!”). Already-connected users must not show **Request** again in search.
-4. Mark free days on My Schedule on each account.
-5. Confirm **Who’s Free?** updates across devices.
+3. Inviter / acceptor should toast **Connected with {name}!** (or the generic first-connect line). If they still need a free day → **Schedule** + weekend sheet; if already marked free → **Who’s Free?** with a **Next mission** chip. Subsequent accepts always go to Who’s Free with a named toast (Add Friends and bell). Already-connected users must not show **Request** again in search.
+4. Mark free days on My Schedule on each account (or accept the weekend CTA). Mission chip should appear / update after.
+5. Confirm **Who’s Free?** updates across devices; mission chip clears after dismiss or first nudge.
 6. Send a day-scoped nudge from one account; reply from another via the in-app notification center (bell).
 7. On Mac/iPad regular width, expect sidebar + week matrix (same adaptive path as iPad).
 
@@ -129,9 +129,9 @@ Run these manually before any release to validate end-to-end stability.
 
 | # | Scenario | Steps | Expected Result |
 |---|---|---|---|
-| 1 | **Friend Request Flow** | User A searches User B by phone → sends request. User B accepts. | Both see each other in friend list within ~3s. |
+| 1 | **Friend Request Flow** | User A searches User B by phone → sends request. User B accepts. | Both see each other in friend list within ~3s. Toast + smart branch (weekend CTA or Who’s Free mission chip). |
 | 2 | **Day-scoped Nudge** | Select a day chip → tap wave on User B (or Nudge All). | User B sees “Free {weekday}?” with I’m in / Maybe / Busy actions. |
-| 3 | **Nudge Reply** | User B taps I’m in. | User A inbox shows “B is in for {weekday}”; B’s day marked free. |
+| 3 | **Nudge Reply** | User B taps I’m in. | User A inbox + banner show “B is in for {weekday}”; Who’s Free focuses that day with **In** on B’s cell (Maybe/Busy similarly); B’s day marked free for I’m in. |
 | 3b | **Batch Nudge** | Select day with 2+ free friends (incl. afternoon-only) → nudge all. | Success toast shows count. Partials are included. |
 | 4 | **QR Connection** | Open QR code on B. Scan from A. | A sees B's profile instantly with friend request button. |
 | 5 | **Rapid-Tap Guard** | Rapidly tap any nudge or request button. | Only **one** request sent; button disables while processing. |

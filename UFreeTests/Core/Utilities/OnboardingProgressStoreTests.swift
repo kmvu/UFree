@@ -126,4 +126,34 @@ final class OnboardingProgressStoreTests: XCTestCase {
             sut.shouldShowPairOnboardingBanner(friendCount: 0)
         )
     }
+
+    func test_postConnectCoach_activatesAndDismisses() {
+        XCTAssertFalse(sut.shouldShowPostConnectCoach)
+        sut.activatePostConnectCoach()
+        XCTAssertTrue(sut.shouldShowPostConnectCoach)
+
+        sut.dismissPostConnectCoach()
+        XCTAssertFalse(sut.shouldShowPostConnectCoach)
+        sut.activatePostConnectCoach()
+        XCTAssertFalse(sut.shouldShowPostConnectCoach)
+    }
+
+    func test_connectionToastHelpers_includeFriendName() {
+        XCTAssertEqual(
+            OnboardingProgressStore.firstConnectionToast(friendName: "Alice"),
+            "Connected with Alice!"
+        )
+        XCTAssertEqual(
+            OnboardingProgressStore.firstConnectionToast(friendName: nil),
+            OnboardingProgressStore.firstConnectionToastMessage
+        )
+        XCTAssertEqual(
+            OnboardingProgressStore.subsequentConnectionToast(friendName: "Bob"),
+            "You're connected with Bob! See when they're free."
+        )
+        XCTAssertEqual(
+            OnboardingProgressStore.postConnectNudgeMission(friendName: "Cara", weekday: "Sat"),
+            "Nudge Cara for Sat."
+        )
+    }
 }

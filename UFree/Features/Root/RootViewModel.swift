@@ -38,9 +38,13 @@ public final class RootViewModel: ObservableObject {
     /// Checklist bottom sheet — opened only when the user taps the banner.
     @Published public var showPairOnboardingSheet = false
     @Published public var celebrationToast: String?
+    /// Friend name for post-connect mission chip copy (first / latest accept).
+    @Published public var postConnectFriendName: String?
+    /// Optional day to focus on Who's Free when the mission chip is tapped.
+    @Published public var missionFocusDate: Date?
 
     /// Duration before celebration toast clears (and optional weekend CTA presents).
-    public var celebrationToastDurationNanoseconds: UInt64 = 2_500_000_000
+    public var celebrationToastDurationNanoseconds: UInt64 = 2_000_000_000
     
     // Feature ViewModels for navigation and cross-feature state
     @Published public var friendsScheduleViewModel: FriendsScheduleViewModel?
@@ -62,10 +66,29 @@ public final class RootViewModel: ObservableObject {
 
     // MARK: - Onboarding celebration
 
+    /// Single post-accept entry for Notification Center and Add Friends.
+    public func handlePostAccept(
+        friendName: String,
+        wasFirstFriend: Bool,
+        store: OnboardingProgressStore = .shared
+    ) {
+        postConnectFriendName = friendName
+        if wasFirstFriend {
+            celebrateFirstConnection(friendName: friendName, store: store)
+        } else {
+            HapticManager.success()
+            activeTab = .feed
+            presentCelebrationToast(
+                OnboardingProgressStore.subsequentConnectionToast(friendName: friendName)
+            )
+        }
+    }
+
     /// Shared inviter + acceptor first-connection toast + haptic.
-    /// Weekend CTA (if any) is presented only after the toast dismisses.
+    /// Smart branch: weekend CTA path lands on Schedule; already-free lands on Who's Free + mission.
     @discardableResult
     public func celebrateFirstConnection(
+        friendName: String? = nil,
         store: OnboardingProgressStore = .shared
     ) -> Bool {
         guard !store.hasCelebratedFirstAccept else { return false }
@@ -73,11 +96,21 @@ public final class RootViewModel: ObservableObject {
         HapticManager.success()
         showPairOnboardingBanner = false
         showPairOnboardingSheet = false
-        // Land on Schedule so both people can mark free days next.
-        activeTab = .schedule
+        if let friendName, !friendName.isEmpty {
+            postConnectFriendName = friendName
+        }
 
         let offerWeekendCTA = store.shouldPresentWeekendCTAAfterConnection
-        presentCelebrationToast(OnboardingProgressStore.firstConnectionToastMessage) { [weak self] in
+        if offerWeekendCTA {
+            // Need a free day before Who's Free is useful.
+            activeTab = .schedule
+        } else {
+            activeTab = .feed
+            store.activatePostConnectCoach()
+        }
+
+        let toast = OnboardingProgressStore.firstConnectionToast(friendName: friendName)
+        presentCelebrationToast(toast) { [weak self] in
             guard let self else { return }
             if offerWeekendCTA && store.shouldPresentWeekendCTAAfterConnection {
                 self.showWeekendCTA = true
@@ -86,6 +119,11 @@ public final class RootViewModel: ObservableObject {
             }
         }
         return true
+    }
+
+    public func dismissPostConnectCoach(store: OnboardingProgressStore = .shared) {
+        store.dismissPostConnectCoach()
+        missionFocusDate = nil
     }
 
     /// Light haptic + brief toast for first-time invite / free-day steps (banner stays; no sheet).

@@ -30,7 +30,9 @@ The project is validating one behavior: whether real friend pairs use UFree to m
 
 **Pilot audience:** 2–3 friend pairs who already spend time together  
 **First instruction:** “Invite each other, mark the weekend free, and nudge a day.”  
-**Uncoached success path:** connect → mark free → see each other → nudge → reply → reopen next Friday
+**Uncoached success path:** connect → mark free → see each other → nudge → reply → reopen next Friday  
+
+**Post-accept quest (in-app):** After Accept, a short “Connected” toast branches to the next mission — weekend free prompt if needed, otherwise Who’s Free with a dismissible mission chip (“see when you’re both free / nudge a day”). The same path runs from the notification inbox and Add Friends.
 
 ### Decision rule
 

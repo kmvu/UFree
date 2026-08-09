@@ -26,6 +26,8 @@ public final class OnboardingProgressStore: ObservableObject {
         static let firstFreeMarkAt = "ufree.onboarding.firstFreeMarkAt"
         static let lastWeekendActivityAt = "ufree.retention.lastWeekendActivityAt"
         static let pendingWeekendCTA = "ufree.onboarding.pendingWeekendCTA"
+        static let pendingPostConnectCoach = "ufree.onboarding.pendingPostConnectCoach"
+        static let hasDismissedPostConnectCoach = "ufree.onboarding.hasDismissedPostConnectCoach"
     }
 
     @Published public private(set) var hasInvitedFriend: Bool
@@ -35,6 +37,8 @@ public final class OnboardingProgressStore: ObservableObject {
     @Published public private(set) var hasShownWeekendCTA: Bool
     @Published public private(set) var hasCelebratedFirstAccept: Bool
     @Published public private(set) var pendingWeekendCTA: Bool
+    @Published public private(set) var pendingPostConnectCoach: Bool
+    @Published public private(set) var hasDismissedPostConnectCoach: Bool
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -48,6 +52,8 @@ public final class OnboardingProgressStore: ObservableObject {
         self.hasShownWeekendCTA = defaults.bool(forKey: Key.hasShownWeekendCTA)
         self.hasCelebratedFirstAccept = defaults.bool(forKey: Key.hasCelebratedFirstAccept)
         self.pendingWeekendCTA = defaults.bool(forKey: Key.pendingWeekendCTA)
+        self.pendingPostConnectCoach = defaults.bool(forKey: Key.pendingPostConnectCoach)
+        self.hasDismissedPostConnectCoach = defaults.bool(forKey: Key.hasDismissedPostConnectCoach)
     }
 
     public func markCelebratedFirstAccept() {
@@ -102,6 +108,42 @@ public final class OnboardingProgressStore: ObservableObject {
     public static let inviteStepToastMessage = "1/3 — Invite sent"
     public static let freeDayStepToastMessage = "2/3 — Weekend marked"
     public static let firstConnectionToastMessage = "You're connected — find a free night!"
+    public static let postConnectMissionTitle = "Next mission"
+    public static let postConnectMissionSeeBothFree = "See when you're both free — then nudge a day."
+    public static let postConnectMissionMarkFree = "Mark a free day, then open Who's Free."
+
+    public static func firstConnectionToast(friendName: String?) -> String {
+        guard let friendName, !friendName.isEmpty else {
+            return firstConnectionToastMessage
+        }
+        return "Connected with \(friendName)!"
+    }
+
+    public static func subsequentConnectionToast(friendName: String) -> String {
+        "You're connected with \(friendName)! See when they're free."
+    }
+
+    public static func postConnectNudgeMission(friendName: String, weekday: String) -> String {
+        "Nudge \(friendName) for \(weekday)."
+    }
+
+    /// Soft post-connect coach on Who's Free / Schedule after first connection.
+    public var shouldShowPostConnectCoach: Bool {
+        pendingPostConnectCoach && !hasDismissedPostConnectCoach
+    }
+
+    public func activatePostConnectCoach() {
+        guard !hasDismissedPostConnectCoach else { return }
+        pendingPostConnectCoach = true
+        defaults.set(true, forKey: Key.pendingPostConnectCoach)
+    }
+
+    public func dismissPostConnectCoach() {
+        pendingPostConnectCoach = false
+        hasDismissedPostConnectCoach = true
+        defaults.set(false, forKey: Key.pendingPostConnectCoach)
+        defaults.set(true, forKey: Key.hasDismissedPostConnectCoach)
+    }
 
     /// Live 0→1 while this install has not celebrated yet.
     /// Does not require `hasCompletedFirstHandshake` — silent `acknowledgeExistingFriends`

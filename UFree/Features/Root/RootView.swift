@@ -136,17 +136,28 @@ struct MainAppView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if rootViewModel.showPairOnboardingBanner
-                && rootViewModel.activeTab == .feed
-                && onboardingStore.shouldShowPairOnboardingBanner(friendCount: friendsViewModel.friends.count)
-                && verticalSizeClass != .compact {
-                PairOnboardingBannerView(
-                    title: onboardingStore.pairOnboardingBannerTitle,
-                    subtitle: onboardingStore.pairOnboardingBannerSubtitle,
-                    onTap: {
-                        rootViewModel.showPairOnboardingSheet = true
-                    }
-                )
+            if verticalSizeClass != .compact {
+                if rootViewModel.showPairOnboardingBanner
+                    && rootViewModel.activeTab == .feed
+                    && onboardingStore.shouldShowPairOnboardingBanner(friendCount: friendsViewModel.friends.count) {
+                    PairOnboardingBannerView(
+                        title: onboardingStore.pairOnboardingBannerTitle,
+                        subtitle: onboardingStore.pairOnboardingBannerSubtitle,
+                        onTap: {
+                            rootViewModel.showPairOnboardingSheet = true
+                        }
+                    )
+                } else if onboardingStore.shouldShowPostConnectCoach
+                    && (rootViewModel.activeTab == .feed || rootViewModel.activeTab == .schedule) {
+                    PostConnectMissionChipView(
+                        title: OnboardingProgressStore.postConnectMissionTitle,
+                        subtitle: postConnectMissionSubtitle,
+                        onPrimary: { handlePostConnectMissionTap() },
+                        onDismiss: {
+                            rootViewModel.dismissPostConnectCoach(store: onboardingStore)
+                        }
+                    )
+                }
             }
         }
         .sheet(isPresented: $rootViewModel.showPairOnboardingSheet) {
@@ -195,28 +206,52 @@ struct MainAppView: View {
                         OnboardingProgressStore.shared.consumeWeekendCTA()
                         rootViewModel.showWeekendCTA = false
                         rootViewModel.activeTab = .feed
+                        onboardingStore.activatePostConnectCoach()
                     }
                 },
                 onDismiss: {
                     OnboardingProgressStore.shared.consumeWeekendCTA()
                     rootViewModel.showWeekendCTA = false
+                    // Stay on Schedule with a soft next-mission chip.
+                    rootViewModel.activeTab = .schedule
+                    onboardingStore.activatePostConnectCoach()
                 }
             )
             .adaptiveContentWidth(AdaptiveLayout.formContentMaxWidth)
             .presentationDetents([.medium, .large])
         }
-        .overlay(alignment: .top) {
-            if let toast = rootViewModel.celebrationToast {
-                Text(toast)
-                    .font(.subheadline.bold())
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
+        .sheet(isPresented: $notificationViewModel.showNotificationCenter) {
+            NotificationCenterView(viewModel: notificationViewModel)
+                .adaptiveNotificationCenterPresentation()
         }
+        .overlay(alignment: .top) {
+            VStack(spacing: 8) {
+                if let banner = notificationViewModel.incomingBanner {
+                    NotificationBannerView(notification: banner) {
+                        notificationViewModel.handleIncomingBannerTap()
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                if let toast = rootViewModel.celebrationToast {
+                    Text(toast)
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+        }
+        .animation(
+            .spring(response: 0.35, dampingFraction: 0.86),
+            value: notificationViewModel.incomingBanner.map {
+                "\($0.senderId)-\($0.type.rawValue)-\($0.date.timeIntervalSince1970)"
+            }
+        )
         .animation(.easeInOut(duration: 0.25), value: rootViewModel.celebrationToast)
         .environment(\.notificationViewModel, notificationViewModel)
         .onOpenURL { url in
@@ -265,7 +300,8 @@ struct MainAppView: View {
             newFriendCount: newCount
         ) {
             onboardingStore.markFirstHandshake()
-            rootViewModel.celebrateFirstConnection(store: onboardingStore)
+            let friendName = friendsViewModel.friends.first?.displayName
+            rootViewModel.celebrateFirstConnection(friendName: friendName, store: onboardingStore)
             Task {
                 await friendsScheduleViewModel.loadFriendsSchedules()
             }
@@ -291,15 +327,46 @@ struct MainAppView: View {
     }
 
     private func wireHandshakeCallback() {
-        // Acceptor path — same celebration helper as inviter 0→1 (idempotent).
-        friendsViewModel.onFirstHandshakeCompleted = {
-            rootViewModel.celebrateFirstConnection(store: onboardingStore)
-            // TODO(onboarding-game-loop item 4): Post-connect nudge banner after first
-            // connection (e.g. “Nudge them when you’re both free”) — deferred so toast +
-            // weekend CTA + soft banner don’t crowd the first viewport.
+        friendsViewModel.onAcceptCompleted = { friendName, wasFirstFriend in
+            rootViewModel.handlePostAccept(
+                friendName: friendName,
+                wasFirstFriend: wasFirstFriend,
+                store: onboardingStore
+            )
             Task {
                 await friendsScheduleViewModel.loadFriendsSchedules()
             }
+        }
+    }
+
+    private var postConnectMissionSubtitle: String {
+        if rootViewModel.activeTab == .schedule && !onboardingStore.hasMarkedFreeDay {
+            return OnboardingProgressStore.postConnectMissionMarkFree
+        }
+        if let name = rootViewModel.postConnectFriendName,
+           let friendId = friendsScheduleViewModel.friendId(named: name),
+           let date = friendsScheduleViewModel.nextFreeDate(forFriendId: friendId) {
+            let weekday = date.formatted(.dateTime.weekday(.abbreviated))
+            return OnboardingProgressStore.postConnectNudgeMission(friendName: name, weekday: weekday)
+        }
+        if let name = rootViewModel.postConnectFriendName, !name.isEmpty {
+            return "See when you and \(name) are free — then nudge a day."
+        }
+        return OnboardingProgressStore.postConnectMissionSeeBothFree
+    }
+
+    private func handlePostConnectMissionTap() {
+        if rootViewModel.activeTab == .schedule && !onboardingStore.hasMarkedFreeDay {
+            rootViewModel.showWeekendCTA = true
+            return
+        }
+
+        rootViewModel.activeTab = .feed
+        if let name = rootViewModel.postConnectFriendName,
+           let friendId = friendsScheduleViewModel.friendId(named: name),
+           let date = friendsScheduleViewModel.nextFreeDate(forFriendId: friendId) {
+            friendsScheduleViewModel.focusDate(date)
+            rootViewModel.missionFocusDate = date
         }
     }
 
@@ -402,8 +469,8 @@ struct MainAppView: View {
         
         switch deepLink {
         case .notification(let userId):
-            // Navigate to notification center and highlight sender
             notificationViewModel.highlightedSenderId = userId
+            notificationViewModel.openNotificationCenter()
             
         case .profile(let userId):
             // Trigger profile sheet via RootViewModel

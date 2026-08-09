@@ -124,10 +124,15 @@ final class RootViewModelTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let store = OnboardingProgressStore(defaults: defaults)
 
-        XCTAssertTrue(viewModel.celebrateFirstConnection(store: store))
-        XCTAssertEqual(viewModel.celebrationToast, OnboardingProgressStore.firstConnectionToastMessage)
+        XCTAssertTrue(viewModel.celebrateFirstConnection(friendName: "Alice", store: store))
+        XCTAssertEqual(
+            viewModel.celebrationToast,
+            OnboardingProgressStore.firstConnectionToast(friendName: "Alice")
+        )
         XCTAssertTrue(store.hasCelebratedFirstAccept)
-        XCTAssertEqual(viewModel.activeTab, .schedule)
+        // No weekend CTA queued → land on Who's Free with mission coach.
+        XCTAssertEqual(viewModel.activeTab, .feed)
+        XCTAssertTrue(store.shouldShowPostConnectCoach)
         XCTAssertFalse(viewModel.showWeekendCTA)
 
         XCTAssertFalse(viewModel.celebrateFirstConnection(store: store))
@@ -142,6 +147,7 @@ final class RootViewModelTests: XCTestCase {
         viewModel.celebrationToastDurationNanoseconds = 50_000_000
 
         XCTAssertTrue(viewModel.celebrateFirstConnection(store: store))
+        XCTAssertEqual(viewModel.activeTab, .schedule)
         XCTAssertFalse(viewModel.showWeekendCTA)
 
         try? await Task.sleep(nanoseconds: 120_000_000)
@@ -158,9 +164,52 @@ final class RootViewModelTests: XCTestCase {
         store.markFirstHandshake()
         viewModel.celebrationToastDurationNanoseconds = 50_000_000
 
-        XCTAssertTrue(viewModel.celebrateFirstConnection(store: store))
+        XCTAssertTrue(viewModel.celebrateFirstConnection(friendName: "Bob", store: store))
+        XCTAssertEqual(viewModel.activeTab, .feed)
+        XCTAssertTrue(store.shouldShowPostConnectCoach)
         try? await Task.sleep(nanoseconds: 120_000_000)
         XCTAssertFalse(viewModel.showWeekendCTA)
+    }
+
+    func test_handlePostAccept_subsequentFriend_goesToFeedWithNamedToast() {
+        viewModel.handlePostAccept(friendName: "Cara", wasFirstFriend: false)
+
+        XCTAssertEqual(viewModel.activeTab, .feed)
+        XCTAssertEqual(
+            viewModel.celebrationToast,
+            OnboardingProgressStore.subsequentConnectionToast(friendName: "Cara")
+        )
+    }
+
+    func test_handlePostAccept_firstFriend_celebrates() {
+        let suiteName = "RootViewModelPostAcceptFirst.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OnboardingProgressStore(defaults: defaults)
+        store.markFreeDay()
+
+        viewModel.handlePostAccept(friendName: "Dana", wasFirstFriend: true, store: store)
+
+        XCTAssertTrue(store.hasCelebratedFirstAccept)
+        XCTAssertEqual(viewModel.activeTab, .feed)
+        XCTAssertEqual(
+            viewModel.celebrationToast,
+            OnboardingProgressStore.firstConnectionToast(friendName: "Dana")
+        )
+    }
+
+    func test_dismissPostConnectCoach_clearsMission() {
+        let suiteName = "RootViewModelDismissCoach.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = OnboardingProgressStore(defaults: defaults)
+        store.activatePostConnectCoach()
+        viewModel.missionFocusDate = Date()
+
+        viewModel.dismissPostConnectCoach(store: store)
+
+        XCTAssertFalse(store.shouldShowPostConnectCoach)
+        XCTAssertNil(viewModel.missionFocusDate)
     }
 
     func test_presentOnboardingStepFeedback_setsToast() {
