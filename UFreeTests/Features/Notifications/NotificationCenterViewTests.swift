@@ -195,7 +195,7 @@ final class NotificationCenterViewHostingTests: XCTestCase {
     // MARK: - Read Receipts
 
     func test_render_withUnreadNotification_marksItReadOnAppear() async {
-        await start(with: [notification(id: "n1", isRead: false)])
+        await start(with: [notification(id: "n1", type: .nudgeReply, isRead: false)])
 
         await ViewHost.renderAwaitingUpdates(makeView())
 
@@ -203,5 +203,17 @@ final class NotificationCenterViewHostingTests: XCTestCase {
             self.viewModel.notifications.first?.isRead == true
         }
         XCTAssertEqual(viewModel.unreadCount, 0)
+    }
+}
+
+@MainActor
+final class NotificationBannerViewTests: XCTestCase {
+    func test_render_showsSenderAndSubtitle() async {
+        var note = TestNotificationBuilder.nudge(senderName: "Alice", isRead: false)
+        note.id = "banner-1"
+
+        await ViewHost.renderAwaitingUpdates(
+            NotificationBannerView(notification: note, onTap: {})
+        )
     }
 }

@@ -13,15 +13,22 @@ import UIKit
 
 @MainActor
 public class NotificationViewModel: ObservableObject {
-    @Published public var notifications: [AppNotification] = []
+    @Published public var notifications: [AppNotification] = [] {
+        didSet { syncUnreadCount() }
+    }
     @Published public var highlightedSenderId: String?
     @Published public var isProcessing: Bool = false
+    /// Which inbox row is running Accept / nudge reply; avoids spinning every action button at once.
+    @Published public private(set) var processingNotificationKey: String?
     @Published public var errorMessage: String?
-    
-    // Computed property for the red badge
-    public var unreadCount: Int {
-        notifications.filter { !$0.isRead }.count
-    }
+    @Published public var showNotificationCenter = false
+    @Published public var incomingBanner: AppNotification?
+    @Published public private(set) var unreadCount = 0
+
+    /// Seconds before an auto-presented foreground banner dismisses itself.
+    var bannerAutoDismissSeconds: TimeInterval = 4.5
+    /// Delay before auto-dismissing the inbox after a successful friend accept.
+    var notificationCenterDismissDelayNanoseconds: UInt64 = 900_000_000
     
     private let repository: NotificationRepository
     private weak var friendsViewModel: FriendsViewModel?
@@ -33,6 +40,11 @@ public class NotificationViewModel: ObservableObject {
     /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
     nonisolated(unsafe) var task: Task<Void, Never>?
     nonisolated(unsafe) private var cancellables = Set<AnyCancellable>()
+    private var knownNotificationKeys = Set<String>()
+    private var handledFriendRequestKeys = Set<String>()
+    private var deletedNotificationKeys = Set<String>()
+    private var hasCompletedInitialNotificationSnapshot = false
+    nonisolated(unsafe) private var bannerDismissTask: Task<Void, Never>?
     
     public init(
         repository: NotificationRepository,
@@ -64,6 +76,7 @@ public class NotificationViewModel: ObservableObject {
     /// must `stopListening()` before release; `deinit` only cancels as a backstop.
     nonisolated deinit {
         task?.cancel()
+        bannerDismissTask?.cancel()
         cancellables.removeAll()
     }
     
@@ -110,9 +123,144 @@ public class NotificationViewModel: ObservableObject {
                 // yield can still be in flight, and an in-flight animation transaction on a
                 // disappearing hierarchy is one of the paths that trips the iOS 26.2
                 // XCTest allocator abort.
-                self?.notifications = notes
+                self?.applyNotificationsUpdate(notes)
             }
         }
+    }
+
+    func applyNotificationsUpdate(_ notes: [AppNotification]) {
+        let remoteKeys = Set(notes.map(notificationKey))
+        deletedNotificationKeys = deletedNotificationKeys.intersection(remoteKeys)
+
+        let visible = notes.filter { !deletedNotificationKeys.contains(notificationKey($0)) }
+        let merged = mergeHandledFriendRequests(into: visible)
+        let currentKeys = Set(merged.map(notificationKey))
+
+        if !hasCompletedInitialNotificationSnapshot {
+            knownNotificationKeys = currentKeys
+            hasCompletedInitialNotificationSnapshot = true
+            notifications = merged
+            syncUnreadCount()
+            return
+        }
+
+        let newlyArrivedUnread = merged.filter { note in
+            !note.isRead && !knownNotificationKeys.contains(notificationKey(note))
+        }
+
+        knownNotificationKeys = currentKeys
+        notifications = merged
+        syncUnreadCount()
+
+        let newNudgeReplies = newlyArrivedUnread.filter { $0.type == .nudgeReply }
+        for reply in newNudgeReplies {
+            handleIncomingNudgeReply(reply)
+        }
+
+        guard let newest = newlyArrivedUnread.max(by: { $0.date < $1.date }) else { return }
+        presentIncomingBanner(for: newest)
+    }
+
+    /// Surfaces a friend's nudge reply on Who's Free (focus day + In/Maybe/Busy).
+    func handleIncomingNudgeReply(_ note: AppNotification) {
+        guard note.type == .nudgeReply,
+              let scheduleVM = rootViewModel?.friendsScheduleViewModel else { return }
+        scheduleVM.applyNudgeReply(from: note)
+        rootViewModel?.activeTab = .feed
+        Task { [weak scheduleVM] in
+            await scheduleVM?.loadFriendsSchedules()
+        }
+    }
+
+    /// Banner tap: nudge replies jump to Who's Free; everything else opens the inbox.
+    func handleIncomingBannerTap() {
+        guard let banner = incomingBanner else {
+            openNotificationCenter()
+            return
+        }
+        if banner.type == .nudgeReply {
+            dismissIncomingBanner()
+            handleIncomingNudgeReply(banner)
+        } else {
+            openNotificationCenter()
+        }
+    }
+
+    func isFriendRequestActionable(_ note: AppNotification) -> Bool {
+        note.type == .friendRequest && !handledFriendRequestKeys.contains(notificationKey(note))
+    }
+
+    func isProcessingNotification(_ note: AppNotification) -> Bool {
+        processingNotificationKey == notificationKey(note)
+    }
+
+    var hasActiveNotificationAction: Bool {
+        processingNotificationKey != nil
+    }
+
+    private func mergeHandledFriendRequests(into notes: [AppNotification]) -> [AppNotification] {
+        notes.map { note in
+            guard note.type == .friendRequest,
+                  handledFriendRequestKeys.contains(notificationKey(note)) else {
+                return note
+            }
+            return acceptedCopy(from: note)
+        }
+    }
+
+    private func acceptedCopy(from note: AppNotification) -> AppNotification {
+        var accepted = AppNotification(
+            recipientId: note.recipientId,
+            senderId: note.senderId,
+            senderName: note.senderName,
+            type: .friendAccepted,
+            date: note.date,
+            isRead: true,
+            relatedRequestId: note.relatedRequestId
+        )
+        accepted.id = note.id
+        return accepted
+    }
+
+    private func syncUnreadCount() {
+        unreadCount = notifications.filter { !$0.isRead }.count
+    }
+
+    func openNotificationCenter() {
+        dismissIncomingBanner()
+        showNotificationCenter = true
+    }
+
+    func dismissIncomingBanner() {
+        bannerDismissTask?.cancel()
+        bannerDismissTask = nil
+        incomingBanner = nil
+    }
+
+    private func presentIncomingBanner(for note: AppNotification) {
+        incomingBanner = note
+        bannerDismissTask?.cancel()
+        HapticManager.light()
+
+        let dismissAfter = bannerAutoDismissSeconds
+        bannerDismissTask = Task { [weak self] in
+            let nanoseconds = UInt64(max(dismissAfter, 0) * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: nanoseconds)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                if self.notificationKey(note) == self.incomingBanner.map(self.notificationKey) {
+                    self.incomingBanner = nil
+                }
+            }
+        }
+    }
+
+    private func notificationKey(_ note: AppNotification) -> String {
+        if let id = note.id, !id.isEmpty {
+            return id
+        }
+        return "\(note.senderId)-\(note.type.rawValue)-\(Int(note.date.timeIntervalSince1970))"
     }
     
     public func stopListening() {
@@ -123,13 +271,58 @@ public class NotificationViewModel: ObservableObject {
     public func markRead(_ note: AppNotification) {
         guard !note.isRead else { return }
         
-        // Optimistic UI update
-        if let index = notifications.firstIndex(where: { $0.id == note.id }) {
+        if let index = notifications.firstIndex(where: { notificationKey($0) == notificationKey(note) }) {
             notifications[index].isRead = true
+            syncUnreadCount()
         }
         
         Task { [weak self] in
             try? await self?.repository.markAsRead(note)
+        }
+    }
+
+    public func markUnread(_ note: AppNotification) {
+        guard note.isRead else { return }
+
+        if let index = notifications.firstIndex(where: { notificationKey($0) == notificationKey(note) }) {
+            notifications[index].isRead = false
+            syncUnreadCount()
+        }
+
+        Task { [weak self] in
+            try? await self?.repository.markAsUnread(note)
+        }
+    }
+
+    public func markAllRead() {
+        let unread = notifications.filter { !$0.isRead }
+        guard !unread.isEmpty else { return }
+
+        for index in notifications.indices where !notifications[index].isRead {
+            notifications[index].isRead = true
+        }
+        syncUnreadCount()
+        dismissIncomingBanner()
+
+        Task { [weak self] in
+            for note in unread {
+                try? await self?.repository.markAsRead(note)
+            }
+        }
+    }
+
+    public func clearNotification(_ note: AppNotification) {
+        let key = notificationKey(note)
+        deletedNotificationKeys.insert(key)
+        knownNotificationKeys.remove(key)
+        notifications.removeAll { notificationKey($0) == key }
+
+        if incomingBanner.map(notificationKey) == key {
+            dismissIncomingBanner()
+        }
+
+        Task { [weak self] in
+            try? await self?.repository.deleteNotification(note)
         }
     }
     
@@ -150,12 +343,12 @@ public class NotificationViewModel: ObservableObject {
 
     public func acceptFriendRequest(from note: AppNotification) async {
         guard note.type == .friendRequest, let friendsVM = friendsViewModel else { return }
-        guard !isProcessing else { return }
-        isProcessing = true
-        defer { isProcessing = false }
+        guard processingNotificationKey == nil else { return }
+        guard isFriendRequestActionable(note) else { return }
+        let key = notificationKey(note)
+        processingNotificationKey = key
+        defer { processingNotificationKey = nil }
 
-        // Keep the live listener warm, but do not require its cache — resolve via
-        // relatedRequestId, cache, or one-shot pending fetch.
         friendsVM.listenToRequests()
 
         guard let request = await friendsVM.resolveIncomingRequest(
@@ -170,18 +363,56 @@ public class NotificationViewModel: ObservableObject {
 
         let accepted = await friendsVM.acceptRequest(request)
         if accepted {
-            markRead(note)
+            markFriendRequestHandled(note)
             errorMessage = nil
+            await handlePostFriendRequestAccept()
         } else if friendsVM.errorMessage != nil {
             errorMessage = friendsVM.errorMessage
         }
     }
 
+    private func markFriendRequestHandled(_ note: AppNotification) {
+        let key = notificationKey(note)
+        handledFriendRequestKeys.insert(key)
+
+        if let index = notifications.firstIndex(where: { notificationKey($0) == key }) {
+            notifications[index] = acceptedCopy(from: note)
+        }
+
+        if incomingBanner.map(notificationKey) == key {
+            dismissIncomingBanner()
+        }
+
+        markRead(note)
+    }
+
+    private func handlePostFriendRequestAccept() async {
+        if let scheduleVM = scheduleViewModel {
+            await scheduleVM.loadSchedule()
+        }
+        await rootViewModel?.friendsScheduleViewModel?.loadFriendsSchedules()
+
+        // Tab / toast / mission quest come from `FriendsViewModel.onAcceptCompleted`
+        // (wired in MainAppView). Inbox only refreshes schedules and dismisses.
+        scheduleNotificationCenterDismiss()
+    }
+
+    private func scheduleNotificationCenterDismiss() {
+        Task { [weak self] in
+            let delay = self?.notificationCenterDismissDelayNanoseconds ?? 900_000_000
+            try? await Task.sleep(nanoseconds: delay)
+            await MainActor.run {
+                self?.showNotificationCenter = false
+            }
+        }
+    }
+
     public func replyToNudge(_ note: AppNotification, response: AppNotification.NudgeResponse) async {
         guard note.type == .nudge, !note.hasResponded else { return }
-        guard !isProcessing else { return }
-        isProcessing = true
-        defer { isProcessing = false }
+        guard processingNotificationKey == nil else { return }
+        let key = notificationKey(note)
+        processingNotificationKey = key
+        defer { processingNotificationKey = nil }
 
         do {
             try await repository.sendNudgeReply(
@@ -195,6 +426,7 @@ public class NotificationViewModel: ObservableObject {
                 notifications[index].isRead = true
                 notifications[index].nudgeResponse = response.rawValue
             }
+            syncUnreadCount()
 
             await applyAvailabilitySideEffect(for: note, response: response)
 

@@ -10,6 +10,8 @@ import Foundation
 public protocol NotificationRepository {
     func listenToNotifications() -> AsyncStream<[AppNotification]>
     func markAsRead(_ notification: AppNotification) async throws
+    func markAsUnread(_ notification: AppNotification) async throws
+    func deleteNotification(_ notification: AppNotification) async throws
     func sendNudge(to userId: String, targetDate: Date?) async throws
     func sendNudgeReply(
         to userId: String,

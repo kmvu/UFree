@@ -52,7 +52,30 @@ struct AdaptiveBoolPresentationModifier<SheetContent: View>: ViewModifier {
     }
 }
 
+/// Notification inbox: full-height page sheet on regular width; medium/large on compact.
+struct AdaptiveNotificationCenterPresentationModifier: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    func body(content: Content) -> some View {
+        Group {
+            if horizontalSizeClass == .regular {
+                content
+                    .presentationDetents([.large])
+                    .presentationSizing(.page)
+            } else {
+                content
+                    .presentationDetents([.medium, .large])
+            }
+        }
+        .presentationDragIndicator(.visible)
+    }
+}
+
 extension View {
+    func adaptiveNotificationCenterPresentation() -> some View {
+        modifier(AdaptiveNotificationCenterPresentationModifier())
+    }
+
     func adaptiveSheet<Item: Identifiable, SheetContent: View>(
         item: Binding<Item?>,
         @ViewBuilder content: @escaping (Item) -> SheetContent

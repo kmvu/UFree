@@ -10,6 +10,7 @@ import SwiftUI
 public struct NotificationCenterView: View {
     @ObservedObject var viewModel: NotificationViewModel
     @Environment(\.dismiss) var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     public init(viewModel: NotificationViewModel) {
         self.viewModel = viewModel
@@ -27,11 +28,47 @@ public struct NotificationCenterView: View {
                 } else {
                     ForEach(viewModel.notifications) { note in
                         NotificationRow(note: note, viewModel: viewModel)
-                            .listRowBackground(note.isRead ? Color.clear : Color.blue.opacity(0.1))
+                            .listRowBackground(rowBackground(for: note))
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    viewModel.clearNotification(note)
+                                } label: {
+                                    Label("Clear", systemImage: "trash")
+                                }
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                if note.isRead {
+                                    Button {
+                                        viewModel.markUnread(note)
+                                    } label: {
+                                        Label("Unread", systemImage: "envelope.badge")
+                                    }
+                                    .tint(.blue)
+                                } else {
+                                    Button {
+                                        viewModel.markRead(note)
+                                    } label: {
+                                        Label("Read", systemImage: "envelope.open")
+                                    }
+                                    .tint(.gray)
+                                }
+                            }
+                            .contextMenu {
+                                if note.isRead {
+                                    Button("Mark as Unread") {
+                                        viewModel.markUnread(note)
+                                    }
+                                } else {
+                                    Button("Mark as Read") {
+                                        viewModel.markRead(note)
+                                    }
+                                }
+                                Button("Clear", role: .destructive) {
+                                    viewModel.clearNotification(note)
+                                }
+                            }
                             .onAppear {
-                                if !note.isRead && note.type != .nudge {
-                                    viewModel.markRead(note)
-                                } else if !note.isRead && note.type == .nudgeReply {
+                                if !note.isRead && note.type == .nudgeReply {
                                     viewModel.markRead(note)
                                     if let response = note.nudgeResponse {
                                         AnalyticsManager.logNudgeReplyReceived(response: response)
@@ -41,8 +78,18 @@ public struct NotificationCenterView: View {
                     }
                 }
             }
+            .listStyle(.insetGrouped)
+            .adaptiveContentWidth(640)
             .navigationTitle("Notifications")
+            .navigationBarTitleDisplayMode(horizontalSizeClass == .regular ? .large : .inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if viewModel.unreadCount > 0 {
+                        Button("Mark All Read") {
+                            viewModel.markAllRead()
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
@@ -54,12 +101,24 @@ public struct NotificationCenterView: View {
             }
         }
     }
+
+    private func rowBackground(for note: AppNotification) -> Color {
+        if note.type == .friendAccepted
+            || (note.type == .friendRequest && !viewModel.isFriendRequestActionable(note)) {
+            return Color.green.opacity(0.08)
+        }
+        return note.isRead ? Color.clear : Color.blue.opacity(0.1)
+    }
 }
 
 struct NotificationRow: View {
     let note: AppNotification
     @ObservedObject var viewModel: NotificationViewModel
-    
+
+    private var isRowProcessing: Bool {
+        viewModel.isProcessingNotification(note)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
@@ -73,7 +132,7 @@ struct NotificationRow: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(message)
+                    Text(note.inboxMessage)
                         .font(.body)
                         .foregroundStyle(.primary)
                     
@@ -85,11 +144,23 @@ struct NotificationRow: View {
                 Spacer()
             }
 
-            if note.type == .friendRequest {
-                Button("Accept") {
+            if viewModel.isFriendRequestActionable(note) {
+                Button(action: {
                     Task { await viewModel.acceptFriendRequest(from: note) }
+                }) {
+                    if isRowProcessing {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Text("Accept")
+                    }
                 }
                 .ufreeCompactButton(tint: .green)
+                .disabled(viewModel.hasActiveNotificationAction)
+            } else if note.type == .friendRequest || note.type == .friendAccepted {
+                Label("Connected", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.green)
             }
 
             if note.type == .nudge && !note.hasResponded {
@@ -102,7 +173,7 @@ struct NotificationRow: View {
                             prominent: response == .imIn,
                             tint: response == .imIn ? .green : (response == .busy ? .red : .orange)
                         )
-                        .disabled(viewModel.isProcessing)
+                        .disabled(viewModel.hasActiveNotificationAction)
                     }
                 }
             }
@@ -138,33 +209,9 @@ struct NotificationRow: View {
     private var iconBackground: Color {
         iconColor.opacity(0.2)
     }
-    
+
     var message: String {
-        let day = note.targetWeekdayLabel
-        switch note.type {
-        case .friendRequest:
-            return "\(note.senderName) sent you a friend request."
-        case .friendAccepted:
-            return "\(note.senderName) accepted — you're connected!"
-        case .nudge:
-            if let day {
-                return "\(note.senderName) asked if you're free \(day)"
-            }
-            return "\(note.senderName) nudged you! 👋"
-        case .nudgeReply:
-            let response = note.nudgeResponse.flatMap { AppNotification.NudgeResponse(rawValue: $0) }
-            let verb: String
-            switch response {
-            case .imIn: verb = "is in"
-            case .maybe: verb = "said maybe"
-            case .busy: verb = "is busy"
-            case .none: verb = "replied"
-            }
-            if let day {
-                return "\(note.senderName) \(verb) for \(day)"
-            }
-            return "\(note.senderName) \(verb)"
-        }
+        note.inboxMessage
     }
 }
 

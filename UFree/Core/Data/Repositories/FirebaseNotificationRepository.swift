@@ -53,6 +53,22 @@ public class FirebaseNotificationRepository: NotificationRepository {
             .document(noteId)
             .updateData(["isRead": true])
     }
+
+    public func markAsUnread(_ notification: AppNotification) async throws {
+        guard let uid = auth.currentUser?.uid, let noteId = notification.id else { return }
+
+        try await db.collection("users").document(uid).collection("notifications")
+            .document(noteId)
+            .updateData(["isRead": false])
+    }
+
+    public func deleteNotification(_ notification: AppNotification) async throws {
+        guard let uid = auth.currentUser?.uid, let noteId = notification.id else { return }
+
+        try await db.collection("users").document(uid).collection("notifications")
+            .document(noteId)
+            .delete()
+    }
     
     public func sendNudge(to userId: String, targetDate: Date?) async throws {
         guard let currentUid = auth.currentUser?.uid,

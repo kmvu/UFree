@@ -63,7 +63,10 @@ final class NotificationAcceptTests: XCTestCase {
         XCTAssertNil(sut.errorMessage)
         XCTAssertEqual(friendsVM.friends.count, 1)
         XCTAssertEqual(friendsVM.friends.first?.id, "alice")
+        XCTAssertFalse(sut.isFriendRequestActionable(sut.notifications[0]))
+        XCTAssertEqual(sut.notifications[0].type, .friendAccepted)
         XCTAssertTrue(sut.notifications[0].isRead)
+        XCTAssertEqual(sut.unreadCount, 0)
     }
 
     func test_acceptFriendRequest_fallsBackToPendingFetch() async {
@@ -109,6 +112,55 @@ final class NotificationAcceptTests: XCTestCase {
         XCTAssertTrue(friendsVM.friends.isEmpty)
     }
 
+    func test_acceptFriendRequest_subsequentFriend_navigatesToFeed() async {
+        friendsVM.friends = [
+            UserProfile(id: "existing", displayName: "Existing", hashedPhoneNumber: "hash")
+        ]
+        let rootVM = RootViewModel(authRepository: MockAuthRepository())
+        friendsVM.onAcceptCompleted = { friendName, wasFirstFriend in
+            rootVM.handlePostAccept(friendName: friendName, wasFirstFriend: wasFirstFriend)
+        }
+        sut.bind(
+            friendsViewModel: friendsVM,
+            scheduleViewModel: scheduleVM,
+            rootViewModel: rootVM
+        )
+
+        let requestId = "req_subsequent"
+        friendRepo.addIncomingRequest(
+            FriendRequest(
+                id: requestId,
+                fromId: "bob",
+                fromName: "Bob",
+                toId: "me",
+                status: .pending,
+                timestamp: Date()
+            )
+        )
+
+        var note = AppNotification(
+            recipientId: "me",
+            senderId: "bob",
+            senderName: "Bob",
+            type: .friendRequest,
+            date: Date(),
+            relatedRequestId: requestId
+        )
+        note.id = "note-bob"
+        sut.notifications = [note]
+        sut.applyNotificationsUpdate([note])
+
+        await sut.acceptFriendRequest(from: note)
+
+        XCTAssertEqual(friendsVM.friends.count, 2)
+        XCTAssertEqual(rootVM.activeTab, .feed)
+        XCTAssertEqual(
+            rootVM.celebrationToast,
+            OnboardingProgressStore.subsequentConnectionToast(friendName: "Bob")
+        )
+        XCTAssertEqual(sut.notifications[0].type, .friendAccepted)
+    }
+
     func test_acceptFriendRequest_worksWhileFriendsLoading() async {
         let requestId = "req_busy"
         let note = AppNotification(
@@ -127,6 +179,22 @@ final class NotificationAcceptTests: XCTestCase {
 
         XCTAssertNil(sut.errorMessage)
         XCTAssertEqual(friendsVM.friends.first?.id, "cara")
+    }
+
+    func test_acceptFriendRequest_clearsProcessingKeyAfterCompletion() async {
+        let note = AppNotification(
+            recipientId: "me",
+            senderId: "dana",
+            senderName: "Dana",
+            type: .friendRequest,
+            date: Date(),
+            relatedRequestId: "req_dana"
+        )
+        sut.notifications = [note]
+
+        await sut.acceptFriendRequest(from: note)
+
+        XCTAssertNil(sut.processingNotificationKey)
     }
 
     private final class NoopUpdateUseCase: UpdateMyStatusUseCaseProtocol {
