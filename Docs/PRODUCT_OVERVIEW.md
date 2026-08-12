@@ -68,6 +68,7 @@ The repository contains Cloud Functions for push and a weekend digest, but Fireb
 | Question | Where to look |
 |---|---|
 | What is UFree trying to prove? | This document |
+| How is the problem and monetization structured? | [Product strategy](PRODUCT_STRATEGY.md) |
 | How do we run the pilot or publish a TestFlight build? | [Operations guide](OPERATIONS_GUIDE.md) |
 | What quality checks happen before a release? | [Testing guide](TESTING_GUIDE.md) |
 | How is the app built? | [Engineering guide](ENGINEERING_GUIDE.md) |
