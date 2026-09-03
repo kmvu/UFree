@@ -21,15 +21,7 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 [bundle exec] fastlane ios tests
 ```
 
-Pre-flight Check: Run all 250+ Unit Tests
-
-### ios alpha
-
-```sh
-[bundle exec] fastlane ios alpha
-```
-
-Internal Alpha: Distribute via Firebase App Distribution
+Pre-flight Check: Run unit tests (iPhone 17 Pro) with coverage
 
 ### ios beta
 

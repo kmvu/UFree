@@ -44,67 +44,22 @@ def setup_api_key
 end
 
 platform :ios do
-  desc "Pre-flight Check: Run all 250+ Unit Tests"
+  desc "Pre-flight Check: Run unit tests (iPhone 17 Pro) with coverage"
   lane :tests do
-    puts "🧪 Running test suite (250+ tests)..."
+    puts "🧪 Running test suite on iPhone 17 Pro..."
     run_tests(
       project: "UFree.xcodeproj",
       scheme: "UFreeUnitTests",
       devices: ["iPhone 17 Pro"],
       clean: true,
       fail_build: true,
+      code_coverage: true,
       output_directory: "fastlane/test_results",
       result_bundle: true,
       derived_data_path: "./fastlane/builds/DerivedData",
       xcargs: "CODE_SIGN_IDENTITY='-' CODE_SIGN_STYLE=Automatic AD_HOC_CODE_SIGNING_ALLOWED=YES ENTITLEMENTS_ALLOWED=NO PROVISIONING_PROFILE_SPECIFIER='' -skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache ONLY_ACTIVE_ARCH=NO"
     )
     puts "✅ All tests passed"
-  end
-
-  desc "Internal Alpha: Distribute via Firebase App Distribution"
-  lane :alpha do
-    puts "🚀 Starting Internal Alpha Distribution..."
-    
-    # 1. Run validation first
-    tests
-    
-    # 2. Build the app for Ad-Hoc distribution
-    puts "🔨 Building IPA for Firebase distribution..."
-    
-    # Explicitly grab the provisioning profile mapping
-    profile_mapping = lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
-    puts "📋 Provisioning Profile Mapping: #{profile_mapping}"
-    
-    build_app(
-      project: "UFree.xcodeproj",
-      scheme: "UFree",
-      configuration: "Release",
-      export_method: "ad-hoc",
-      output_directory: "./fastlane/builds",
-      output_name: "UFree.ipa",
-      clean: true,
-      archive_path: "./fastlane/builds/UFree.xcarchive",
-      destination: "generic/platform=iOS",
-      build_for_testing: false,
-      derived_data_path: "./fastlane/builds/DerivedData",
-      xcargs: "-skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache",
-      export_options: {
-        signingStyle: "manual",
-        provisioningProfiles: profile_mapping
-      }
-    )
-    
-    # 3. Upload to Firebase App Distribution
-    puts "📤 Uploading to Firebase App Distribution..."
-    firebase_app_distribution(
-      app: ENV["FIREBASE_APP_ID"] || "1:639000000000:ios:a1b2c3d4e5f6g7h8i9j0",
-      ipa_path: "./fastlane/builds/UFree.ipa",
-      groups: ENV["FIREBASE_GROUPS"] || "internal-testers",
-      release_notes: "Sprint 6.1: Automated Distribution - All 206+ tests validated",
-      firebase_cli_path: "/usr/local/bin/firebase"
-    )
-    
-    puts "✅ Build uploaded to Firebase for internal testing"
   end
 
   desc "External Beta: Submit to TestFlight"
@@ -114,13 +69,9 @@ platform :ios do
     # 0. Fetch project settings once to avoid repeated Xcode metadata lookups
     setup_ci if is_ci
     
-    # 1. Full validation: Only ship if all tests pass
-    # 🛑 THE OPTIMIZATION: Allow CI to skip tests when SKIP_TESTS is true
-    if ENV["SKIP_TESTS"] != "true"
-      tests # (Or whatever command you use to call your tests lane)
-    else
-      puts "⏭️ Skipping tests because SKIP_TESTS is set to true!"
-    end
+    # 1. Full validation: always run tests before shipping (no SKIP_TESTS bypass).
+    # GitHub deploy.yml also requires a green Quality Check run on the same SHA.
+    tests
     
     # 2. Setup API key for TestFlight submission
     puts "🔑 Setting up App Store Connect API Key..."

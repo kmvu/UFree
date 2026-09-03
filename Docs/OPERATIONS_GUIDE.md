@@ -8,29 +8,37 @@ Use this guide to release a build, operate the TestFlight pilot, and understand 
 
 | Activity | Current path | Owner |
 |---|---|---|
-| Automated quality check | GitHub Actions: Firestore rules tests (ubuntu) + `bundle exec fastlane tests` (macos) on pushes/PRs to `main` | Engineering |
-| Internal device build | `bundle exec fastlane alpha` | Engineering / QA |
-| TestFlight upload | Manual GitHub Actions workflow or `bundle exec fastlane beta` | Release owner |
-| Firestore rules and indexes | `firebase deploy --only firestore:rules,firestore:indexes` (must ship with app builds that expect the Phase 1 privacy model + Phase 2 owner deletes) | Engineering |
-| Hosting / universal links | Firebase Hosting configuration in `firebase.json` | Engineering |
+| Automated quality check | GitHub Actions **Quality Check** (`ci.yml`): Firestore Rules + Unit Tests + SwiftLint on pushes/PRs to `main` | Engineering |
+| TestFlight upload | Manual **Deploy to TestFlight** (`deploy.yml`) on `main` only, after green CI on the same SHA | Release owner |
+| Firestore rules, indexes, hosting | Auto on `main` when those paths change (`firebase-deploy.yml`); or local `firebase deploy --only …` | Engineering |
 | App Check enforcement | Firebase Console → App Check → Firestore (enforce after debug tokens are registered for simulators) | Engineering |
+
+Internal Firebase App Distribution (`fastlane alpha`) was removed. TestFlight is the only internal distribution path.
+
+## Release gate (TestFlight)
+
+Deploy cannot skip quality. The flow is:
+
+1. Land the commit on `main`.
+2. Wait for **Quality Check** to finish green on that exact SHA (`firestore-rules`, `unit-tests`, `lint`).
+3. Trigger **Deploy to TestFlight** (workflow_dispatch, `main` only). The workflow refuses to ship if CI is missing/red for that SHA, required secrets are absent, or the ref is not `main`.
+4. `fastlane beta` runs the unit suite again, then signs, builds, and uploads to TestFlight.
+
+Pinned toolchain: **Xcode 26.6** on `macos-26`, simulator **iPhone 17 Pro**, Ruby from tracked `.ruby-version` (`3.3.0`).
 
 ## Release commands
 
 Run commands from the repository root. Use `bundle exec` so the checked-in Fastlane version is used.
 
 ```bash
-bundle exec fastlane tests        # unit-test validation
-bundle exec fastlane alpha        # internal Firebase App Distribution build
-bundle exec fastlane beta         # TestFlight upload
+bundle exec fastlane tests        # unit-test validation (iPhone 17 Pro + coverage)
+bundle exec fastlane beta         # TestFlight upload (always runs tests first)
 bundle exec fastlane sync_certs   # refresh or create signing material when needed
 ```
 
-`beta` runs tests by default, synchronizes signing material, increments the build number, builds an App Store IPA, uploads Crashlytics symbols, and uploads to TestFlight. The current GitHub deployment workflow sets `SKIP_TESTS=true`, so it relies on the separate main-branch quality workflow rather than rerunning tests during deployment. Treat a green main-branch test run as a release prerequisite.
-
 ## TestFlight release checklist
 
-1. Confirm the intended commit is on `main` and its quality workflow passed.
+1. Confirm the intended commit is on `main` and **Quality Check** passed for that SHA.
 2. Complete the [manual smoke test](TESTING_GUIDE.md#manual-release-smoke-test), including two-user flows when social behavior changed.
 3. Verify the marketing version in Xcode if it needs to change; Fastlane only increments the build number.
 4. Trigger **Deploy to TestFlight** in GitHub Actions, or run `bundle exec fastlane beta` with the required local credentials.
@@ -43,13 +51,12 @@ Do not promise that a TestFlight upload immediately reaches external testers: Ap
 
 ### Before recruiting people
 
-1. Deploy Firestore rules and indexes (required after Phase 1 privacy changes — old open-read rules break the product promise):
+1. Deploy Firestore rules and indexes (required after Phase 1 privacy changes — old open-read rules break the product promise). Prefer merging to `main` so `firebase-deploy.yml` runs after rules tests; or deploy manually:
 
    ```bash
+   npm --prefix firebase-tests test
    firebase deploy --only firestore:rules,firestore:indexes
    ```
-
-   Confirm `npm --prefix firebase-tests test` is green before deploying.
 
 2. Enable Sign in with Apple in Apple Developer + Firebase Auth, and App Check (App Attest). For Simulator/DEBUG builds, copy the App Check debug token from the Xcode console into Firebase Console → App Check → Manage debug tokens before turning on Firestore enforcement.
 
@@ -73,6 +80,24 @@ Do not promise that a TestFlight upload immediately reaches external testers: Ap
 
 The pilot passes only when at least half of seeded pairs complete the core loop in one weekend and reopen the following Friday without a founder reminder. Full product context and the decision boundary are in the [product overview](PRODUCT_OVERVIEW.md).
 
+## Firebase deployment (rules / indexes / hosting)
+
+Spark-tier only: `firebase-deploy.yml` deploys `firestore:rules`, `firestore:indexes`, and `hosting` (AASA). It does **not** deploy Cloud Functions.
+
+### CI secret setup
+
+1. Locally: `firebase login:ci` (Firebase CLI signed in as a project owner/editor).
+2. Copy the printed token into GitHub → Settings → Secrets and variables → Actions as **`FIREBASE_TOKEN`**.
+3. Project id used by the workflow: `ufree-313a2` (same as local `.firebaserc`).
+
+On every push to `main` that touches `firestore.rules`, `firestore.indexes.json`, `public/`, or `firebase.json`, the workflow runs `firebase-tests` then deploys. Manual re-run: workflow_dispatch on **Deploy Firebase Rules & Hosting**.
+
+### Rollback
+
+1. `git revert` the bad commit on `main` (or restore the last known-good rules/indexes/hosting files) and push.
+2. `firebase-deploy.yml` re-runs on the reverted paths and restores production.
+3. If CI cannot run, deploy the known-good tree manually: `firebase deploy --only firestore:rules,firestore:indexes,hosting`.
+
 ## Firebase deployment boundary
 
 The current `firebase.json` config deploys Firestore rules, indexes, and Hosting. It does **not** configure a Functions source. The repository has `functions/index.js` containing push-notification and weekend-digest code, but it is not part of the current deployment path.
@@ -92,4 +117,13 @@ For the Spark-tier pilot:
 
 ## Security and access
 
-Keep credentials in secret stores, not in the repository. The deployment workflow requires App Store Connect credentials, Match password, SSH access to the certificate repository, and a base64-encoded Firebase plist. Review the exact environment variable names in `fastlane/Fastfile` and `.github/workflows/deploy.yml` whenever those workflows change.
+Keep credentials in secret stores, not in the repository.
+
+| Secret | Used by |
+|---|---|
+| `GOOGLE_SERVICE_INFO_PLIST` | `ci.yml`, `deploy.yml` (base64 plist) |
+| `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT` (or legacy `ASC_KEY`) | `deploy.yml` / Fastlane |
+| `MATCH_PASSWORD`, `SSH_PRIVATE_KEY` | Match certs (Bitbucket) |
+| `FIREBASE_TOKEN` | `firebase-deploy.yml` |
+
+Review exact names in `fastlane/Fastfile` and `.github/workflows/` whenever automation changes.

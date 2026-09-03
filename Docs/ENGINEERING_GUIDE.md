@@ -34,17 +34,28 @@ SwiftUI view → View model → Composite repository → SwiftData (immediate)
 
 ### Prerequisites
 
-- macOS with a supported Xcode version
-- Ruby 3.3 (see `.ruby-version`)
+- macOS with **Xcode 26.6** (pinned in CI/deploy; match local `xcodebuild -version`)
+- Ruby from tracked `.ruby-version` (`3.3.0`)
 - Bundler and the project gems
 - Firebase configuration file for local app builds
+- Tracked `Package.resolved` under the Xcode workspace (do not delete it)
 
 ```bash
 bundle install
 bundle exec fastlane tests
 ```
 
-The Fastlane test lane targets the `UFreeUnitTests` scheme on an iPhone 17 Pro simulator. See [Testing guide](TESTING_GUIDE.md) for focused test commands.
+The Fastlane test lane targets the `UFreeUnitTests` scheme on an **iPhone 17 Pro** simulator with code coverage enabled. See [Testing guide](TESTING_GUIDE.md) for focused test commands.
+
+### CI / CD map
+
+| Workflow | Jobs | When |
+|---|---|---|
+| `ci.yml` (Quality Check) | `firestore-rules` (ubuntu) · `unit-tests` (macos-26, Xcode 26.6) · `lint` (SwiftLint baseline) | Push / PR to `main` |
+| `deploy.yml` (TestFlight) | Requires green `ci.yml` on the same SHA; `main` only; runs `fastlane beta` (tests always on) | Manual dispatch |
+| `firebase-deploy.yml` | Rules tests → `firebase deploy --only firestore:rules,firestore:indexes,hosting` | Push to `main` when rules/indexes/`public/` change |
+
+There is no `alpha` / Firebase App Distribution lane. TestFlight is the only distribution path.
 
 ### Signing and release credentials
 
@@ -94,7 +105,7 @@ Adapt by **size class / available width**, not device idiom (`UFree/Core/UI/Adap
   npm --prefix firebase-tests test
   ```
 
-  CI runs the same suite on every pull request via the **Firestore Rules** job.
+  CI runs the same suite on every pull request via the **Firestore Rules** job. Merges that touch rules/indexes/hosting also run `firebase-deploy.yml` after those tests pass.
 - Firebase Hosting serves the Apple App Site Association file for `ufree.app`.
 - Deep links support notification and profile paths; keep app entitlements, hosting configuration, and parser behavior aligned when changing them.
 - Release builds enable Analytics and Crashlytics; debug builds disable analytics to avoid development noise.

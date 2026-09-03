@@ -31,7 +31,6 @@ DerivedData/
 *.swo
 *~
 GoogleService-Info.plist
-Package.resolved
 
 # Local JDK used for Firestore emulator (not committed)
 .jdk/
@@ -52,9 +51,8 @@ fastlane/.env
 fastlane/*.p8
 fastlane/Keys/*.p8
 
-# Ruby version management
+# Ruby version management (.ruby-version is tracked for reproducible CI)
 .ruby-gemset
-.ruby-version
 report.xml
 build.log
 .firebaserc

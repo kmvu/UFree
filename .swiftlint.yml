@@ -1,0 +1,56 @@
+# Baseline SwiftLint config for CI (error-severity only fails the job).
+# Prefer correctness over style; do not enable --strict until debt is paid down.
+
+included:
+  - UFree
+  - UFreeTests
+
+excluded:
+  - fastlane
+  - firebase-tests
+  - functions
+  - .build
+  - build
+  - DerivedData
+  - fastlane/builds
+  - fastlane/spm_cache
+  - .jdk
+
+# Disable noisy style rules that would force a giant rewrite on day one.
+disabled_rules:
+  - line_length
+  - trailing_whitespace
+  - trailing_newline
+  - identifier_name
+  - type_name
+  - nesting
+  - function_body_length
+  - file_length
+  - type_body_length
+  - cyclomatic_complexity
+  - todo
+  - vertical_whitespace
+  - opening_brace
+  - closing_brace
+  - statement_position
+  - comma
+  - colon
+  - operator_whitespace
+  - mark
+  - large_tuple
+  - multiple_closures_with_trailing_closure
+
+# Keep a small set of high-signal opt-ins as warnings (not --strict).
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - first_where
+  - last_where
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - redundant_nil_coalescing
+  - unused_optional_binding
+
+force_cast: error
+force_try: error
+force_unwrapping: warning

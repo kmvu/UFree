@@ -1,28 +1,104 @@
-name: 🚀 Deploy to TestFlight
+name: Deploy to TestFlight
 
 on:
-  # The "Manual Button" you wanted
   workflow_dispatch:
     inputs:
       reason:
-        description: 'Release Note (Optional)'
+        description: "Release Note (Optional)"
         required: false
-        default: 'Manual Release'
+        default: "Manual Release"
+
+# Keep in sync with .github/workflows/ci.yml and local Xcode.
+env:
+  XCODE_VERSION: "26.6"
 
 jobs:
   deploy:
     name: Build & Ship
-    runs-on: macos-latest
-    
+    # TestFlight deploys are main-only. Refuse other refs even if dispatch is misused.
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-26
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Require green Quality Check on this SHA
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.sha;
+            const workflowFile = 'ci.yml';
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflowFile,
+              head_sha: sha,
+              per_page: 20,
+            });
+
+            const successful = (data.workflow_runs || []).find(
+              (run) => run.status === 'completed' && run.conclusion === 'success'
+            );
+
+            if (!successful) {
+              const summaries = (data.workflow_runs || [])
+                .slice(0, 5)
+                .map((r) => `${r.id}:${r.status}/${r.conclusion}`)
+                .join(', ') || 'none';
+              core.setFailed(
+                `No successful Quality Check (ci.yml) run for SHA ${sha}. ` +
+                  `Wait for firestore-rules + unit-tests + lint to pass on main, then re-run deploy. ` +
+                  `Recent runs: ${summaries}`
+              );
+              return;
+            }
+
+            core.info(`Green CI gate OK: run ${successful.id} (${successful.html_url})`);
+
+      - name: Verify required secrets
+        env:
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+          ASC_KEY: ${{ secrets.ASC_KEY }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          missing=0
+          require() {
+            local name="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "::error::Missing required secret: $name"
+              missing=1
+            fi
+          }
+          require "GOOGLE_SERVICE_INFO_PLIST" "$GOOGLE_SERVICE_INFO_PLIST"
+          require "ASC_KEY_ID" "$ASC_KEY_ID"
+          require "ASC_ISSUER_ID" "$ASC_ISSUER_ID"
+          if [ -z "$ASC_KEY_CONTENT" ] && [ -z "$ASC_KEY" ]; then
+            echo "::error::Missing required secret: ASC_KEY_CONTENT (or legacy ASC_KEY)"
+            missing=1
+          fi
+          require "MATCH_PASSWORD" "$MATCH_PASSWORD"
+          require "SSH_PRIVATE_KEY" "$SSH_PRIVATE_KEY"
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+          echo "All required deploy secrets are present."
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
-        with: { ruby-version: '3.3.0', bundler-cache: true }
+        with:
+          # Reads tracked .ruby-version (3.3.0)
+          bundler-cache: true
 
-      # --- 🛠️ FIX 1: SSH Hang Fix ---
       - name: Setup SSH & Trust Bitbucket
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -34,9 +110,8 @@ jobs:
       - name: Set up Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 'latest'
+          xcode-version: ${{ env.XCODE_VERSION }}
 
-      # --- 🛠️ FIX 2: Keychain Fix ---
       - name: Setup Temporary Keychain
         run: |
           security create-keychain -p "" build.keychain
@@ -45,24 +120,17 @@ jobs:
           security unlock-keychain -p "" build.keychain
           security set-keychain-settings -t 3600 -l ~/Library/Keychains/build.keychain
 
-      # --- 🛠️ FIX 3: Google Plist Fix ---
       - name: Restore GoogleService-Info.plist
         run: echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 --decode > ./GoogleService-Info.plist
-        # mv ./GoogleService-Info.plist ./UFree/GoogleService-Info.plist  <-- Uncomment if needed
 
-      # --- 🚀 THE UPLOAD ---
       - name: Build and Upload
+        # Tests always run inside fastlane beta (SKIP_TESTS removed).
+        # Green CI on this SHA is still required above so we never ship an unvalidated commit.
         run: bundle exec fastlane beta
         env:
-          SKIP_TESTS: "true" # <--- ADD THIS LINE
-          
-          # API Keys
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT || secrets.ASC_KEY }} # Support both names for transition
-          
-          # Certificates
+          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT || secrets.ASC_KEY }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-          
-          # Configs
           FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120
+          RELEASE_NOTE: ${{ github.event.inputs.reason }}
