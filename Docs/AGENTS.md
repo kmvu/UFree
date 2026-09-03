@@ -23,10 +23,13 @@ This is the concise, repository-specific checklist for contributors and coding a
 ```bash
 npm --prefix firebase-tests test   # Firestore rules (needs Java 21+)
 bundle exec fastlane tests         # iOS unit suite (iPhone 17 Pro)
+# Emulators must be up (or use firebase emulators:exec) — main CI only:
+firebase emulators:exec --only auth,firestore --project ufree-313a2 \
+  "bundle exec fastlane integration_tests"
 swiftlint lint                     # baseline; CI fails on error-severity only
 ```
 
-CI jobs on PRs/`main`: **Firestore Rules** · **Unit Tests** (Xcode **26.6**, coverage artifact) · **SwiftLint**. TestFlight deploy is `main`-only and requires a green Quality Check on the same SHA; there is no `alpha` lane. Run the smallest relevant test first when practical. Rules or discovery/handshake changes must keep the emulator suite green. Follow the manual smoke checks in [TESTING_GUIDE.md](TESTING_GUIDE.md) when changing social, authentication, deep-link, or release behavior.
+CI jobs on PRs/`main`: **Firestore Rules** · **Unit Tests** (Xcode **26.6**, coverage artifact) · **SwiftLint**. On **main pushes** also **Emulator Integration** (handshake, phone directory, availability, nudge). TestFlight deploy is `main`-only and requires a green Quality Check on the same SHA; there is no `alpha` lane. Run the smallest relevant test first when practical. Rules or discovery/handshake changes must keep the emulator suite green. Follow the manual smoke checks in [TESTING_GUIDE.md](TESTING_GUIDE.md) when changing social, authentication, deep-link, or release behavior.
 
 ## Security
 

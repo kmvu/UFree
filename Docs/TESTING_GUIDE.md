@@ -30,6 +30,20 @@ bundle exec fastlane tests
 **Via Xcode:**
 Press `⌘ + U` with the `UFreeUnitTests` scheme selected.
 
+### Emulator integration tests (Phase 4)
+
+`UFreeIntegrationTests` exercises real `Firebase*Repository` code against local **Auth** (`127.0.0.1:9099`) and **Firestore** (`127.0.0.1:8080`) emulators with production `firestore.rules`. Coverage: friend handshake, phoneDirectory claim + legacy backfill, friend-visible availability, nudge inbox.
+
+Requires Java 21+, Firebase CLI, and `GoogleService-Info.plist`. The scheme sets `UFREE_INTEGRATION_TESTS=1` so the host app connects SDKs to emulators after `FirebaseApp.configure()`.
+
+```bash
+# One-shot (starts emulators, runs tests, tears down):
+firebase emulators:exec --only auth,firestore --project ufree-313a2 \
+  "bundle exec fastlane integration_tests"
+```
+
+Or in Xcode: start emulators, select the `UFreeIntegrationTests` scheme, then run tests. CI runs this job on **pushes to `main` only** (not every PR).
+
 ### Measuring Coverage
 
 The `UFreeUnitTests` scheme measures coverage for the **`UFree.app` target only**. The test bundle itself is deliberately excluded, because including it inflates the blended number without telling you anything about production code.

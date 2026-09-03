@@ -94,3 +94,60 @@ jobs:
           # Fail on error-severity only (baseline). Do not use --strict yet —
           # that would require a full style rewrite.
           swiftlint lint --reporter github-actions-logging --quiet
+
+  emulator-integration:
+    name: Emulator Integration
+    # Plan Phase 4: run on main pushes only (not every PR).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Restore GoogleService-Info.plist
+        run: |
+          if [ -z "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" ]; then
+            echo "::error::Missing GOOGLE_SERVICE_INFO_PLIST secret"
+            exit 1
+          fi
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 --decode > ./GoogleService-Info.plist
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@13
+
+      - name: Run integration tests against Auth + Firestore emulators
+        env:
+          UFREE_INTEGRATION_TESTS: "1"
+          FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120
+        # singleProjectMode in firebase.json routes the plist project to emulators.
+        run: |
+          firebase emulators:exec \
+            --only auth,firestore \
+            --project ufree-313a2 \
+            "bundle exec fastlane integration_tests"
+
+      - name: Upload integration result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: fastlane/test_results/integration/**
+          if-no-files-found: warn
+          retention-days: 14

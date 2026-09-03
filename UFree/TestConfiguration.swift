@@ -13,6 +13,12 @@ struct TestConfiguration {
     static var isRunningUnitTests: Bool {
         NSClassFromString("XCTest") != nil
     }
+
+    /// Returns true when the integration scheme sets `UFREE_INTEGRATION_TESTS=1`
+    /// (Auth + Firestore pointed at local emulators).
+    static var isRunningIntegrationTests: Bool {
+        FirebaseEmulatorBootstrap.isRequested
+    }
     
     /// Returns true if running under UI tests
     static var isRunningUITests: Bool {
@@ -21,6 +27,6 @@ struct TestConfiguration {
     
     /// Returns true if any test environment
     static var isTesting: Bool {
-        isRunningUnitTests || isRunningUITests
+        isRunningUnitTests || isRunningUITests || isRunningIntegrationTests
     }
 }

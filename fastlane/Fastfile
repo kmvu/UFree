@@ -62,6 +62,27 @@ platform :ios do
     puts "✅ All tests passed"
   end
 
+  desc "Emulator integration: Auth+Firestore against local emulators (requires emulators running)"
+  lane :integration_tests do
+    puts "🔌 Running UFreeIntegrationTests (Auth :9099, Firestore :8080)..."
+    # Scheme sets UFREE_INTEGRATION_TESTS=1; also export for process inheritance.
+    ENV["UFREE_INTEGRATION_TESTS"] = "1"
+    run_tests(
+      project: "UFree.xcodeproj",
+      scheme: "UFreeIntegrationTests",
+      devices: ["iPhone 17 Pro"],
+      clean: false,
+      fail_build: true,
+      code_coverage: false,
+      output_directory: "fastlane/test_results/integration",
+      result_bundle: true,
+      # Avoid Touch "Operation not permitted" on PlugIns inside a reused workspace DerivedData.
+      derived_data_path: "/tmp/ufree-integration-derived-data",
+      xcargs: "CODE_SIGN_IDENTITY='-' CODE_SIGN_STYLE=Automatic AD_HOC_CODE_SIGNING_ALLOWED=YES ENTITLEMENTS_ALLOWED=NO PROVISIONING_PROFILE_SPECIFIER='' -skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache ONLY_ACTIVE_ARCH=YES"
+    )
+    puts "✅ Integration tests passed"
+  end
+
   desc "External Beta: Submit to TestFlight"
   lane :beta do
     puts "🎯 Starting External Beta Build for TestFlight..."

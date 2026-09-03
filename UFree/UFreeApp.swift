@@ -28,6 +28,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
+        // Integration tests: point Auth/Firestore at local emulators before any SDK use.
+        FirebaseEmulatorBootstrap.connectIfRequested()
 
         // Skip analytics/crashlytics and app launch log in unit test runs to avoid SDK noise
         if !TestConfiguration.isRunningUnitTests {

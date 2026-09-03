@@ -13,12 +13,13 @@ service cloud.firestore {
     }
 
     function userDoc(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
+      let path = /databases/$(database)/documents/users/$(userId);
+      return exists(path) ? get(path).data : {};
     }
 
     function friendIdsOf(userId) {
       let data = userDoc(userId);
-      return ('friendIds' in data) ? data.friendIds : [];
+      return ('friendIds' in data && data.friendIds is list) ? data.friendIds : [];
     }
 
     /// True when auth.uid appears on the target user's friendIds (accepted friend).

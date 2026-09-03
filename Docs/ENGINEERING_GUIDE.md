@@ -51,11 +51,13 @@ The Fastlane test lane targets the `UFreeUnitTests` scheme on an **iPhone 17 Pro
 
 | Workflow | Jobs | When |
 |---|---|---|
-| `ci.yml` (Quality Check) | `firestore-rules` (ubuntu) · `unit-tests` (macos-26, Xcode 26.6) · `lint` (SwiftLint baseline) | Push / PR to `main` |
+| `ci.yml` (Quality Check) | `firestore-rules` (ubuntu) · `unit-tests` (macos-26, Xcode 26.6) · `lint` (SwiftLint baseline) · `emulator-integration` (Auth+Firestore emulators, **main pushes only**) | Push / PR to `main` (integration: push to `main` only) |
 | `deploy.yml` (TestFlight) | Requires green `ci.yml` on the same SHA; `main` only; runs `fastlane beta` (tests always on) | Manual dispatch |
 | `firebase-deploy.yml` | Rules tests → `firebase deploy --only firestore:rules,firestore:indexes,hosting` | Push to `main` when rules/indexes/`public/` change |
 
 There is no `alpha` / Firebase App Distribution lane. TestFlight is the only distribution path.
+
+Emulator ports (see `firebase.json`): Auth `127.0.0.1:9099`, Firestore `127.0.0.1:8080`. Integration scheme sets `UFREE_INTEGRATION_TESTS=1` so the app host points SDKs at those emulators.
 
 ### Signing and release credentials
 

@@ -202,17 +202,16 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
             "timestamp": Timestamp(date: request.timestamp)
         ])
 
-        let note = AppNotification(
-            recipientId: toId,
-            senderId: currentUid,
-            senderName: currentName,
-            type: .friendRequest,
-            date: Date(),
-            isRead: false,
-            relatedRequestId: requestId
-        )
         _ = try await db.collection("users").document(toId).collection("notifications")
-            .addDocument(from: note)
+            .addDocument(data: [
+                "recipientId": toId,
+                "senderId": currentUid,
+                "senderName": currentName,
+                "type": AppNotification.NotificationType.friendRequest.rawValue,
+                "date": Timestamp(date: Date()),
+                "isRead": false,
+                "relatedRequestId": requestId
+            ])
     }
 
     func pendingFriendRequest(from fromId: String) async throws -> FriendRequest? {
@@ -297,17 +296,16 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         try await batch.commit()
 
         let acceptorName = Auth.auth().currentUser?.displayName ?? "Your friend"
-        let note = AppNotification(
-            recipientId: fromId,
-            senderId: toId,
-            senderName: acceptorName,
-            type: .friendAccepted,
-            date: Date(),
-            isRead: false,
-            relatedRequestId: requestId
-        )
         _ = try await db.collection("users").document(fromId).collection("notifications")
-            .addDocument(from: note)
+            .addDocument(data: [
+                "recipientId": fromId,
+                "senderId": toId,
+                "senderName": acceptorName,
+                "type": AppNotification.NotificationType.friendAccepted.rawValue,
+                "date": Timestamp(date: Date()),
+                "isRead": false,
+                "relatedRequestId": requestId
+            ])
     }
 
     func declineFriendRequest(_ request: FriendRequest) async throws {

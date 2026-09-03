@@ -15,6 +15,7 @@
 		23DD43542F0521AD00432E96 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 23DD43532F0521AD00432E96 /* FirebaseAuth */; };
 		23DD43562F0521AD00432E96 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 23DD43552F0521AD00432E96 /* FirebaseFirestore */; };
 		23E8A101302A000100ABCDEF /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 23E8A100302A000100ABCDEF /* FirebaseAppCheck */; };
+		23E4A101302B410100000001 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 234BD076301D9047007C5DC7 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -32,6 +33,13 @@
 			remoteGlobalIDString = 237D8FC32EF53F24006BAE5F;
 			remoteInfo = UFree;
 		};
+		23E4A101302B410100000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 237D8FBC2EF53F24006BAE5F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 237D8FC32EF53F24006BAE5F;
+			remoteInfo = UFree;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +47,7 @@
 		237D8FC42EF53F24006BAE5F /* UFree.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UFree.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		237D8FD12EF53F26006BAE5F /* UFreeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UFreeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		237D8FDB2EF53F26006BAE5F /* UFreeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UFreeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		23E4A101302B410100000003 /* UFreeIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UFreeIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -55,6 +64,13 @@
 				Info.plist,
 			);
 			target = 237D8FD02EF53F26006BAE5F /* UFreeTests */;
+		};
+		23E4A101302B410100000004 /* Exceptions for "UFreeIntegrationTests" folder in "UFreeIntegrationTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 23E4A101302B410100000007 /* UFreeIntegrationTests */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -78,6 +94,14 @@
 		237D8FDE2EF53F26006BAE5F /* UFreeUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = UFreeUITests;
+			sourceTree = "<group>";
+		};
+		23E4A101302B410100000005 /* UFreeIntegrationTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				23E4A101302B410100000004 /* Exceptions for "UFreeIntegrationTests" folder in "UFreeIntegrationTests" target */,
+			);
+			path = UFreeIntegrationTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -109,6 +133,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		23E4A101302B410100000006 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -127,6 +158,7 @@
 				237D8FC62EF53F24006BAE5F /* UFree */,
 				237D8FD42EF53F26006BAE5F /* UFreeTests */,
 				237D8FDE2EF53F26006BAE5F /* UFreeUITests */,
+				23E4A101302B410100000005 /* UFreeIntegrationTests */,
 				230B33352F0F97C000E82137 /* Frameworks */,
 			);
 			sourceTree = "<group>";
@@ -137,6 +169,7 @@
 				237D8FC42EF53F24006BAE5F /* UFree.app */,
 				237D8FD12EF53F26006BAE5F /* UFreeTests.xctest */,
 				237D8FDB2EF53F26006BAE5F /* UFreeUITests.xctest */,
+				23E4A101302B410100000003 /* UFreeIntegrationTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -217,6 +250,29 @@
 			productReference = 237D8FDB2EF53F26006BAE5F /* UFreeUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		23E4A101302B410100000007 /* UFreeIntegrationTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 23E4A101302B41010000000D /* Build configuration list for PBXNativeTarget "UFreeIntegrationTests" */;
+			buildPhases = (
+				23E4A101302B410100000009 /* Sources */,
+				23E4A101302B410100000006 /* Frameworks */,
+				23E4A101302B410100000008 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				23E4A101302B41010000000A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				23E4A101302B410100000005 /* UFreeIntegrationTests */,
+			);
+			name = UFreeIntegrationTests;
+			packageProductDependencies = (
+			);
+			productName = UFreeIntegrationTests;
+			productReference = 23E4A101302B410100000003 /* UFreeIntegrationTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -235,6 +291,10 @@
 						TestTargetID = 237D8FC32EF53F24006BAE5F;
 					};
 					237D8FDA2EF53F26006BAE5F = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = 237D8FC32EF53F24006BAE5F;
+					};
+					23E4A101302B410100000007 = {
 						CreatedOnToolsVersion = 26.0.1;
 						TestTargetID = 237D8FC32EF53F24006BAE5F;
 					};
@@ -260,6 +320,7 @@
 				237D8FC32EF53F24006BAE5F /* UFree */,
 				237D8FD02EF53F26006BAE5F /* UFreeTests */,
 				237D8FDA2EF53F26006BAE5F /* UFreeUITests */,
+				23E4A101302B410100000007 /* UFreeIntegrationTests */,
 			);
 		};
 /* End PBXProject section */
@@ -289,6 +350,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		23E4A101302B410100000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				23E4A101302B410100000001 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -313,6 +382,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		23E4A101302B410100000009 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -325,6 +401,11 @@
 			isa = PBXTargetDependency;
 			target = 237D8FC32EF53F24006BAE5F /* UFree */;
 			targetProxy = 237D8FDC2EF53F26006BAE5F /* PBXContainerItemProxy */;
+		};
+		23E4A101302B41010000000A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 237D8FC32EF53F24006BAE5F /* UFree */;
+			targetProxy = 23E4A101302B410100000002 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -640,6 +721,55 @@
 			};
 			name = Release;
 		};
+		23E4A101302B41010000000B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = SNUXAG727V;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = UFreeIntegrationTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.khangvu.UFreeIntegrationTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/UFree.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/UFree";
+			};
+			name = Debug;
+		};
+		23E4A101302B41010000000C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = UFreeIntegrationTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.khangvu.UFreeIntegrationTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/UFree.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/UFree";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -675,6 +805,15 @@
 			buildConfigurations = (
 				237D8FEC2EF53F26006BAE5F /* Debug */,
 				237D8FED2EF53F26006BAE5F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		23E4A101302B41010000000D /* Build configuration list for PBXNativeTarget "UFreeIntegrationTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				23E4A101302B41010000000B /* Debug */,
+				23E4A101302B41010000000C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

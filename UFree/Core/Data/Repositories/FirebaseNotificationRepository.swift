@@ -73,23 +73,36 @@ public class FirebaseNotificationRepository: NotificationRepository {
     }
     
     public func sendNudge(to userId: String, targetDate: Date?) async throws {
-        guard let currentUid = auth.currentUser?.uid,
-              let currentName = auth.currentUser?.displayName else { return }
-        
-        let targetDateString = targetDate.map { AppNotification.dateString(from: $0) }
-        let note = AppNotification(
-            recipientId: userId,
-            senderId: currentUid,
-            senderName: currentName,
-            type: .nudge,
-            date: Date(),
-            isRead: false,
-            targetDateString: targetDateString
-        )
-        
-        // Await so permission / network failures propagate to callers.
+        guard let currentUid = auth.currentUser?.uid else {
+            throw NSError(
+                domain: "FirebaseNotificationRepository",
+                code: 401,
+                userInfo: [NSLocalizedDescriptionKey: "User not logged in"]
+            )
+        }
+        guard let currentName = auth.currentUser?.displayName, !currentName.isEmpty else {
+            throw NSError(
+                domain: "FirebaseNotificationRepository",
+                code: 400,
+                userInfo: [NSLocalizedDescriptionKey: "Display name required to send a nudge"]
+            )
+        }
+
+        var data: [String: Any] = [
+            "recipientId": userId,
+            "senderId": currentUid,
+            "senderName": currentName,
+            "type": AppNotification.NotificationType.nudge.rawValue,
+            "date": Timestamp(date: Date()),
+            "isRead": false
+        ]
+        if let targetDate {
+            data["targetDateString"] = AppNotification.dateString(from: targetDate)
+        }
+
+        // Explicit dictionary write — avoids Codable/@DocumentID quirks under security rules.
         _ = try await db.collection("users").document(userId).collection("notifications")
-            .addDocument(from: note)
+            .addDocument(data: data)
     }
 
     public func sendNudgeReply(

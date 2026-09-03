@@ -52,7 +52,7 @@ jobs:
                 .join(', ') || 'none';
               core.setFailed(
                 `No successful Quality Check (ci.yml) run for SHA ${sha}. ` +
-                  `Wait for firestore-rules + unit-tests + lint to pass on main, then re-run deploy. ` +
+                  `Wait for firestore-rules + unit-tests + lint (+ emulator-integration on main) to pass, then re-run deploy. ` +
                   `Recent runs: ${summaries}`
               );
               return;

@@ -8,7 +8,7 @@ Use this guide to release a build, operate the TestFlight pilot, and understand 
 
 | Activity | Current path | Owner |
 |---|---|---|
-| Automated quality check | GitHub Actions **Quality Check** (`ci.yml`): Firestore Rules + Unit Tests + SwiftLint on pushes/PRs to `main` | Engineering |
+| Automated quality check | GitHub Actions **Quality Check** (`ci.yml`): Firestore Rules + Unit Tests + SwiftLint on pushes/PRs to `main`; **Emulator Integration** on `main` pushes | Engineering |
 | TestFlight upload | Manual **Deploy to TestFlight** (`deploy.yml`) on `main` only, after green CI on the same SHA | Release owner |
 | Firestore rules, indexes, hosting | Auto on `main` when those paths change (`firebase-deploy.yml`); or local `firebase deploy --only …` | Engineering |
 | App Check enforcement | Firebase Console → App Check → Firestore (enforce after debug tokens are registered for simulators) | Engineering |
@@ -24,7 +24,7 @@ Deploy cannot skip quality. The flow is:
 3. Trigger **Deploy to TestFlight** (workflow_dispatch, `main` only). The workflow refuses to ship if CI is missing/red for that SHA, required secrets are absent, or the ref is not `main`.
 4. `fastlane beta` runs the unit suite again, then signs, builds, and uploads to TestFlight.
 
-Pinned toolchain: **Xcode 26.6** on `macos-26`, simulator **iPhone 17 Pro**, Ruby from tracked `.ruby-version` (`3.3.0`).
+Pinned toolchain: **Xcode 26.6** on `macos-26`, simulator **iPhone 17 Pro**, Ruby from tracked `.ruby-version` (`3.3.0`). Main-branch Quality Check also runs Auth+Firestore emulator integration tests.
 
 ## Release commands
 
