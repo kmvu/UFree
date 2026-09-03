@@ -199,10 +199,18 @@ final class MockFriendRepositoryTests: XCTestCase {
         XCTAssertTrue(friends.isEmpty)
     }
 
-    // MARK: - No-Op Surface
+    // MARK: - Disabled Direct Add
+
+    func test_addFriend_throwsDirectAddDisabled() async {
+        do {
+            try await sut.addFriend(userId: "u1")
+            XCTFail("Expected direct add to throw")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("Direct add is disabled"))
+        }
+    }
 
     func test_noOpMethods_completeWithoutThrowing() async throws {
-        try await sut.addFriend(userId: "u1")
         try await sut.removeFriend(userId: "u1")
         try await sut.saveUserProfile(displayName: "Alice", hashedPhoneNumbers: ["hash"])
         try await sut.sendFriendRequest(to: UserProfile(id: "u2", displayName: "Bob"))

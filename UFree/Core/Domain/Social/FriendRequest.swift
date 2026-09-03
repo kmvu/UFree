@@ -30,4 +30,9 @@ public struct FriendRequest: Identifiable, Codable {
         self.status = status
         self.timestamp = timestamp
     }
+
+    /// Deterministic Firestore document id: `{fromId}_{toId}`.
+    public static func documentId(fromId: String, toId: String) -> String {
+        "\(fromId)_\(toId)"
+    }
 }

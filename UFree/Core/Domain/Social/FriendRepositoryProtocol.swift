@@ -19,7 +19,7 @@ public protocol FriendRepositoryProtocol {
     /// that occurred when the repository fetched contacts internally.
     ///
     /// - Parameter hashes: SHA-256 hashes produced by `CryptoUtils.phoneNumberHashes(for:)`.
-    /// - Returns: UFree users whose `hashedPhoneNumbers` array contains any of the given hashes.
+    /// - Returns: Public profiles whose phone-directory entries match any hash.
     func findFriendsFromContactHashes(_ hashes: [String]) async throws -> [UserProfile]
 
     // MARK: - Friends List
@@ -33,15 +33,15 @@ public protocol FriendRepositoryProtocol {
 
     // MARK: - User Lookup
 
-    /// Finds a single user by their phone number (privacy-safe via multi-hash lookup).
+    /// Finds a single user by their phone number (privacy-safe via phoneDirectory lookup).
     func findUserByPhoneNumber(_ phoneNumber: String) async throws -> UserProfile?
 
-    /// Finds a single user by their Firestore document ID.
+    /// Finds a single user by their Firestore document ID (publicProfiles first).
     func findUserById(_ userId: String) async throws -> UserProfile?
 
     // MARK: - Friend Management
 
-    /// Adds a friend by user ID (direct add, for backward compatibility).
+    /// Direct add is disabled. Implementations must throw; use `sendFriendRequest`.
     func addFriend(userId: String) async throws
 
     /// Removes a friend by user ID.
@@ -59,7 +59,10 @@ public protocol FriendRepositoryProtocol {
     /// Used when Notification Center Accept runs before the live listener has populated.
     func pendingFriendRequest(from fromId: String) async throws -> FriendRequest?
 
-    /// Accepts a friend request (atomic batch write).
+    /// Loads a friend request by deterministic document id (`{fromId}_{toId}`).
+    func fetchFriendRequest(id: String) async throws -> FriendRequest?
+
+    /// Accepts a friend request (atomic batch write after a server read).
     func acceptFriendRequest(_ request: FriendRequest) async throws
 
     /// Declines a friend request.
@@ -67,7 +70,8 @@ public protocol FriendRepositoryProtocol {
 
     // MARK: - Profile
 
-    /// Persists the user's display name and all candidate phone hashes to Firestore.
+    /// Persists the user's display name and phone hashes, plus discovery projections
+    /// (`publicProfiles/{uid}`, `phoneDirectory/{hash}`).
     ///
     /// - Parameters:
     ///   - displayName: The user's chosen display name.

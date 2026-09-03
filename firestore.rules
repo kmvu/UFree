@@ -12,25 +12,84 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /// True when the only field changed on a user doc is `friendIds`.
+    function userDoc(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    function friendIdsOf(userId) {
+      let data = userDoc(userId);
+      return ('friendIds' in data) ? data.friendIds : [];
+    }
+
+    /// True when auth.uid appears on the target user's friendIds (accepted friend).
+    function isFriendOf(userId) {
+      return isSignedIn() && request.auth.uid in friendIdsOf(userId);
+    }
+
+    /// Mutual friendship: each user lists the other.
+    function areMutualFriends(a, b) {
+      return a in friendIdsOf(b) && b in friendIdsOf(a);
+    }
+
+    function requestPath(fromId, toId) {
+      return /databases/$(database)/documents/friendRequests/$(fromId + '_' + toId);
+    }
+
+    function hasAcceptedRequestAfter(a, b) {
+      let forward = a + '_' + b;
+      let reverse = b + '_' + a;
+      let forwardPath = /databases/$(database)/documents/friendRequests/$(forward);
+      let reversePath = /databases/$(database)/documents/friendRequests/$(reverse);
+      return (existsAfter(forwardPath)
+          && getAfter(forwardPath).data.status == 'accepted')
+        || (existsAfter(reversePath)
+          && getAfter(reversePath).data.status == 'accepted');
+    }
+
+    function hasAcceptedRequest(a, b) {
+      let forward = a + '_' + b;
+      let reverse = b + '_' + a;
+      let forwardPath = /databases/$(database)/documents/friendRequests/$(forward);
+      let reversePath = /databases/$(database)/documents/friendRequests/$(reverse);
+      return (exists(forwardPath) && get(forwardPath).data.status == 'accepted')
+        || (exists(reversePath) && get(reversePath).data.status == 'accepted');
+    }
+
+    function hasPendingRequest(fromId, toId) {
+      let path = requestPath(fromId, toId);
+      return exists(path) && get(path).data.status == 'pending';
+    }
+
     function onlyModifiesFriendIds() {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friendIds']);
     }
 
-    /// True when the requester is adding or removing *only their own* UID
-    /// from another user's `friendIds` array (mutual handshake / unfriend).
-    function isSelfFriendIdsChange() {
-      let before = ('friendIds' in resource.data) ? resource.data.friendIds : [];
-      let after = ('friendIds' in request.resource.data) ? request.resource.data.friendIds : [];
-      let addedSelf = after.hasAll(before)
+    function friendIdsBefore() {
+      return ('friendIds' in resource.data) ? resource.data.friendIds : [];
+    }
+
+    function friendIdsAfter() {
+      return ('friendIds' in request.resource.data) ? request.resource.data.friendIds : [];
+    }
+
+    /// Peer adds only their own UID to another user's friendIds.
+    function isSelfFriendIdsAdd() {
+      let before = friendIdsBefore();
+      let after = friendIdsAfter();
+      return after.hasAll(before)
         && after.size() == before.size() + 1
         && request.auth.uid in after
         && !(request.auth.uid in before);
-      let removedSelf = before.hasAll(after)
+    }
+
+    /// Peer removes only their own UID from another user's friendIds.
+    function isSelfFriendIdsRemove() {
+      let before = friendIdsBefore();
+      let after = friendIdsAfter();
+      return before.hasAll(after)
         && before.size() == after.size() + 1
         && request.auth.uid in before
         && !(request.auth.uid in after);
-      return addedSelf || removedSelf;
     }
 
     function isValidAvailability() {
@@ -40,47 +99,125 @@ service cloud.firestore {
         && (data.timeBlocks == null || (data.timeBlocks is list && data.timeBlocks.size() <= 10));
     }
 
+    function isAllowedNotificationType() {
+      return request.resource.data.type in [
+        'friendRequest',
+        'friendAccepted',
+        'nudge',
+        'nudgeReply'
+      ];
+    }
+
+    // ── Public discovery (get only — never list) ─────────────────────────────
+
+    /// QR / deep-link preview: displayName only.
+    match /publicProfiles/{userId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      allow create, update: if isOwner(userId)
+        && request.resource.data.keys().hasOnly(['displayName'])
+        && request.resource.data.displayName is string;
+      allow delete: if isOwner(userId);
+    }
+
+    /// Phone / contact discovery: point lookup by hash → uid.
+    /// First writer wins (create only); no updates (blocks squatting takeover).
+    match /phoneDirectory/{hash} {
+      allow get: if isSignedIn();
+      allow list: if false;
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.uid is string;
+      allow update: if false;
+      allow delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+    }
+
     // ── User Profiles ────────────────────────────────────────────────────────
 
     match /users/{userId} {
-      // Authenticated users can discover profiles (phone/QR/contact matching).
-      allow read: if isSignedIn();
+      // Owner or accepted friend (auth.uid listed on this doc's friendIds).
+      // Prefer getDocument over collection queries — list is intentionally denied
+      // so strangers cannot scrape the users collection.
+      // Use `resource` (not get()) so evaluation does not re-fetch the same doc.
+      allow get: if isOwner(userId)
+        || (isSignedIn()
+            && request.auth.uid in resource.data.get('friendIds', []));
+      allow list: if false;
 
-      // Owners write their own profile (displayName, hashes, fcmToken, etc.).
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId)
-        // Peer may only add/remove *their own* UID during accept/unfriend.
-        || (isSignedIn() && onlyModifiesFriendIds() && isSelfFriendIdsChange());
+      // Owners create their profile with an empty friend graph.
+      allow create: if isOwner(userId)
+        && (!('friendIds' in request.resource.data)
+            || request.resource.data.friendIds.size() == 0);
+
+      allow update: if
+        // Owner may update profile fields and their own friendIds list.
+        // Polluting one's own friendIds does not grant read access to others —
+        // that requires being listed on the *target* user's friendIds.
+        isOwner(userId)
+        // Peer may only add/remove *their own* UID. Adds require an accepted
+        // request (checked via getAfter so the accept batch stays atomic).
+        || (isSignedIn()
+            && onlyModifiesFriendIds()
+            && (
+              (isSelfFriendIdsAdd()
+                && hasAcceptedRequestAfter(request.auth.uid, userId))
+              || isSelfFriendIdsRemove()
+            ));
+
+      // Deletion lands in a later phase (account deletion + SiwA re-auth).
       allow delete: if false;
 
       // Availability Collection
       match /availability/{date} {
-        allow read: if isSignedIn();
+        allow read: if isOwner(userId) || isFriendOf(userId);
         allow write: if isOwner(userId) && isValidAvailability();
       }
 
-      // Notifications Collection
+      // Notifications Collection (inbox)
       match /notifications/{docId} {
         allow read: if isOwner(userId);
+        allow update, delete: if isOwner(userId);
+
         allow create: if isSignedIn()
-          && request.resource.data.senderId == request.auth.uid;
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.recipientId == userId
+          && request.resource.data.senderName is string
+          && isAllowedNotificationType()
+          && (
+            (
+              request.resource.data.type == 'friendRequest'
+              && hasPendingRequest(request.auth.uid, userId)
+            )
+            || (
+              request.resource.data.type == 'friendAccepted'
+              && hasAcceptedRequest(request.auth.uid, userId)
+            )
+            || (
+              request.resource.data.type in ['nudge', 'nudgeReply']
+              && areMutualFriends(request.auth.uid, userId)
+            )
+          );
       }
     }
 
     // ── Friend Requests (Handshake) ──────────────────────────────────────────
-    // Without these rules, send/accept/decline all fail with
-    // "Missing or insufficient permissions" — the root cause of invite/QR errors.
+    // Document IDs are deterministic: `{fromId}_{toId}`.
+    // That enables rules to verify friendship against an accepted request,
+    // prevents duplicate pending requests, and closes forged Accept paths.
 
     match /friendRequests/{requestId} {
       allow create: if isSignedIn()
         && request.resource.data.fromId == request.auth.uid
         && request.resource.data.toId is string
         && request.resource.data.toId != request.auth.uid
-        && request.resource.data.status == 'pending';
+        && request.resource.data.fromName is string
+        && request.resource.data.status == 'pending'
+        && requestId == request.resource.data.fromId + '_' + request.resource.data.toId;
 
-      // Sender or recipient can read their own requests.
       allow read: if isSignedIn()
         && (resource.data.fromId == request.auth.uid
             || resource.data.toId == request.auth.uid);

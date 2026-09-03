@@ -8,10 +8,10 @@ Use this guide to release a build, operate the TestFlight pilot, and understand 
 
 | Activity | Current path | Owner |
 |---|---|---|
-| Automated quality check | GitHub Actions runs `bundle exec fastlane tests` on pushes and pull requests to `main` | Engineering |
+| Automated quality check | GitHub Actions: Firestore rules tests (ubuntu) + `bundle exec fastlane tests` (macos) on pushes/PRs to `main` | Engineering |
 | Internal device build | `bundle exec fastlane alpha` | Engineering / QA |
 | TestFlight upload | Manual GitHub Actions workflow or `bundle exec fastlane beta` | Release owner |
-| Firestore rules and indexes | `firebase deploy --only firestore:rules,firestore:indexes` | Engineering |
+| Firestore rules and indexes | `firebase deploy --only firestore:rules,firestore:indexes` (must ship with app builds that expect the Phase 1 privacy model) | Engineering |
 | Hosting / universal links | Firebase Hosting configuration in `firebase.json` | Engineering |
 
 ## Release commands
@@ -42,11 +42,13 @@ Do not promise that a TestFlight upload immediately reaches external testers: Ap
 
 ### Before recruiting people
 
-1. Deploy only Firestore rules and indexes:
+1. Deploy Firestore rules and indexes (required after Phase 1 privacy changes — old open-read rules break the product promise):
 
    ```bash
    firebase deploy --only firestore:rules,firestore:indexes
    ```
+
+   Confirm `npm --prefix firebase-tests test` is green before deploying.
 
 2. Validate the flow on two debug simulators using the debug test-user controls.
 3. Keep both apps foregrounded for the in-app notification/reply experience.

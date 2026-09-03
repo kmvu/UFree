@@ -46,7 +46,17 @@ final class NotificationAcceptTests: XCTestCase {
     }
 
     func test_acceptFriendRequest_usesRelatedRequestId_withoutIncomingCache() async {
-        let requestId = "req_abc"
+        let requestId = "alice_me"
+        friendRepo.addIncomingRequest(
+            FriendRequest(
+                id: requestId,
+                fromId: "alice",
+                fromName: "Alice",
+                toId: "me",
+                status: .pending,
+                timestamp: Date()
+            )
+        )
         let note = AppNotification(
             recipientId: "me",
             senderId: "alice",
@@ -126,7 +136,7 @@ final class NotificationAcceptTests: XCTestCase {
             rootViewModel: rootVM
         )
 
-        let requestId = "req_subsequent"
+        let requestId = "bob_me"
         friendRepo.addIncomingRequest(
             FriendRequest(
                 id: requestId,
@@ -162,7 +172,17 @@ final class NotificationAcceptTests: XCTestCase {
     }
 
     func test_acceptFriendRequest_worksWhileFriendsLoading() async {
-        let requestId = "req_busy"
+        let requestId = "cara_me"
+        friendRepo.addIncomingRequest(
+            FriendRequest(
+                id: requestId,
+                fromId: "cara",
+                fromName: "Cara",
+                toId: "me",
+                status: .pending,
+                timestamp: Date()
+            )
+        )
         let note = AppNotification(
             recipientId: "me",
             senderId: "cara",
@@ -182,13 +202,24 @@ final class NotificationAcceptTests: XCTestCase {
     }
 
     func test_acceptFriendRequest_clearsProcessingKeyAfterCompletion() async {
+        let requestId = "dana_me"
+        friendRepo.addIncomingRequest(
+            FriendRequest(
+                id: requestId,
+                fromId: "dana",
+                fromName: "Dana",
+                toId: "me",
+                status: .pending,
+                timestamp: Date()
+            )
+        )
         let note = AppNotification(
             recipientId: "me",
             senderId: "dana",
             senderName: "Dana",
             type: .friendRequest,
             date: Date(),
-            relatedRequestId: "req_dana"
+            relatedRequestId: requestId
         )
         sut.notifications = [note]
 

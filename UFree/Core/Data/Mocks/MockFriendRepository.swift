@@ -68,7 +68,11 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
     }
     
     public func addFriend(userId: String) async throws {
-        // Mock: no-op
+        throw NSError(
+            domain: "MockFriendRepository",
+            code: 403,
+            userInfo: [NSLocalizedDescriptionKey: "Direct add is disabled. Send a friend request instead."]
+        )
     }
     
     public func removeFriend(userId: String) async throws {
@@ -99,7 +103,17 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
     public func pendingFriendRequest(from fromId: String) async throws -> FriendRequest? {
         incomingRequests.first { $0.fromId == fromId && $0.status == .pending }
     }
-    
+
+    public func fetchFriendRequest(id: String) async throws -> FriendRequest? {
+        if let match = incomingRequests.first(where: { $0.id == id }) {
+            return match
+        }
+        if let match = sentRequests.first(where: { $0.id == id }) {
+            return match
+        }
+        return nil
+    }
+
     public func acceptFriendRequest(_ request: FriendRequest) async throws {
         if let index = incomingRequests.firstIndex(where: { $0.id == request.id }) {
             incomingRequests[index].status = .accepted

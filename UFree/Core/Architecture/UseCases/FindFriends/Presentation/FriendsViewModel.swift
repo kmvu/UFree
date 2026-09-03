@@ -378,25 +378,31 @@ public final class FriendsViewModel: ObservableObject {
     public var onAcceptCompleted: ((_ friendName: String, _ wasFirstFriend: Bool) -> Void)?
 
     /// Resolves a pending request for Notification Center Accept.
-    /// Prefers `relatedRequestId`, then in-memory listener cache, then a one-shot fetch.
+    /// Always prefers a server-backed request over client-built notification fields.
     public func resolveIncomingRequest(
         fromSenderId senderId: String,
         relatedRequestId: String?,
-        senderName: String,
+        senderName _: String,
         recipientId: String
     ) async -> FriendRequest? {
-        if let relatedRequestId {
-            return FriendRequest(
-                id: relatedRequestId,
-                fromId: senderId,
-                fromName: senderName,
-                toId: recipientId,
-                status: .pending,
-                timestamp: Date()
-            )
+        let deterministicId = FriendRequest.documentId(
+            fromId: senderId,
+            toId: recipientId
+        )
+        let candidateIds = [relatedRequestId, deterministicId].compactMap { $0 }
+
+        for id in candidateIds {
+            if let fetched = try? await friendRepository.fetchFriendRequest(id: id),
+               fetched.status == .pending,
+               fetched.fromId == senderId,
+               fetched.toId == recipientId {
+                return fetched
+            }
         }
 
-        if let cached = incomingRequests.first(where: { $0.fromId == senderId && $0.status == .pending }) {
+        if let cached = incomingRequests.first(where: {
+            $0.fromId == senderId && $0.status == .pending
+        }) {
             return cached
         }
 

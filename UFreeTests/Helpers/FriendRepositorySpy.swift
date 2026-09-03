@@ -131,6 +131,17 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
         return incomingRequests.first { $0.fromId == fromId && $0.status == .pending }
     }
 
+    func fetchFriendRequest(id: String) async throws -> FriendRequest? {
+        if let pendingRequestError { throw pendingRequestError }
+        if let match = incomingRequests.first(where: { $0.id == id }) {
+            return match
+        }
+        if let match = pendingRequestByFromId.values.first(where: { $0.id == id }) {
+            return match
+        }
+        return nil
+    }
+
     func acceptFriendRequest(_ request: FriendRequest) async throws {
         acceptedRequests.append(request)
         if let acceptRequestError { throw acceptRequestError }

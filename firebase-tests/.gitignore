@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Firebase emulator / debug logs
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.log
+
+# Coverage / mocha
+coverage/
+.nyc_output/

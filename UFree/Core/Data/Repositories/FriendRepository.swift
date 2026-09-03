@@ -14,8 +14,6 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
 
     private let db = Firestore.firestore()
 
-    // contactsRepo dependency has been removed — callers now pass pre-computed
-    // hashes via findFriendsFromContactHashes(_:), eliminating the double-fetch.
     init() {}
 
     /// Empty on purpose. A MainActor-isolated deallocation path under
@@ -23,37 +21,26 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
     /// `pointer being freed was not allocated`.
     nonisolated deinit {}
 
+    // MARK: - Document ID helpers
+
+    /// Deterministic friend-request document id: `{fromId}_{toId}`.
+    static func friendRequestId(fromId: String, toId: String) -> String {
+        FriendRequest.documentId(fromId: fromId, toId: toId)
+    }
+
     func getMyFriends() async throws -> [UserProfile] {
         guard let userId = Auth.auth().currentUser?.uid else {
-            // Return empty list for users not yet authenticated with Firebase
             return []
         }
 
         let snapshot = try await db.collection("users").document(userId).getDocument()
         guard let data = snapshot.data(),
-              let friendIds = data["friendIds"] as? [String] else {
+              let friendIds = data["friendIds"] as? [String],
+              !friendIds.isEmpty else {
             return []
         }
 
-        guard !friendIds.isEmpty else { return [] }
-
-        // Fetch friend profiles in batches of 10 (Firestore limit)
-        let chunks = friendIds.chunked(into: 10)
-        var friends: [UserProfile] = []
-
-        try await withThrowingTaskGroup(of: [UserProfile].self) { group in
-            for chunk in chunks {
-                group.addTask {
-                    return try await self.fetchUsers(withIds: chunk)
-                }
-            }
-
-            for try await users in group {
-                friends.append(contentsOf: users)
-            }
-        }
-
-        return friends
+        return try await profiles(forFriendIds: friendIds)
     }
 
     nonisolated func observeFriends() -> AsyncStream<[UserProfile]> {
@@ -96,134 +83,125 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
             return nil
         }
 
-        // Generate all candidate hashes for this phone number (covers local & E.164 forms)
         let candidateHashes = CryptoUtils.phoneNumberHashes(for: phoneNumber)
         guard !candidateHashes.isEmpty else {
-            throw NSError(domain: "FriendRepository", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "Invalid phone number"])
+            throw NSError(
+                domain: "FriendRepository",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid phone number"]
+            )
         }
 
-        // Query the new array field using array-contains-any (up to 10 values, we have ≤2)
-        let snapshot = try await db.collection("users")
-            .whereField("hashedPhoneNumbers", arrayContainsAny: candidateHashes)
-            .getDocuments()
-
-        // Return the first match that isn't the current user
-        for doc in snapshot.documents {
-            if let user = decodeUserProfile(from: doc),
-               user.id != currentUserId {
-                return user
+        for hash in candidateHashes {
+            if let profile = try await profileFromPhoneDirectory(hash: hash, excluding: currentUserId) {
+                return profile
             }
         }
-
-        // Legacy fallback: query the old single-hash field for users registered before
-        // the schema migration so they are still discoverable.
-        if let legacyHash = candidateHashes.first {
-            let legacySnapshot = try await db.collection("users")
-                .whereField("hashedPhoneNumber", isEqualTo: legacyHash)
-                .getDocuments()
-            for doc in legacySnapshot.documents {
-                if let user = decodeUserProfile(from: doc),
-                   user.id != currentUserId {
-                    return user
-                }
-            }
-        }
-
         return nil
     }
-    
+
+    /// Direct add is disabled — friendship must go through the handshake.
+    /// Kept on the protocol for source compatibility; always throws.
     func addFriend(userId: String) async throws {
-        guard let currentUserId = Auth.auth().currentUser?.uid else {
-            // Silently fail for users not yet authenticated with Firebase
-            return
-        }
-        
-        // Add to current user's friendIds
-        try await db.collection("users").document(currentUserId).updateData([
-            "friendIds": FieldValue.arrayUnion([userId])
-        ])
-        
-        // Add current user to friend's friendIds (bidirectional)
-        try await db.collection("users").document(userId).updateData([
-            "friendIds": FieldValue.arrayUnion([currentUserId])
-        ])
+        throw NSError(
+            domain: "FriendRepository",
+            code: 403,
+            userInfo: [NSLocalizedDescriptionKey: "Direct add is disabled. Send a friend request instead."]
+        )
     }
-    
+
     func removeFriend(userId: String) async throws {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
-            // Silently fail for users not yet authenticated with Firebase
             return
         }
-        
-        // Remove from current user's friendIds
+
+        // Owner removes the other from their list.
         try await db.collection("users").document(currentUserId).updateData([
             "friendIds": FieldValue.arrayRemove([userId])
         ])
-        
-        // Remove current user from friend's friendIds (bidirectional)
+
+        // Peer self-remove from the other user's list (allowed by rules without a request).
         try await db.collection("users").document(userId).updateData([
             "friendIds": FieldValue.arrayRemove([currentUserId])
         ])
     }
 
     func findUserById(_ userId: String) async throws -> UserProfile? {
+        // Prefer public profile for discovery (QR / deep link) — readable by any signed-in user.
+        if let publicProfile = try await fetchPublicProfile(userId: userId) {
+            return publicProfile
+        }
+        // Fall back to full user doc when already friends (or owner).
         let snapshot = try await db.collection("users").document(userId).getDocument()
         return decodeUserProfile(from: snapshot)
     }
-    
+
     func findFriendsFromContactHashes(_ hashes: [String]) async throws -> [UserProfile] {
+        guard let currentUserId = Auth.auth().currentUser?.uid else { return [] }
         guard !hashes.isEmpty else { return [] }
 
-        // Chunk into batches of 10 (Firestore `array-contains-any` limit)
-        let chunks = hashes.chunked(into: 10)
-        var matchedUsers: [UserProfile] = []
-
-        // Query Firestore in parallel — one task per chunk
-        try await withThrowingTaskGroup(of: [UserProfile].self) { group in
-            for chunk in chunks {
+        var matchedIds = Set<String>()
+        try await withThrowingTaskGroup(of: String?.self) { group in
+            for hash in hashes {
                 group.addTask {
-                    return try await self.fetchUsers(withHashes: chunk)
+                    let snap = try await self.db.collection("phoneDirectory").document(hash).getDocument()
+                    guard let uid = snap.data()?["uid"] as? String,
+                          uid != currentUserId else {
+                        return nil
+                    }
+                    return uid
                 }
             }
-
-            for try await users in group {
-                matchedUsers.append(contentsOf: users)
+            for try await uid in group {
+                if let uid { matchedIds.insert(uid) }
             }
         }
 
-        // De-duplicate by document ID in case a user matched on multiple hashes
-        var seen = Set<String>()
-        return matchedUsers.filter { user in
-            guard let id = user.id else { return false }
-            return seen.insert(id).inserted
+        guard !matchedIds.isEmpty else { return [] }
+
+        var profiles: [UserProfile] = []
+        try await withThrowingTaskGroup(of: UserProfile?.self) { group in
+            for uid in matchedIds {
+                group.addTask { try await self.fetchPublicProfile(userId: uid) }
+            }
+            for try await profile in group {
+                if let profile { profiles.append(profile) }
+            }
         }
+        return profiles
     }
-    
+
     func sendFriendRequest(to user: UserProfile) async throws {
         guard let currentUid = Auth.auth().currentUser?.uid,
               let toId = user.id else {
-            throw NSError(domain: "FriendRepository", code: -1, userInfo: [NSLocalizedDescriptionKey: "Missing user information for request"])
+            throw NSError(
+                domain: "FriendRepository",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Missing user information for request"]
+            )
         }
-        
-        // Use a fallback for name if not set in Auth profile yet
+
         let currentName = Auth.auth().currentUser?.displayName ?? "UFree User"
-        
+        let requestId = Self.friendRequestId(fromId: currentUid, toId: toId)
+
         let request = FriendRequest(
-            id: nil,
+            id: requestId,
             fromId: currentUid,
             fromName: currentName,
             toId: toId,
             status: .pending,
             timestamp: Date()
         )
-        
-        // Await the write so permission / network failures propagate to the UI
-        // instead of silently succeeding in the local cache only.
-        let requestRef = try await db.collection("friendRequests").addDocument(from: request)
 
-        // Mirror into the recipient's inbox so Notification Center + FCM fire.
-        // relatedRequestId lets NC Accept work without waiting on the live listener.
+        // Deterministic ID — enables rules verification and blocks duplicate pending requests.
+        try await db.collection("friendRequests").document(requestId).setData([
+            "fromId": request.fromId,
+            "fromName": request.fromName,
+            "toId": request.toId,
+            "status": request.status.rawValue,
+            "timestamp": Timestamp(date: request.timestamp)
+        ])
+
         let note = AppNotification(
             recipientId: toId,
             senderId: currentUid,
@@ -231,7 +209,7 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
             type: .friendRequest,
             date: Date(),
             isRead: false,
-            relatedRequestId: requestRef.documentID
+            relatedRequestId: requestId
         )
         _ = try await db.collection("users").document(toId).collection("notifications")
             .addDocument(from: note)
@@ -239,167 +217,198 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
 
     func pendingFriendRequest(from fromId: String) async throws -> FriendRequest? {
         guard let uid = Auth.auth().currentUser?.uid else { return nil }
-
-        // Reuse the existing toId+status composite index; filter sender client-side.
-        let snapshot = try await db.collection("friendRequests")
-            .whereField("toId", isEqualTo: uid)
-            .whereField("status", isEqualTo: FriendRequest.RequestStatus.pending.rawValue)
-            .getDocuments()
-
-        return snapshot.documents
-            .compactMap { try? $0.data(as: FriendRequest.self) }
-            .first { $0.fromId == fromId }
+        let requestId = Self.friendRequestId(fromId: fromId, toId: uid)
+        return try await fetchFriendRequest(id: requestId)
     }
-    
+
+    func fetchFriendRequest(id: String) async throws -> FriendRequest? {
+        let snapshot = try await db.collection("friendRequests").document(id).getDocument()
+        guard snapshot.exists else { return nil }
+        var request = try snapshot.data(as: FriendRequest.self)
+        if request.id == nil {
+            request.id = snapshot.documentID
+        }
+        return request
+    }
+
     nonisolated func observeIncomingRequests() -> AsyncStream<[FriendRequest]> {
         AsyncStream { continuation in
             guard let uid = Auth.auth().currentUser?.uid else {
                 continuation.finish()
                 return
             }
-            
+
             let listener = db.collection("friendRequests")
                 .whereField("toId", isEqualTo: uid)
                 .whereField("status", isEqualTo: FriendRequest.RequestStatus.pending.rawValue)
                 .addSnapshotListener { snapshot, error in
-                    if let _ = error {
+                    if error != nil {
                         continuation.finish()
                         return
                     }
-                    
+
                     let requests = snapshot?.documents.compactMap { doc -> FriendRequest? in
                         try? doc.data(as: FriendRequest.self)
                     } ?? []
                     continuation.yield(requests)
                 }
-            
+
             continuation.onTermination = { _ in listener.remove() }
         }
     }
-    
+
     func acceptFriendRequest(_ request: FriendRequest) async throws {
-        guard let requestId = request.id else { return }
-        
+        guard let currentUid = Auth.auth().currentUser?.uid else { return }
+
+        // Always server-read the request — never trust client-built notification fields alone.
+        let requestId = request.id
+            ?? Self.friendRequestId(fromId: request.fromId, toId: request.toId)
+        guard let serverRequest = try await fetchFriendRequest(id: requestId) else {
+            throw NSError(
+                domain: "FriendRepository",
+                code: 404,
+                userInfo: [NSLocalizedDescriptionKey: "Friend request not found"]
+            )
+        }
+        guard serverRequest.toId == currentUid,
+              serverRequest.status == .pending else {
+            throw NSError(
+                domain: "FriendRepository",
+                code: 403,
+                userInfo: [NSLocalizedDescriptionKey: "Not allowed to accept this request"]
+            )
+        }
+
+        let fromId = serverRequest.fromId
+        let toId = serverRequest.toId
+
         let batch = db.batch()
-        
         let requestRef = db.collection("friendRequests").document(requestId)
-        let myRef = db.collection("users").document(request.toId)
-        let theirRef = db.collection("users").document(request.fromId)
-        
-        // 1. Mark request as accepted
-        batch.updateData(["status": FriendRequest.RequestStatus.accepted.rawValue], forDocument: requestRef)
-        
-        // 2. Add to my friend list
-        batch.updateData(["friendIds": FieldValue.arrayUnion([request.fromId])], forDocument: myRef)
-        
-        // 3. Add to their friend list
-        batch.updateData(["friendIds": FieldValue.arrayUnion([request.toId])], forDocument: theirRef)
-        
+        let myRef = db.collection("users").document(toId)
+        let theirRef = db.collection("users").document(fromId)
+
+        batch.updateData(
+            ["status": FriendRequest.RequestStatus.accepted.rawValue],
+            forDocument: requestRef
+        )
+        batch.updateData(["friendIds": FieldValue.arrayUnion([fromId])], forDocument: myRef)
+        batch.updateData(["friendIds": FieldValue.arrayUnion([toId])], forDocument: theirRef)
+
         try await batch.commit()
 
-        // Notify the inviter so their inbox / toast path can react even if they missed
-        // the friends-list snapshot.
         let acceptorName = Auth.auth().currentUser?.displayName ?? "Your friend"
         let note = AppNotification(
-            recipientId: request.fromId,
-            senderId: request.toId,
+            recipientId: fromId,
+            senderId: toId,
             senderName: acceptorName,
             type: .friendAccepted,
             date: Date(),
             isRead: false,
             relatedRequestId: requestId
         )
-        _ = try await db.collection("users").document(request.fromId).collection("notifications")
+        _ = try await db.collection("users").document(fromId).collection("notifications")
             .addDocument(from: note)
     }
-    
+
     func declineFriendRequest(_ request: FriendRequest) async throws {
-        guard let requestId = request.id else { return }
-        
+        guard let currentUid = Auth.auth().currentUser?.uid else { return }
+        let requestId = request.id
+            ?? Self.friendRequestId(fromId: request.fromId, toId: request.toId)
+
+        guard let serverRequest = try await fetchFriendRequest(id: requestId),
+              serverRequest.toId == currentUid,
+              serverRequest.status == .pending else {
+            throw NSError(
+                domain: "FriendRepository",
+                code: 403,
+                userInfo: [NSLocalizedDescriptionKey: "Not allowed to decline this request"]
+            )
+        }
+
         try await db.collection("friendRequests").document(requestId).updateData([
             "status": FriendRequest.RequestStatus.declined.rawValue
         ])
     }
-    
+
     func saveUserProfile(displayName: String, hashedPhoneNumbers: [String]) async throws {
         guard let userId = Auth.auth().currentUser?.uid else {
-            throw NSError(domain: "FriendRepository", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "No authenticated user"])
+            throw NSError(
+                domain: "FriendRepository",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]
+            )
         }
 
         var data: [String: Any] = ["displayName": displayName]
 
         if !hashedPhoneNumbers.isEmpty {
-            // Write the new array field (primary, used for array-contains-any queries)
             data["hashedPhoneNumbers"] = hashedPhoneNumbers
-            // Also write the legacy single-hash field (first hash = raw-digits form)
-            // so that users registered before the migration remain discoverable via
-            // the old `isEqualTo` query path until their document is re-written.
+            // Legacy single-hash field for any leftover clients / debugging.
             data["hashedPhoneNumber"] = hashedPhoneNumbers[0]
         }
 
         try await db.collection("users").document(userId).setData(data, merge: true)
+
+        // Discovery projections (Phase 1 privacy model).
+        try await db.collection("publicProfiles").document(userId).setData([
+            "displayName": displayName
+        ])
+
+        for hash in hashedPhoneNumbers {
+            try await claimPhoneDirectoryEntry(hash: hash, userId: userId)
+        }
     }
-    
+
     // MARK: - Private Helpers
 
-    /// Resolves friend profiles for the given IDs (batched; same shape as `getMyFriends`).
+    private func claimPhoneDirectoryEntry(hash: String, userId: String) async throws {
+        let ref = db.collection("phoneDirectory").document(hash)
+        let existing = try await ref.getDocument()
+        if existing.exists {
+            // First-writer-wins: only keep our claim; skip if owned by someone else.
+            if existing.data()?["uid"] as? String == userId {
+                return
+            }
+            return
+        }
+        try await ref.setData(["uid": userId])
+    }
+
+    private func fetchPublicProfile(userId: String) async throws -> UserProfile? {
+        let snapshot = try await db.collection("publicProfiles").document(userId).getDocument()
+        guard snapshot.exists,
+              let displayName = snapshot.data()?["displayName"] as? String else {
+            return nil
+        }
+        return UserProfile(id: userId, displayName: displayName)
+    }
+
+    private func profileFromPhoneDirectory(hash: String, excluding currentUserId: String) async throws -> UserProfile? {
+        let snap = try await db.collection("phoneDirectory").document(hash).getDocument()
+        guard let uid = snap.data()?["uid"] as? String, uid != currentUserId else {
+            return nil
+        }
+        return try await fetchPublicProfile(userId: uid)
+    }
+
     private func profiles(forFriendIds friendIds: [String]) async throws -> [UserProfile] {
         guard !friendIds.isEmpty else { return [] }
-        let chunks = friendIds.chunked(into: 10)
+        // Individual gets — collection `in` queries fail under friend-gated list:false rules.
         var friends: [UserProfile] = []
-        try await withThrowingTaskGroup(of: [UserProfile].self) { group in
-            for chunk in chunks {
+        try await withThrowingTaskGroup(of: UserProfile?.self) { group in
+            for id in friendIds {
                 group.addTask {
-                    try await self.fetchUsers(withIds: chunk)
+                    let snap = try await self.db.collection("users").document(id).getDocument()
+                    return self.decodeUserProfile(from: snap)
                 }
             }
-            for try await users in group {
-                friends.append(contentsOf: users)
+            for try await user in group {
+                if let user { friends.append(user) }
             }
         }
         return friends
     }
-    
-    /// Queries Firestore for users whose `hashedPhoneNumbers` array contains any of the
-    /// given hashes (new array field).  Falls back to the legacy `hashedPhoneNumber`
-    /// single-field query for documents not yet migrated, then merges and deduplicates.
-    private func fetchUsers(withHashes hashes: [String]) async throws -> [UserProfile] {
-        // Primary query — new array field
-        async let newFieldSnapshot = db.collection("users")
-            .whereField("hashedPhoneNumbers", arrayContainsAny: hashes)
-            .getDocuments()
 
-        // Legacy query — old single-hash field (handles pre-migration documents)
-        async let legacySnapshot = db.collection("users")
-            .whereField("hashedPhoneNumber", in: hashes)
-            .getDocuments()
-
-        let (newDocs, oldDocs) = try await (newFieldSnapshot, legacySnapshot)
-
-        var seen = Set<String>()
-        var results: [UserProfile] = []
-
-        for doc in (newDocs.documents + oldDocs.documents) {
-            if let user = decodeUserProfile(from: doc),
-               let id = user.id,
-               seen.insert(id).inserted {
-                results.append(user)
-            }
-        }
-        return results
-    }
-    
-    /// Queries Firestore for users matching a batch of IDs
-    private func fetchUsers(withIds ids: [String]) async throws -> [UserProfile] {
-        let snapshot = try await db.collection("users")
-            .whereField(FieldPath.documentID(), in: ids)
-            .getDocuments()
-        
-        return snapshot.documents.compactMap { decodeUserProfile(from: $0) }
-    }
-
-    /// Decodes a profile and guarantees `id` is the Firestore document ID.
     private func decodeUserProfile(from snapshot: DocumentSnapshot) -> UserProfile? {
         guard var user = try? snapshot.data(as: UserProfile.self) else { return nil }
         if user.id == nil {

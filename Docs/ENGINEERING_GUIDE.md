@@ -83,6 +83,15 @@ Adapt by **size class / available width**, not device idiom (`UFree/Core/UI/Adap
 ## Firebase, links, and observability
 
 - Firestore rules and indexes are configured through `firebase.json`.
+- **Privacy model (Phase 1):** user profiles and availability are readable only by the owner and accepted friends. Phone/QR discovery uses get-only collections `publicProfiles/{uid}` and `phoneDirectory/{hash}` (list queries are denied). Friend-request docs use deterministic ids `{fromId}_{toId}`; peer `friendIds` self-add requires an accepted request in the same batch.
+- **Rules tests:** `firebase-tests/` runs against the local Firestore emulator. From the repo root (Java 21+ required locally):
+
+  ```bash
+  npm --prefix firebase-tests ci
+  npm --prefix firebase-tests test
+  ```
+
+  CI runs the same suite on every pull request via the **Firestore Rules** job.
 - Firebase Hosting serves the Apple App Site Association file for `ufree.app`.
 - Deep links support notification and profile paths; keep app entitlements, hosting configuration, and parser behavior aligned when changing them.
 - Release builds enable Analytics and Crashlytics; debug builds disable analytics to avoid development noise.

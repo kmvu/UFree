@@ -33,6 +33,15 @@ DerivedData/
 GoogleService-Info.plist
 Package.resolved
 
+# Local JDK used for Firestore emulator (not committed)
+.jdk/
+
+# Firebase emulator / rules-test logs
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+firebase-tests/node_modules/
+
 # Fastlane build artifacts (large .ipa and .xcarchive files)
 fastlane/builds/
 fastlane/test_results/
