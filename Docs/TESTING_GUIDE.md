@@ -37,7 +37,12 @@ Press `⌘ + U` with the `UFreeUnitTests` scheme selected.
 Requires Java 21+, Firebase CLI, and `GoogleService-Info.plist`. The scheme sets `UFREE_INTEGRATION_TESTS=1` so the host app connects SDKs to emulators after `FirebaseApp.configure()`.
 
 ```bash
-# One-shot (starts emulators, runs tests, tears down):
+# Preferred — picks up the repo-local JDK under .jdk/ when system Java is missing:
+./Scripts/run_integration_tests.sh
+
+# Or manually:
+export JAVA_HOME="$PWD/.jdk/jdk-21.0.12.1+1/Contents/Home"   # adjust if your .jdk path differs
+export PATH="$JAVA_HOME/bin:$PATH"
 firebase emulators:exec --only auth,firestore --project ufree-313a2 \
   "bundle exec fastlane integration_tests"
 ```

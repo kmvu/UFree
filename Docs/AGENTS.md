@@ -23,9 +23,8 @@ This is the concise, repository-specific checklist for contributors and coding a
 ```bash
 npm --prefix firebase-tests test   # Firestore rules (needs Java 21+)
 bundle exec fastlane tests         # iOS unit suite (iPhone 17 Pro)
-# Emulators must be up (or use firebase emulators:exec) — main CI only:
-firebase emulators:exec --only auth,firestore --project ufree-313a2 \
-  "bundle exec fastlane integration_tests"
+# Emulators need Java 21+ — script uses .jdk/ when PATH has no java:
+./Scripts/run_integration_tests.sh
 swiftlint lint                     # baseline; CI fails on error-severity only
 ```
 
