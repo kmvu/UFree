@@ -37,7 +37,9 @@ struct QRScannerView: UIViewControllerRepresentable {
         }
 
         func didFailWithError(_ error: Error) {
+            #if DEBUG
             print("Scanner error: \(error.localizedDescription)")
+            #endif
         }
     }
 }

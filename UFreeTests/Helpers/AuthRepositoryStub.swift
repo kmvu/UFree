@@ -16,9 +16,14 @@ final class AuthRepositoryStub: AuthRepository, @unchecked Sendable {
     var signInError: Error?
     var updateDisplayNameError: Error?
     var signOutError: Error?
+    var reauthenticateError: Error?
+    var deleteAccountError: Error?
 
     private(set) var updatedDisplayNames: [String] = []
     private(set) var testUserPhoneNumbers: [String] = []
+    private(set) var signInWithAppleCallCount = 0
+    private(set) var reauthenticateCallCount = 0
+    private(set) var deleteAccountCallCount = 0
 
     private let stream: AsyncStream<User?>
     private let continuation: AsyncStream<User?>.Continuation
@@ -40,6 +45,40 @@ final class AuthRepositoryStub: AuthRepository, @unchecked Sendable {
     }
 
     nonisolated var authState: AsyncStream<User?> { stream }
+
+    func signInWithApple() async throws -> User {
+        signInWithAppleCallCount += 1
+        if let signInError { throw signInError }
+        if let existing = stubbedUser, existing.isAnonymous {
+            let linked = User(id: existing.id, isAnonymous: false, displayName: existing.displayName)
+            stubbedUser = linked
+            continuation.yield(linked)
+            return linked
+        }
+        let user = User(id: "apple_user", isAnonymous: false, displayName: nil)
+        stubbedUser = user
+        continuation.yield(user)
+        return user
+    }
+
+    func reauthenticateWithApple() async throws {
+        reauthenticateCallCount += 1
+        if let reauthenticateError { throw reauthenticateError }
+        guard stubbedUser != nil else {
+            throw NSError(
+                domain: "AuthRepositoryStub",
+                code: 401,
+                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]
+            )
+        }
+    }
+
+    func deleteAccount() async throws {
+        deleteAccountCallCount += 1
+        if let deleteAccountError { throw deleteAccountError }
+        stubbedUser = nil
+        continuation.yield(nil)
+    }
 
     func signInAnonymously() async throws -> User {
         if let signInError { throw signInError }

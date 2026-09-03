@@ -45,6 +45,41 @@ public class MockAuthRepository: AuthRepository {
     nonisolated public var authState: AsyncStream<User?> {
         authStateStream
     }
+
+    public func signInWithApple() async throws -> User {
+        if let existing = user, existing.isAnonymous {
+            let linked = createUser(id: existing.id, isAnonymous: false, displayName: existing.displayName)
+            self.user = linked
+            self.authStateContinuation.yield(linked)
+            return linked
+        }
+        let newUser = createUser(id: UUID().uuidString, isAnonymous: false, displayName: nil)
+        self.user = newUser
+        self.authStateContinuation.yield(newUser)
+        return newUser
+    }
+
+    public func reauthenticateWithApple() async throws {
+        guard user != nil else {
+            throw NSError(
+                domain: "MockAuthRepository",
+                code: 401,
+                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]
+            )
+        }
+    }
+
+    public func deleteAccount() async throws {
+        guard user != nil else {
+            throw NSError(
+                domain: "MockAuthRepository",
+                code: 401,
+                userInfo: [NSLocalizedDescriptionKey: "No user logged in"]
+            )
+        }
+        self.user = nil
+        self.authStateContinuation.yield(nil)
+    }
     
     public func signInAnonymously() async throws -> User {
         let newUser = createUser(id: UUID().uuidString, isAnonymous: true, displayName: nil)

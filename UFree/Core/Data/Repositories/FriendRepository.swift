@@ -359,6 +359,60 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         }
     }
 
+    func deleteAccountData() async throws {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw NSError(
+                domain: "FriendRepository",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "No authenticated user"]
+            )
+        }
+
+        let userRef = db.collection("users").document(userId)
+
+        // Read hashes before wiping the user doc.
+        let userSnap = try await userRef.getDocument()
+        var hashes = Set(userSnap.data()?["hashedPhoneNumbers"] as? [String] ?? [])
+        if let legacy = userSnap.data()?["hashedPhoneNumber"] as? String {
+            hashes.insert(legacy)
+        }
+
+        try await deleteCollectionDocuments(userRef.collection("availability"))
+        try await deleteCollectionDocuments(userRef.collection("notifications"))
+
+        let sent = try await db.collection("friendRequests")
+            .whereField("fromId", isEqualTo: userId)
+            .getDocuments()
+        let received = try await db.collection("friendRequests")
+            .whereField("toId", isEqualTo: userId)
+            .getDocuments()
+        var requestRefs = Set<DocumentReference>()
+        for doc in sent.documents + received.documents {
+            requestRefs.insert(doc.reference)
+        }
+        for ref in requestRefs {
+            try await ref.delete()
+        }
+
+        for hash in hashes {
+            let dirRef = db.collection("phoneDirectory").document(hash)
+            let dirSnap = try await dirRef.getDocument()
+            if dirSnap.data()?["uid"] as? String == userId {
+                try await dirRef.delete()
+            }
+        }
+
+        try await db.collection("publicProfiles").document(userId).delete()
+        try await userRef.delete()
+    }
+
+    private func deleteCollectionDocuments(_ query: CollectionReference) async throws {
+        let snapshot = try await query.getDocuments()
+        for doc in snapshot.documents {
+            try await doc.reference.delete()
+        }
+    }
+
     // MARK: - Private Helpers
 
     private func claimPhoneDirectoryEntry(hash: String, userId: String) async throws {

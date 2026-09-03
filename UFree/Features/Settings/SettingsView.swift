@@ -27,7 +27,7 @@ struct SettingsView: View {
                             await viewModel.saveProfile()
                         }
                     }) {
-                        if viewModel.isProcessing {
+                        if viewModel.isProcessing && !viewModel.showDeleteConfirmation {
                             HStack {
                                 Spacer()
                                 ProgressView()
@@ -40,6 +40,24 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(viewModel.isProcessing || viewModel.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+
+                Section(footer: Text("Deletes your UFree account, availability, friend requests, and discovery listings. Sign in with Apple is required to confirm.")) {
+                    Button(role: .destructive) {
+                        viewModel.requestAccountDeletion()
+                    } label: {
+                        if viewModel.isProcessing {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                Spacer()
+                            }
+                        } else {
+                            Text("Delete Account")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(viewModel.isProcessing)
                 }
             }
             .navigationTitle("Settings")
@@ -62,7 +80,22 @@ struct SettingsView: View {
                     Text(error)
                 }
             }
+            .alert("Delete Account?", isPresented: $viewModel.showDeleteConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await viewModel.deleteAccount()
+                    }
+                }
+            } message: {
+                Text("This permanently removes your account and cloud data. You will need to Sign in with Apple to confirm.")
+            }
             .onChange(of: viewModel.isSaveSuccessful) { _, success in
+                if success {
+                    dismiss()
+                }
+            }
+            .onChange(of: viewModel.isDeleteSuccessful) { _, success in
                 if success {
                     dismiss()
                 }

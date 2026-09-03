@@ -224,7 +224,9 @@ public final class FriendsViewModel: ObservableObject {
                 self.errorMessage = "No friends found in your contacts."
             }
         } catch {
+            #if DEBUG
             print("❌ Error syncing contacts: \(error.localizedDescription)")
+            #endif
             self.errorMessage = error.localizedDescription
         }
     }
@@ -254,7 +256,9 @@ public final class FriendsViewModel: ObservableObject {
         // QR Code contains the encoded User ID
         do {
             if let user = try await friendRepository.findUserById(code) {
+                #if DEBUG
                 print("Scanned user: \(user.displayName)")
+                #endif
                 HapticManager.success()
                 
                 // Automatically send request for now as per strategy

@@ -523,3 +523,94 @@ describe("notifications", () => {
     );
   });
 });
+
+// ── Account deletion (owner / participant deletes) ──────────────────────────
+
+describe("account deletion", () => {
+  it("allows owner to delete their user doc; denies strangers", async () => {
+    await seedAliceAndBob();
+    await assertFails(deleteDoc(doc(authedDb("mallory"), "users/alice")));
+    await assertSucceeds(deleteDoc(doc(authedDb("alice"), "users/alice")));
+  });
+
+  it("allows owner to delete publicProfiles and phoneDirectory entries", async () => {
+    await seedAliceAndBob();
+    await assertSucceeds(
+      deleteDoc(doc(authedDb("alice"), "publicProfiles/alice"))
+    );
+    await assertSucceeds(
+      deleteDoc(doc(authedDb("alice"), "phoneDirectory/hash_alice"))
+    );
+    await assertFails(
+      deleteDoc(doc(authedDb("mallory"), "publicProfiles/bob"))
+    );
+  });
+
+  it("allows either friend-request participant to delete the request", async () => {
+    await seedAliceAndBob();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "friendRequests/bob_alice"), {
+        fromId: "bob",
+        fromName: "Bob",
+        toId: "alice",
+        status: "pending",
+        timestamp: new Date(),
+      });
+      await setDoc(doc(context.firestore(), "friendRequests/alice_carol"), {
+        fromId: "alice",
+        fromName: "Alice",
+        toId: "carol",
+        status: "pending",
+        timestamp: new Date(),
+      });
+    });
+
+    await assertSucceeds(
+      deleteDoc(doc(authedDb("alice"), "friendRequests/bob_alice"))
+    );
+    await assertSucceeds(
+      deleteDoc(doc(authedDb("alice"), "friendRequests/alice_carol"))
+    );
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "friendRequests/bob_mallory"), {
+        fromId: "bob",
+        fromName: "Bob",
+        toId: "mallory",
+        status: "pending",
+        timestamp: new Date(),
+      });
+    });
+    await assertFails(
+      deleteDoc(doc(authedDb("alice"), "friendRequests/bob_mallory"))
+    );
+  });
+
+  it("allows owner to delete own availability and notifications", async () => {
+    await seedAliceAndBob();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "users/alice/availability/2099-01-01"), {
+        dateString: "2099-01-01",
+        status: 1,
+        timeBlocks: [],
+      });
+      await setDoc(doc(context.firestore(), "users/alice/notifications/n1"), {
+        recipientId: "alice",
+        senderId: "bob",
+        senderName: "Bob",
+        type: "nudge",
+        date: new Date(),
+        isRead: false,
+      });
+    });
+
+    await assertFails(
+      deleteDoc(doc(authedDb("mallory"), "users/alice/notifications/n1"))
+    );
+    await assertSucceeds(
+      deleteDoc(doc(authedDb("alice"), "users/alice/availability/2099-01-01"))
+    );
+    await assertSucceeds(
+      deleteDoc(doc(authedDb("alice"), "users/alice/notifications/n1"))
+    );
+  });
+});

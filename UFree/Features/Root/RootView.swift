@@ -466,8 +466,8 @@ struct MainAppView: View {
     /// Handles incoming Universal Links (App Site Association)
     /// Example: https://ufree.app/notification/user123
     private func handleUniversalLink(_ url: URL) {
-        AnalyticsManager.logLinkOpened(url: url.absoluteString)
         let deepLink = DeepLink.parse(url)
+        AnalyticsManager.logLinkOpened(route: deepLink.analyticsRoute)
         
         switch deepLink {
         case .notification(let userId):
@@ -479,7 +479,9 @@ struct MainAppView: View {
             rootViewModel.deepLinkProfileId = userId
             
         case .unknown:
-            print("Unknown deep link: \(url)")
+            #if DEBUG
+            print("Unknown deep link route")
+            #endif
         }
     }
 }
@@ -490,6 +492,15 @@ enum DeepLink {
     case notification(senderId: String)
     case profile(userId: String)
     case unknown
+
+    /// Analytics-safe route label (no UID).
+    var analyticsRoute: String {
+        switch self {
+        case .notification: return "notification"
+        case .profile: return "profile"
+        case .unknown: return "unknown"
+        }
+    }
     
     /// Parses Universal Link URLs into navigation actions
     /// - Parameter url: Universal Link URL (e.g., https://ufree.app/notification/user123)

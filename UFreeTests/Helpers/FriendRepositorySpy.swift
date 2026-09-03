@@ -28,6 +28,7 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
     private(set) var removedFriendIds: [String] = []
     private(set) var contactHashQueries: [[String]] = []
     private(set) var pendingRequestLookups: [String] = []
+    private(set) var deleteAccountDataCallCount = 0
 
     // MARK: - Stubbed results
 
@@ -50,6 +51,7 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
     var acceptRequestError: Error?
     var declineRequestError: Error?
     var removeFriendError: Error?
+    var deleteAccountDataError: Error?
 
     // MARK: - FriendRepositoryProtocol
 
@@ -155,5 +157,10 @@ final class FriendRepositorySpy: FriendRepositoryProtocol, @unchecked Sendable {
     func saveUserProfile(displayName: String, hashedPhoneNumbers: [String]) async throws {
         savedProfiles.append(SavedProfile(displayName: displayName, hashedPhoneNumbers: hashedPhoneNumbers))
         if let saveProfileError { throw saveProfileError }
+    }
+
+    func deleteAccountData() async throws {
+        deleteAccountDataCallCount += 1
+        if let deleteAccountDataError { throw deleteAccountDataError }
     }
 }

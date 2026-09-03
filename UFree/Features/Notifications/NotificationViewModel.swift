@@ -337,7 +337,9 @@ public class NotificationViewModel: ObservableObject {
             // Contextual Permission Prompt: Request APNs permission after first successful interaction
             requestPermissions()
         } catch {
+            #if DEBUG
             print("Error sending nudge: \(error)")
+            #endif
         }
     }
 
@@ -461,14 +463,18 @@ public class NotificationViewModel: ObservableObject {
     public func requestPermissions() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             if granted {
+                #if DEBUG
                 print("Notification permission granted.")
+                #endif
                 #if canImport(UIKit)
                 DispatchQueue.main.async {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
                 #endif
             } else if let error = error {
+                #if DEBUG
                 print("Notification permission error: \(error)")
+                #endif
             }
         }
     }

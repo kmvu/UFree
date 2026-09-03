@@ -79,4 +79,9 @@ public protocol FriendRepositoryProtocol {
     ///     `CryptoUtils.phoneNumberHashes(for:)` — typically 1–2 entries covering
     ///     the local-format and E.164-normalised forms of the number.
     func saveUserProfile(displayName: String, hashedPhoneNumbers: [String]) async throws
+
+    /// Deletes the signed-in user's Firestore tree (availability, notifications,
+    /// own friendRequests, phoneDirectory claims, publicProfiles, users doc).
+    /// Does not delete the Firebase Auth user — call `AuthRepository.deleteAccount()` after.
+    func deleteAccountData() async throws
 }

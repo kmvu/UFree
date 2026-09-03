@@ -21,6 +21,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // App Check provider must be installed before FirebaseApp.configure().
+        AppCheckConfigurator.configureIfNeeded()
+
         // Configure Firebase when needed (including unit test host so Firestore doesn't throw)
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
@@ -143,6 +146,7 @@ struct UFreeApp: App {
         
         // Initialize auth repository
         // Configure Firebase if not already done (AppDelegate usually does this; needed for Firestore in test host)
+        AppCheckConfigurator.configureIfNeeded()
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }

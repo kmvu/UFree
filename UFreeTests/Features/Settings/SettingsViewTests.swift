@@ -124,6 +124,7 @@ final class SettingsViewTests: XCTestCase {
         await ViewHost.renderAwaitingUpdates(makeView())
 
         XCTAssertTrue(viewModel.isSaveSuccessful)
+        XCTAssertEqual(authRepository.updatedDisplayNames, ["Alice"])
         XCTAssertEqual(
             friendRepository.savedProfiles,
             [FriendRepositorySpy.SavedProfile(displayName: "Alice", hashedPhoneNumbers: [])]

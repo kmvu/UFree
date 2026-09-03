@@ -239,4 +239,37 @@ public final class OnboardingProgressStore: ObservableObject {
             AnalyticsManager.logD7Reopen(daysSinceActivity: days)
         }
     }
+
+    /// Clears onboarding / retention prefs after account deletion.
+    public func resetAllProgress() {
+        let keys = [
+            Key.hasInvitedFriend,
+            Key.hasMarkedFreeDay,
+            Key.hasCompletedFirstHandshake,
+            Key.hasDismissedPairChecklist,
+            Key.hasShownWeekendCTA,
+            Key.hasCelebratedFirstAccept,
+            Key.firstLaunchAt,
+            Key.firstFriendAt,
+            Key.firstFreeMarkAt,
+            Key.lastWeekendActivityAt,
+            Key.pendingWeekendCTA,
+            Key.pendingPostConnectCoach,
+            Key.hasDismissedPostConnectCoach
+        ]
+        for key in keys {
+            defaults.removeObject(forKey: key)
+        }
+        defaults.set(Date().timeIntervalSince1970, forKey: Key.firstLaunchAt)
+
+        hasInvitedFriend = false
+        hasMarkedFreeDay = false
+        hasCompletedFirstHandshake = false
+        hasDismissedPairChecklist = false
+        hasShownWeekendCTA = false
+        hasCelebratedFirstAccept = false
+        pendingWeekendCTA = false
+        pendingPostConnectCoach = false
+        hasDismissedPostConnectCoach = false
+    }
 }

@@ -14,15 +14,27 @@ public protocol AuthRepository {
     /// Stream of auth state changes.
     /// This allows the UI to react instantly when a user logs in/out.
     var authState: AsyncStream<User?> { get }
-    
-    /// Signs in the user without requiring credentials.
+
+    /// Signs in with Apple. Links an existing anonymous session when present so
+    /// pilot UIDs and friend graphs are preserved.
     /// - Returns: The authenticated User entity.
+    func signInWithApple() async throws -> User
+
+    /// Re-authenticates the current user with Apple (required before account deletion).
+    func reauthenticateWithApple() async throws
+
+    /// Deletes the Firebase Auth user. Caller must wipe Firestore data first and
+    /// re-authenticate when Firebase requires a recent login.
+    func deleteAccount() async throws
+
+    /// Legacy anonymous sign-in. Production login uses Sign in with Apple; this remains
+    /// for DEBUG simulator personas and existing unit tests.
     func signInAnonymously() async throws -> User
     
     /// Signs the user out.
     func signOut() async throws
     
-    /// Updates the current user's display name.
+    /// Updates the current user's display name (Firebase Auth profile).
     /// - Parameter name: The new display name to set.
     func updateDisplayName(_ name: String) async throws
     

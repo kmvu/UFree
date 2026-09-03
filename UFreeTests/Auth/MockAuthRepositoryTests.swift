@@ -56,6 +56,28 @@ final class MockAuthRepositoryTests: XCTestCase {
         
         XCTAssertNotEqual(user1.id, user2.id)
     }
+
+    func test_signInWithApple_createsNonAnonymousUser() async throws {
+        let user = try await repository.signInWithApple()
+
+        XCTAssertFalse(user.isAnonymous)
+        XCTAssertFalse(user.id.isEmpty)
+    }
+
+    func test_signInWithApple_linksAnonymousSessionPreservingUid() async throws {
+        let anonymous = try await repository.signInAnonymously()
+        let linked = try await repository.signInWithApple()
+
+        XCTAssertEqual(linked.id, anonymous.id)
+        XCTAssertFalse(linked.isAnonymous)
+    }
+
+    func test_deleteAccount_clearsCurrentUser() async throws {
+        _ = try await repository.signInWithApple()
+        try await repository.deleteAccount()
+        let currentUser = await repository.currentUser
+        XCTAssertNil(currentUser)
+    }
     
     // MARK: - Sign Out
     

@@ -47,7 +47,9 @@ public class MockAvailabilityRepository: AvailabilityRepository {
         let targetDate = Calendar.current.startOfDay(for: day.date)
         if let index = mySchedule.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: targetDate) }) {
             mySchedule[index] = day
+            #if DEBUG
             print("✅ Mock DB Updated: \(day.date.formatted()) is now \(day.status.displayName)")
+            #endif
         }
     }
 

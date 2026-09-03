@@ -11,8 +11,9 @@ Use this guide to release a build, operate the TestFlight pilot, and understand 
 | Automated quality check | GitHub Actions: Firestore rules tests (ubuntu) + `bundle exec fastlane tests` (macos) on pushes/PRs to `main` | Engineering |
 | Internal device build | `bundle exec fastlane alpha` | Engineering / QA |
 | TestFlight upload | Manual GitHub Actions workflow or `bundle exec fastlane beta` | Release owner |
-| Firestore rules and indexes | `firebase deploy --only firestore:rules,firestore:indexes` (must ship with app builds that expect the Phase 1 privacy model) | Engineering |
+| Firestore rules and indexes | `firebase deploy --only firestore:rules,firestore:indexes` (must ship with app builds that expect the Phase 1 privacy model + Phase 2 owner deletes) | Engineering |
 | Hosting / universal links | Firebase Hosting configuration in `firebase.json` | Engineering |
+| App Check enforcement | Firebase Console → App Check → Firestore (enforce after debug tokens are registered for simulators) | Engineering |
 
 ## Release commands
 
@@ -50,9 +51,12 @@ Do not promise that a TestFlight upload immediately reaches external testers: Ap
 
    Confirm `npm --prefix firebase-tests test` is green before deploying.
 
-2. Validate the flow on two debug simulators using the debug test-user controls.
-3. Keep both apps foregrounded for the in-app notification/reply experience.
-4. Build and distribute through TestFlight only after the uncoached flow works.
+2. Enable Sign in with Apple in Apple Developer + Firebase Auth, and App Check (App Attest). For Simulator/DEBUG builds, copy the App Check debug token from the Xcode console into Firebase Console → App Check → Manage debug tokens before turning on Firestore enforcement.
+
+3. Validate the flow on two debug simulators using the debug test-user controls (User 1 / 2 / 3 — anonymous Auth; SiwA is the device/TestFlight path).
+4. Keep both apps foregrounded for the in-app notification/reply experience.
+5. Build and distribute through TestFlight only after the uncoached flow works.
+6. Confirm Settings → Delete Account completes on a SiwA account (re-auth sheet → cloud wipe → signed out).
 
 ### Recruiting and measuring
 

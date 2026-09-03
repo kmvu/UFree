@@ -145,6 +145,11 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
     public func saveUserProfile(displayName: String, hashedPhoneNumbers: [String]) async throws {
         // Mock: no-op
     }
+
+    public func deleteAccountData() async throws {
+        // Mock: wipe in-memory friend graph for this session.
+        clearMockData()
+    }
     
     /// Adds a mock discovered user for testing
     public func addDiscoveredUser(_ user: UserProfile) {

@@ -32,8 +32,8 @@ enum AnalyticsEvent {
     /// User opened the app
     case appLaunched
 
-    /// User opened a universal link or deep link
-    case linkOpened(url: String)
+    /// User opened a universal link or deep link (route type only — no UID/URL).
+    case linkOpened(route: String)
 
     /// Seconds from first launch to first mutual friend
     case timeToFirstFriend(seconds: Int)
@@ -98,9 +98,9 @@ struct AnalyticsManager {
                 "timestamp": Date().timeIntervalSince1970
             ])
 
-        case .linkOpened(let url):
+        case .linkOpened(let route):
             Analytics.logEvent("link_opened", parameters: [
-                "url": url,
+                "route": route,
                 "timestamp": Date().timeIntervalSince1970
             ])
 
@@ -170,9 +170,9 @@ extension AnalyticsManager {
         ])
     }
 
-    /// Log "Link Opened" - Tracks universal link engagement
-    static func logLinkOpened(url: String) {
-        AnalyticsManager.log(.linkOpened(url: url))
+    /// Log "Link Opened" — route type only (never full URL / UID).
+    static func logLinkOpened(route: String) {
+        AnalyticsManager.log(.linkOpened(route: route))
     }
 
     static func logTimeToFirstFriend(seconds: Int) {

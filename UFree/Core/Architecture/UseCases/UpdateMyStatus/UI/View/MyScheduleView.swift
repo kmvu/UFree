@@ -6,9 +6,11 @@
 //
 
 import SwiftUI
+import SwiftData
 
 public struct MyScheduleView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: MyScheduleViewModel
     @ObservedObject var rootViewModel: RootViewModel
     @State private var isLoaded = false
@@ -86,7 +88,18 @@ public struct MyScheduleView: View {
             if let friendRepo = rootViewModel.friendsViewModel?.friendRepository {
                 SettingsView(viewModel: SettingsViewModel(
                     authRepository: rootViewModel.authRepository,
-                    friendRepository: friendRepo
+                    friendRepository: friendRepo,
+                    wipeLocalData: { [modelContext] in
+                        do {
+                            try modelContext.delete(model: PersistentDayAvailability.self)
+                            try modelContext.save()
+                        } catch {
+                            #if DEBUG
+                            print("⚠️ Failed to wipe local SwiftData: \(error)")
+                            #endif
+                        }
+                        await OnboardingProgressStore.shared.resetAllProgress()
+                    }
                 ))
             }
         }

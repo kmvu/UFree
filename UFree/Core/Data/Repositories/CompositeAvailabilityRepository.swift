@@ -46,9 +46,13 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         Task { @MainActor in
             do {
                 try await remote.updateMySchedule(for: day)
+                #if DEBUG
                 print("☁️ Remote sync successful for \(day.date.formatted(date: .abbreviated, time: .omitted))")
+                #endif
             } catch {
+                #if DEBUG
                 print("⚠️ Remote sync failed: \(error.localizedDescription)")
+                #endif
                 // Future improvement: Add a 'pending sync' flag to the local DB
             }
         }
@@ -74,9 +78,13 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
                         try await local.updateMySchedule(for: day)
                     }
                 }
+                #if DEBUG
                 print("🔄 Local storage refreshed from Cloud")
+                #endif
             } catch {
+                #if DEBUG
                 print("⚠️ Could not refresh from remote: \(error.localizedDescription)")
+                #endif
             }
         }
 

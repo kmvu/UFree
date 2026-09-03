@@ -12,12 +12,20 @@ final class SettingsViewModelTests: XCTestCase {
     private var authRepository: AuthRepositoryStub!
     private var friendRepository: FriendRepositorySpy!
     private var sut: SettingsViewModel!
+    private var wipeCallCount = 0
 
     override func setUp() {
         super.setUp()
         authRepository = AuthRepositoryStub()
         friendRepository = FriendRepositorySpy()
-        sut = SettingsViewModel(authRepository: authRepository, friendRepository: friendRepository)
+        wipeCallCount = 0
+        sut = SettingsViewModel(
+            authRepository: authRepository,
+            friendRepository: friendRepository,
+            wipeLocalData: { [weak self] in
+                self?.wipeCallCount += 1
+            }
+        )
         trackForMemoryLeaks(sut)
     }
 
@@ -36,6 +44,7 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertFalse(sut.isProcessing)
         XCTAssertNil(sut.errorMessage)
         XCTAssertFalse(sut.isSaveSuccessful)
+        XCTAssertFalse(sut.isDeleteSuccessful)
     }
 
     func test_loadInitialData_populatesDisplayNameFromCurrentUser() async {
@@ -70,6 +79,7 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(sut.errorMessage, "Please enter a display name")
         XCTAssertFalse(sut.isSaveSuccessful)
         XCTAssertTrue(friendRepository.savedProfiles.isEmpty)
+        XCTAssertTrue(authRepository.updatedDisplayNames.isEmpty)
     }
 
     func test_saveProfile_whitespaceOnlyDisplayName_setsError() async {
@@ -103,11 +113,12 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertNil(sut.errorMessage)
     }
 
-    func test_saveProfile_success_preservesExistingHashesBySendingEmptyArray() async {
+    func test_saveProfile_success_syncsAuthAndFirestoreDisplayName() async {
         sut.displayName = "Alice"
 
         await sut.saveProfile()
 
+        XCTAssertEqual(authRepository.updatedDisplayNames, ["Alice"])
         XCTAssertEqual(
             friendRepository.savedProfiles,
             [FriendRepositorySpy.SavedProfile(displayName: "Alice", hashedPhoneNumbers: [])]
@@ -140,5 +151,50 @@ final class SettingsViewModelTests: XCTestCase {
 
         XCTAssertNil(sut.errorMessage)
         XCTAssertTrue(sut.isSaveSuccessful)
+    }
+
+    // MARK: - Account deletion
+
+    func test_deleteAccount_success_wipesCloudAuthAndLocal() async {
+        authRepository.stubbedUser = User(id: "u1", isAnonymous: false, displayName: "Alice")
+
+        await sut.deleteAccount()
+
+        XCTAssertEqual(authRepository.reauthenticateCallCount, 1)
+        XCTAssertEqual(friendRepository.deleteAccountDataCallCount, 1)
+        XCTAssertEqual(authRepository.deleteAccountCallCount, 1)
+        XCTAssertEqual(wipeCallCount, 1)
+        XCTAssertTrue(sut.isDeleteSuccessful)
+        XCTAssertFalse(sut.isProcessing)
+    }
+
+    func test_deleteAccount_anonymousDebugUser_skipsAppleReauth() async {
+        authRepository.stubbedUser = User(id: "u1", isAnonymous: true, displayName: "Test User 1")
+
+        await sut.deleteAccount()
+
+        #if DEBUG
+        XCTAssertEqual(authRepository.reauthenticateCallCount, 0)
+        #else
+        XCTAssertEqual(authRepository.reauthenticateCallCount, 1)
+        #endif
+        XCTAssertEqual(friendRepository.deleteAccountDataCallCount, 1)
+        XCTAssertTrue(sut.isDeleteSuccessful)
+    }
+
+    func test_deleteAccount_firestoreFailure_surfacesError() async {
+        authRepository.stubbedUser = User(id: "u1", isAnonymous: false, displayName: "Alice")
+        friendRepository.deleteAccountDataError = NSError(
+            domain: "firestore",
+            code: 7,
+            userInfo: [NSLocalizedDescriptionKey: "Delete denied"]
+        )
+
+        await sut.deleteAccount()
+
+        XCTAssertEqual(sut.errorMessage, "Delete denied")
+        XCTAssertEqual(authRepository.deleteAccountCallCount, 0)
+        XCTAssertEqual(wipeCallCount, 0)
+        XCTAssertFalse(sut.isDeleteSuccessful)
     }
 }

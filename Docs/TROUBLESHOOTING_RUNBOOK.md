@@ -75,7 +75,7 @@ Usually the peer signed in with **User N** and a profile doc exists, but decodin
 
 ### DEBUG User 1 / 2 / 3 login fails
 
-DEBUG personas use **anonymous Auth** (not Phone Auth), then attach display name + phone hashes. They should not show Phone Auth / APNs / verification-ID errors.
+DEBUG personas use **anonymous Auth** (not Sign in with Apple / Phone Auth), then attach display name + phone hashes. They should not show Phone Auth / APNs / verification-ID errors. Production login is Sign in with Apple.
 
 1. Confirm `GoogleService-Info.plist` is present and `FirebaseApp.configure()` succeeds.
 2. Confirm the device/simulator has network access to Firebase.

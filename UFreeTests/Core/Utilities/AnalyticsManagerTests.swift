@@ -23,7 +23,7 @@ final class AnalyticsManagerTests: XCTestCase {
             .heatmapViewed(friendCount: 3),
             .handshakeCompleted(duration: 12),
             .appLaunched,
-            .linkOpened(url: "https://ufree.app/profile/u1")
+            .linkOpened(route: "profile")
         ]
 
         for event in events {
@@ -38,7 +38,7 @@ final class AnalyticsManagerTests: XCTestCase {
         AnalyticsManager.logBatchNudge(recipientCount: 4)
         AnalyticsManager.logPhoneSearchSuccess()
         AnalyticsManager.logPhoneSearchSuccess(friendName: "Alice")
-        AnalyticsManager.logLinkOpened(url: "https://ufree.app/notification/n1")
+        AnalyticsManager.logLinkOpened(route: "notification")
     }
 
     func test_setCollectionEnabled_togglesWithoutThrowing() {

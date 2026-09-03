@@ -33,7 +33,9 @@ public class FirebaseNotificationRepository: NotificationRepository {
                 .limit(to: 50)
                 .addSnapshotListener { snapshot, error in
                     if let error = error {
+                        #if DEBUG
                         print("Error listening to notifications: \(error)")
+                        #endif
                         return
                     }
                     

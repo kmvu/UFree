@@ -168,13 +168,14 @@ service cloud.firestore {
               || isSelfFriendIdsRemove()
             ));
 
-      // Deletion lands in a later phase (account deletion + SiwA re-auth).
-      allow delete: if false;
+      // Owners may delete their own profile (account deletion).
+      allow delete: if isOwner(userId);
 
       // Availability Collection
       match /availability/{date} {
         allow read: if isOwner(userId) || isFriendOf(userId);
-        allow write: if isOwner(userId) && isValidAvailability();
+        allow create, update: if isOwner(userId) && isValidAvailability();
+        allow delete: if isOwner(userId);
       }
 
       // Notifications Collection (inbox)
@@ -231,7 +232,10 @@ service cloud.firestore {
         && request.resource.data.fromName == resource.data.fromName
         && request.resource.data.status in ['accepted', 'declined'];
 
-      allow delete: if false;
+      // Either participant may delete (account wipe or cleanup after decline).
+      allow delete: if isSignedIn()
+        && (resource.data.fromId == request.auth.uid
+            || resource.data.toId == request.auth.uid);
     }
   }
 }

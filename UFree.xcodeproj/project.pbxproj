@@ -14,6 +14,7 @@
 		23DD43522F0521AD00432E96 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23DD43512F0521AD00432E96 /* FirebaseAnalytics */; };
 		23DD43542F0521AD00432E96 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 23DD43532F0521AD00432E96 /* FirebaseAuth */; };
 		23DD43562F0521AD00432E96 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 23DD43552F0521AD00432E96 /* FirebaseFirestore */; };
+		23E8A101302A000100ABCDEF /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 23E8A100302A000100ABCDEF /* FirebaseAppCheck */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +91,7 @@
 				230B33372F0F97C000E82137 /* FirebaseCrashlytics in Frameworks */,
 				23DD43542F0521AD00432E96 /* FirebaseAuth in Frameworks */,
 				23DD43562F0521AD00432E96 /* FirebaseFirestore in Frameworks */,
+				23E8A101302A000100ABCDEF /* FirebaseAppCheck in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -163,6 +165,7 @@
 				23DD43532F0521AD00432E96 /* FirebaseAuth */,
 				23DD43552F0521AD00432E96 /* FirebaseFirestore */,
 				230B33362F0F97C000E82137 /* FirebaseCrashlytics */,
+				23E8A100302A000100ABCDEF /* FirebaseAppCheck */,
 			);
 			productName = UFree;
 			productReference = 237D8FC42EF53F24006BAE5F /* UFree.app */;
@@ -709,6 +712,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 23DD43502F0521AD00432E96 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		23E8A100302A000100ABCDEF /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23DD43502F0521AD00432E96 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

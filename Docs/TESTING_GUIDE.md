@@ -70,8 +70,9 @@ For testing social flows that require two real accounts without real SMS codes:
    Without `friendRequests` rules, every invite fails with a permission error dialog.
 2. **Use Developer Tools** in `LoginView` (DEBUG builds only):
    - Run the app on two simulators (or simulator + device).
-   - Tap **User 1**, **User 2**, or **User 3**. Each uses anonymous Firebase Auth (same as Get Started) and saves a fixed phone hash (`+15550000001`…`03`) so you can Find by Phone across devices.
+   - Tap **User 1**, **User 2**, or **User 3**. Each uses anonymous Firebase Auth (SiwA is the production/device path and is unreliable on Simulator) and saves a fixed phone hash (`+15550000001`…`03`) so you can Find by Phone across devices.
    - No Firebase Console “Phone numbers for testing” setup is required for these buttons.
+   - For App Check on Simulator: copy the debug token printed at launch into Firebase Console → App Check → Manage debug tokens.
 
 ### Three-platform real-time loop (iPhone + iPad + Mac)
 

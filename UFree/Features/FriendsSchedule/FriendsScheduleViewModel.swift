@@ -264,7 +264,9 @@ public final class FriendsScheduleViewModel: ObservableObject {
 
             // If no schedules found for any friends, log it but don't error
             if friendSchedules.isEmpty && !friends.isEmpty {
+                #if DEBUG
                 print("⚠️ No schedules found for \(friends.count) friends")
+                #endif
             }
 
         } catch {
@@ -275,7 +277,9 @@ public final class FriendsScheduleViewModel: ObservableObject {
             } else {
                 self.errorMessage = "Failed to load friends' schedules: \(error.localizedDescription)"
             }
+            #if DEBUG
             print("❌ Error loading friends schedules: \(error)")
+            #endif
         }
     }
 
@@ -297,7 +301,9 @@ public final class FriendsScheduleViewModel: ObservableObject {
         } catch {
             self.errorMessage = "Failed to send nudge: \(error.localizedDescription)"
             HapticManager.warning()
+            #if DEBUG
             print("❌ Error sending nudge to \(userId): \(error)")
+            #endif
         }
     }
 
@@ -351,7 +357,9 @@ public final class FriendsScheduleViewModel: ObservableObject {
                             )
                             return true  // Success
                         } catch {
+                            #if DEBUG
                             print("⚠️ Failed to nudge \(friendId): \(error)")
+                            #endif
                             return false  // Failure
                         }
                     }
@@ -393,12 +401,16 @@ public final class FriendsScheduleViewModel: ObservableObject {
                 HapticManager.warning()
             }
 
+            #if DEBUG
             print("✅ Group nudge complete: \(successCount) of \(freeFriendIds.count) succeeded")
+            #endif
 
         } catch {
             self.errorMessage = "Failed to send group nudges: \(error.localizedDescription)"
             HapticManager.warning()
+            #if DEBUG
             print("❌ Error in group nudge: \(error)")
+            #endif
         }
     }
 }

@@ -10,6 +10,7 @@ import SwiftUI
 struct LoginView: View {
     @StateObject var viewModel: LoginViewModel
     @FocusState private var isNameFocused: Bool
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         ZStack {
@@ -47,19 +48,15 @@ struct LoginView: View {
                         .focused($isNameFocused)
                         .submitLabel(.next)
                     
-                    TextField("Phone Number", text: $viewModel.phoneNumber)
+                    TextField("Phone Number (optional)", text: $viewModel.phoneNumber)
                         .keyboardType(.phonePad)
                         .textContentType(.telephoneNumber)
                         .textFieldStyle(.plain)
                         .padding()
                         .background(Color(UIColor.secondarySystemGroupedBackground))
                         .cornerRadius(12)
-                        .submitLabel(.go)
-                        .onSubmit {
-                            viewModel.loginTapped()
-                        }
                     
-                    Text("Your name and phone number allow friends to find you. Your phone number is stored as a secure hash for privacy.")
+                    Text("Sign in with Apple is your account. Phone is optional so friends can find you — we store a one-way hash, not your number. Someone else could claim the same hash first until phone verification ships.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -67,39 +64,46 @@ struct LoginView: View {
                 }
                 .padding(.horizontal)
                 
-                // 3. Action Button
+                // 3. Sign in with Apple
                 Button(action: {
                     viewModel.loginTapped()
                 }) {
                     HStack(spacing: 10) {
                         if viewModel.isLoading {
                             ProgressView()
-                                .tint(.white)
+                                .tint(colorScheme == .dark ? .black : .white)
                         } else {
-                            Text("Get Started")
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 14, weight: .bold))
+                            Image(systemName: "apple.logo")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text("Sign in with Apple")
+                                .fontWeight(.semibold)
                         }
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
+                    .background(colorScheme == .dark ? Color.white : Color.black)
+                    .cornerRadius(12)
                 }
-                .ufreePrimaryButton(
-                    isEnabled: !(viewModel.isLoading || viewModel.name.isEmpty || viewModel.phoneNumber.isEmpty)
-                )
-                .disabled(viewModel.isLoading || viewModel.name.isEmpty || viewModel.phoneNumber.isEmpty)
+                .disabled(viewModel.isLoading || viewModel.name.trimmingCharacters(in: .whitespaces).isEmpty)
+                .opacity(viewModel.name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
                 .padding(.horizontal)
                 
                 Spacer()
                 Spacer()
                 
                 #if DEBUG
-                // Development Tools
+                // Development Tools — Simulator cannot use SiwA reliably.
                 VStack(spacing: 12) {
                     Divider()
                         .padding(.vertical, 8)
                     
                     Text("DEVELOPER TOOLS")
                         .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("Simulator personas (anonymous auth)")
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                     
                     HStack(spacing: 10) {

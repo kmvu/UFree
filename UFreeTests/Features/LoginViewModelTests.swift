@@ -52,6 +52,7 @@ final class LoginViewModelTests: XCTestCase {
         XCTAssertTrue(sut.showError)
         XCTAssertEqual(sut.errorMessage, "Please enter your name to start.")
         XCTAssertTrue(friendRepository.savedProfiles.isEmpty)
+        XCTAssertEqual(authRepository.signInWithAppleCallCount, 0)
     }
 
     func test_loginTapped_whitespaceOnlyName_showsError() {
@@ -64,24 +65,18 @@ final class LoginViewModelTests: XCTestCase {
         XCTAssertEqual(sut.errorMessage, "Please enter your name to start.")
     }
 
-    func test_loginTapped_emptyPhoneNumber_showsError() {
+    func test_loginTapped_emptyPhone_stillAllowsSignIn() async {
         sut.name = "Alice"
+        sut.phoneNumber = ""
 
         sut.loginTapped()
+        await waitUntil("profile saved") { !self.friendRepository.savedProfiles.isEmpty }
 
-        XCTAssertTrue(sut.showError)
-        XCTAssertEqual(sut.errorMessage, "Please enter your phone number to find friends.")
-        XCTAssertTrue(friendRepository.savedProfiles.isEmpty)
-    }
-
-    func test_loginTapped_whitespaceOnlyPhoneNumber_showsError() {
-        sut.name = "Alice"
-        sut.phoneNumber = "  "
-
-        sut.loginTapped()
-
-        XCTAssertTrue(sut.showError)
-        XCTAssertEqual(sut.errorMessage, "Please enter your phone number to find friends.")
+        XCTAssertEqual(authRepository.signInWithAppleCallCount, 1)
+        XCTAssertEqual(
+            friendRepository.savedProfiles,
+            [FriendRepositorySpy.SavedProfile(displayName: "Alice", hashedPhoneNumbers: [])]
+        )
     }
 
     // MARK: - Successful Login
@@ -94,6 +89,7 @@ final class LoginViewModelTests: XCTestCase {
         await waitUntil("profile saved") { !self.friendRepository.savedProfiles.isEmpty }
 
         let expectedHashes = CryptoUtils.phoneNumberHashes(for: "555-1234")
+        XCTAssertEqual(authRepository.signInWithAppleCallCount, 1)
         XCTAssertEqual(
             friendRepository.savedProfiles,
             [FriendRepositorySpy.SavedProfile(displayName: "Alice", hashedPhoneNumbers: expectedHashes)]

@@ -29,6 +29,10 @@ Run the smallest relevant test first when practical. Rules or discovery/handshak
 
 ## Security
 
+- Production identity is Sign in with Apple; DEBUG User 1/2/3 remain anonymous for Simulator.
+- Never log raw phone numbers. App Check debug tokens are local-only — register them in Firebase Console, do not commit them.
+- Account deletion must wipe Firestore + Auth; keep rules tests green when changing delete permissions.
+
 Never commit:
 
 - `.env` files or passwords

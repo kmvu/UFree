@@ -35,7 +35,9 @@ public final class AppleContactsRepository: ContactsRepositoryProtocol {
         do {
             return try await store.requestAccess(for: .contacts)
         } catch {
+            #if DEBUG
             print("⚠️ Contact access denied or failed: \(error)")
+            #endif
             return false
         }
     }
@@ -69,7 +71,7 @@ public final class AppleContactsRepository: ContactsRepositoryProtocol {
         var contactsWithPhoneNumbers = 0
         var failedHashes = 0
 
-        // 3. Fetch and Process
+        // 3. Fetch and Process — never log raw phone numbers (Release or Debug).
         do {
             try store.enumerateContacts(with: request) { (contact, stop) in
                 totalContacts += 1
@@ -80,27 +82,23 @@ public final class AppleContactsRepository: ContactsRepositoryProtocol {
                 
                 for phoneNumber in contact.phoneNumbers {
                     let rawString = phoneNumber.value.stringValue
-                    print("📱 Processing phone: \(rawString)")
-
                     if let hash = CryptoUtils.hashPhoneNumber(rawString) {
                         hashes.insert(hash)
-                        print("✅ Hashed: \(hash)")
                     } else {
                         failedHashes += 1
-                        print("❌ Failed to hash: \(rawString)")
                     }
                 }
             }
         } catch {
+            #if DEBUG
             print("❌ Error enumerating contacts: \(error)")
+            #endif
             throw NSError(domain: "UFree", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to read contacts: \(error.localizedDescription)"])
         }
 
-        print("📊 Diagnostics:")
-        print("   Total contacts: \(totalContacts)")
-        print("   Contacts with phone numbers: \(contactsWithPhoneNumbers)")
-        print("   Failed hashes: \(failedHashes)")
-        print("   Unique hashes: \(hashes.count)")
+        #if DEBUG
+        print("📊 Contact hash diagnostics: total=\(totalContacts) withPhone=\(contactsWithPhoneNumbers) failed=\(failedHashes) unique=\(hashes.count)")
+        #endif
         
         guard !hashes.isEmpty else {
             if totalContacts == 0 {

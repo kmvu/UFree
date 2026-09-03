@@ -40,13 +40,13 @@ final class LoginViewTests: XCTestCase {
         await ViewHost.renderAwaitingUpdates(makeView())
     }
 
-    func test_render_withNameOnly_keepsCallToActionDisabled() async {
+    func test_render_withNameOnly_enablesSignInWithApple() async {
         viewModel.name = "Alice"
 
         await ViewHost.renderAwaitingUpdates(makeView())
     }
 
-    func test_render_withCompleteForm_enablesCallToAction() async {
+    func test_render_withCompleteForm_enablesSignInWithApple() async {
         viewModel.name = "Alice"
         viewModel.phoneNumber = "555-1234"
 

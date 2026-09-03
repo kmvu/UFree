@@ -83,13 +83,17 @@ public final class SwiftDataAvailabilityRepository: AvailabilityRepository {
             }
             
             try context.save()
+            #if DEBUG
             print("✅ SwiftData Updated: \(day.date.formatted()) with \(day.timeBlocks.count) blocks")
+            #endif
         } else {
             // Insert new record
             let newPersistent = day.toPersistent()
             context.insert(newPersistent)
             try context.save()
+            #if DEBUG
             print("✅ SwiftData Inserted: \(day.date.formatted()) with \(day.timeBlocks.count) blocks")
+            #endif
         }
     }
 
