@@ -7,12 +7,13 @@ import XCTest
 @testable import UFree
 
 final class AppNotificationTests: XCTestCase {
-    func test_dateString_roundTrips() {
-        let date = Calendar.current.startOfDay(for: Date())
+    func test_dateString_usesUTCFormatter_roundTrips() {
+        let date = Date()
         let string = AppNotification.dateString(from: date)
+        XCTAssertEqual(string, DateFormatter.yyyyMMdd.string(from: date))
         let parsed = AppNotification.date(from: string)
         XCTAssertNotNil(parsed)
-        XCTAssertTrue(Calendar.current.isDate(parsed!, inSameDayAs: date))
+        XCTAssertEqual(DateFormatter.yyyyMMdd.string(from: parsed!), string)
     }
 
     func test_targetWeekdayLabel_presentWhenDateSet() {

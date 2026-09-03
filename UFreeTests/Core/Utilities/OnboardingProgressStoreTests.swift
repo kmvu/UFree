@@ -156,4 +156,16 @@ final class OnboardingProgressStoreTests: XCTestCase {
             "Nudge Cara for Sat."
         )
     }
+
+    func test_bind_scopesProgressPerUserId() {
+        sut.bind(userId: "user-a")
+        sut.markInvitedFriend()
+        XCTAssertTrue(sut.hasInvitedFriend)
+
+        sut.bind(userId: "user-b")
+        XCTAssertFalse(sut.hasInvitedFriend, "User B must not see User A's onboarding")
+
+        sut.bind(userId: "user-a")
+        XCTAssertTrue(sut.hasInvitedFriend)
+    }
 }

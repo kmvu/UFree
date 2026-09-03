@@ -86,9 +86,9 @@ public final class FriendsScheduleViewModel: ObservableObject {
     }
 
     /// Resolve friend id by display name for mission-chip targeting.
+    /// Returns nil when the name does not match — never falls back to another friend.
     public func friendId(named displayName: String) -> String? {
         friendSchedules.first(where: { $0.displayName == displayName })?.id
-            ?? friendSchedules.first?.id
     }
 
     // MARK: - Nudge replies (inviter Who's Free)
@@ -137,10 +137,11 @@ public final class FriendsScheduleViewModel: ObservableObject {
         guard let index = friendSchedules.firstIndex(where: { $0.id == friendId }) else { return }
         var display = friendSchedules[index]
         var schedule = display.userSchedule
+        let dayKey = DateFormatter.yyyyMMdd.string(from: date)
         if let dayIndex = schedule.weeklyStatus.firstIndex(where: {
-            Calendar.current.isDate($0.date, inSameDayAs: date)
+            DateFormatter.yyyyMMdd.string(from: $0.date) == dayKey
         }) {
-            schedule.weeklyStatus[dayIndex].status = status
+            schedule.weeklyStatus[dayIndex].applyStatusPreservingTimeBlocks(status)
         } else {
             schedule.weeklyStatus.append(DayAvailability(date: date, status: status))
         }

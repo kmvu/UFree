@@ -162,6 +162,25 @@ final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
         let schedules = try await sut.getSchedules(for: [])
         XCTAssertEqual(schedules.count, 0)
     }
+
+    @MainActor
+    func test_bind_scopesSchedulePerUserId() async throws {
+        sut.bind(userId: "user-a")
+        let day = makeDay(daysOffset: 0, status: .free)
+        try await sut.updateMySchedule(for: day)
+
+        sut.bind(userId: "user-b")
+        let otherSchedule = try await sut.getMySchedule()
+        XCTAssertTrue(
+            otherSchedule.weeklyStatus.allSatisfy { $0.status == .unknown },
+            "User B must not see User A's local week"
+        )
+        XCTAssertEqual(otherSchedule.id, "user-b")
+
+        sut.bind(userId: "user-a")
+        let restored = try await sut.getMySchedule().status(for: day.date)
+        XCTAssertEqual(restored?.status, .free)
+    }
     
     // MARK: - Helper Methods
     

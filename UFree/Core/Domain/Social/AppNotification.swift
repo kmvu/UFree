@@ -82,28 +82,20 @@ public struct AppNotification: Identifiable, Codable {
 
     public var targetWeekdayLabel: String? {
         guard let targetDateString,
-              let date = Self.dayFormatter.date(from: targetDateString) else {
+              let date = Self.date(from: targetDateString) else {
             return nil
         }
         return Self.weekdayFormatter.string(from: date)
     }
 
+    /// UTC `yyyy-MM-dd` — same day key as availability Firestore paths (`DateFormatter.yyyyMMdd`).
     public static func dateString(from date: Date) -> String {
-        dayFormatter.string(from: Calendar.current.startOfDay(for: date))
+        DateFormatter.yyyyMMdd.string(from: date)
     }
 
     public static func date(from dateString: String) -> Date? {
-        dayFormatter.date(from: dateString)
+        DateFormatter.yyyyMMdd.date(from: dateString)
     }
-
-    private static let dayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.calendar = Calendar(identifier: .gregorian)
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.timeZone = TimeZone.current
-        f.dateFormat = "yyyy-MM-dd"
-        return f
-    }()
 
     private static let weekdayFormatter: DateFormatter = {
         let f = DateFormatter()

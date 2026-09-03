@@ -447,14 +447,21 @@ public class NotificationViewModel: ObservableObject {
     ) async {
         guard response == .imIn || response == .busy else { return }
         guard let dateString = note.targetDateString,
-              let date = AppNotification.date(from: dateString),
               let scheduleVM = scheduleViewModel else { return }
 
-        var day = scheduleVM.weeklySchedule.first(where: {
-            Calendar.current.isDate($0.date, inSameDayAs: date)
-        }) ?? DayAvailability(date: date, status: response == .imIn ? .free : .busy)
+        // Match by UTC day key (same as availability / nudge payloads) — not Calendar.isDate,
+        // which disagrees with UTC midnight near local timezone boundaries.
+        guard var day = scheduleVM.weeklySchedule.first(where: {
+            DateFormatter.yyyyMMdd.string(from: $0.date) == dateString
+        }) else { return }
 
-        day.status = response == .imIn ? .free : .busy
+        let hadDetailedBlocks = !day.timeBlocks.isEmpty
+        let targetStatus: AvailabilityStatus = response == .imIn ? .free : .busy
+        day.applyStatusPreservingTimeBlocks(targetStatus)
+
+        // Keep existing windows intact — nudge reply must not collapse them to full-day.
+        if hadDetailedBlocks { return }
+
         await scheduleVM.updateStatus(for: day).value
     }
     

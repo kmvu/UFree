@@ -18,7 +18,11 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         super.setUp()
         localSpy = AvailabilityRepositorySpy()
         remoteSpy = AvailabilityRepositorySpy()
-        sut = CompositeAvailabilityRepository(local: localSpy, remote: remoteSpy)
+        sut = CompositeAvailabilityRepository(
+            local: localSpy,
+            remote: remoteSpy,
+            observesLifecycle: false
+        )
     }
     
     func test_updateMySchedule_writesToLocalImmediately_andRemoteInBackground() async throws {
@@ -78,6 +82,59 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         // Should not update local with unknown day
         XCTAssertEqual(localSpy.updateCallCount, 0)
     }
+
+    func test_updateMySchedule_keepsPending_andSkipsStaleRemoteOverwrite() async throws {
+        let day = DayAvailability(date: Date(), status: .free, updatedAt: Date())
+        remoteSpy.shouldFailUpdate = true
+
+        try await sut.updateMySchedule(for: day)
+
+        await waitUntil("remote update attempted") {
+            remoteSpy.updateCallCount == 1
+        }
+        await drainPendingTasks()
+
+        // Pending local edit must not be bounced by older cloud data
+        let staleRemote = DayAvailability(
+            date: day.date,
+            status: .busy,
+            updatedAt: Date().addingTimeInterval(-3600)
+        )
+        remoteSpy.scheduleToReturn = UserSchedule(id: "1", name: "R", weeklyStatus: [staleRemote])
+        remoteSpy.shouldFailUpdate = false
+        localSpy.updateCallCount = 0
+
+        _ = try await sut.getMySchedule()
+
+        await waitUntil("remote fetch during background refresh") {
+            remoteSpy.getScheduleCallCount >= 1
+        }
+        await drainPendingTasks()
+
+        XCTAssertEqual(localSpy.updateCallCount, 0, "Pending/local-newer day must not be overwritten")
+    }
+
+    func test_getMySchedule_skipsRemoteWhenLocalUpdatedAtIsNewer() async throws {
+        let now = Date()
+        let localDay = DayAvailability(date: now, status: .free, updatedAt: now)
+        localSpy.scheduleToReturn = UserSchedule(id: "1", name: "L", weeklyStatus: [localDay])
+
+        let olderRemote = DayAvailability(
+            date: now,
+            status: .busy,
+            updatedAt: now.addingTimeInterval(-120)
+        )
+        remoteSpy.scheduleToReturn = UserSchedule(id: "1", name: "R", weeklyStatus: [olderRemote])
+
+        _ = try await sut.getMySchedule()
+
+        await waitUntil("remote fetch during background refresh") {
+            remoteSpy.getScheduleCallCount == 1
+        }
+        await drainPendingTasks()
+
+        XCTAssertEqual(localSpy.updateCallCount, 0)
+    }
     
     // MARK: - Spy
     
@@ -86,12 +143,16 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
         var getScheduleCallCount = 0
         var lastUpdatedDay: DayAvailability?
         var scheduleToReturn: UserSchedule = UserSchedule(id: "test", name: "Test", weeklyStatus: [])
+        var shouldFailUpdate = false
 
         nonisolated deinit {}
         
         func updateMySchedule(for day: DayAvailability) async throws {
             updateCallCount += 1
             lastUpdatedDay = day
+            if shouldFailUpdate {
+                throw NSError(domain: "test", code: 1)
+            }
         }
         
         func getMySchedule() async throws -> UserSchedule {

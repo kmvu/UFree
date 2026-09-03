@@ -53,12 +53,21 @@ public struct DayAvailability: Identifiable, Codable {
     public let date: Date
     public var timeBlocks: [TimeBlock]
     public var note: String?
+    /// Last local/remote edit time for offline conflict resolution. Not required for UI.
+    public var updatedAt: Date?
 
-    public init(id: UUID = UUID(), date: Date, timeBlocks: [TimeBlock]? = nil, note: String? = nil) {
+    public init(
+        id: UUID = UUID(),
+        date: Date,
+        timeBlocks: [TimeBlock]? = nil,
+        note: String? = nil,
+        updatedAt: Date? = nil
+    ) {
         self.id = id
         self.date = date
         self.note = note
-        
+        self.updatedAt = updatedAt
+
         if let timeBlocks = timeBlocks {
             self.timeBlocks = timeBlocks
         } else {
@@ -68,12 +77,27 @@ public struct DayAvailability: Identifiable, Codable {
     }
 
     /// Backwards compatibility initializer
-    public init(id: UUID = UUID(), date: Date, status: AvailabilityStatus, note: String? = nil) {
+    public init(
+        id: UUID = UUID(),
+        date: Date,
+        status: AvailabilityStatus,
+        note: String? = nil,
+        updatedAt: Date? = nil
+    ) {
         self.id = id
         self.date = date
         self.note = note
+        self.updatedAt = updatedAt
         self.timeBlocks = [] // Temporary
         self.status = status // Use the setter logic
+    }
+
+    /// Applies free/busy (or other status) without replacing existing detailed time blocks.
+    public mutating func applyStatusPreservingTimeBlocks(_ newStatus: AvailabilityStatus) {
+        if timeBlocks.isEmpty {
+            status = newStatus
+        }
+        // Detailed blocks stay as-is; overallStatus continues to derive from them.
     }
 
     /// Computed property for backward compatibility

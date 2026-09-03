@@ -18,16 +18,21 @@ struct RootView: View {
     @StateObject private var friendsViewModel: FriendsViewModel
     @StateObject private var notificationViewModel: NotificationViewModel
     let friendRepository: FriendRepositoryProtocol
+    private let localAvailabilityRepository: SwiftDataAvailabilityRepository
+    private let compositeAvailabilityRepository: CompositeAvailabilityRepository
 
     init(container: ModelContainer, authRepository: AuthRepository) {
         self.container = container
         self.authRepository = authRepository
 
-        // 1. Setup Repositories
+        // 1. Setup Repositories — local SwiftData is UID-scoped via bind(userId:)
+        let localAvailability = SwiftDataAvailabilityRepository(container: container)
         let availabilityRepo = CompositeAvailabilityRepository(
-            local: SwiftDataAvailabilityRepository(container: container),
+            local: localAvailability,
             remote: FirebaseAvailabilityRepository()
         )
+        self.localAvailabilityRepository = localAvailability
+        self.compositeAvailabilityRepository = availabilityRepo
         let friendRepo = FirebaseFriendRepository()
         self.friendRepository = friendRepo
         let notificationRepo = FirebaseNotificationRepository()
@@ -108,6 +113,25 @@ struct RootView: View {
                     await friendsViewModel.loadFriends()
                 }
             }
+        }
+        .onChange(of: rootViewModel.currentUser?.id) { _, newId in
+            bindLocalUserScope(newId)
+        }
+        .onAppear {
+            bindLocalUserScope(rootViewModel.currentUser?.id)
+        }
+    }
+
+    /// Scope SwiftData + onboarding prefs to the signed-in UID; flush pending sync.
+    private func bindLocalUserScope(_ userId: String?) {
+        if let userId, !userId.isEmpty {
+            localAvailabilityRepository.bind(userId: userId)
+            OnboardingProgressStore.shared.bind(userId: userId)
+            Task {
+                await compositeAvailabilityRepository.retryPendingSync()
+            }
+        } else {
+            OnboardingProgressStore.shared.bind(userId: nil)
         }
     }
 }

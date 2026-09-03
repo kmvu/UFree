@@ -169,27 +169,10 @@ struct UFreeApp: App {
                 container: container,
                 authRepository: authRepository
             )
-            .onOpenURL { url in
-                // Universal Links (AASA) are handled by handleUniversalLink inside MainAppView
-                // via the .onOpenURL attached there.
-                // If we want to handle them at the RootView level, we'd do it here.
-            }
             .onAppear {
                 // This allows dismissing keyboard by tapping anywhere outside
                 UIApplication.shared.addTapGestureRecognizerToWindow()
             }
-        }
-    }
-
-    private func handleDeepLink(_ url: URL) {
-        // Universal Link format: https://ufree.app/profile/{userId}
-        guard url.host == "ufree.app" else { return }
-        let pathComponents = url.pathComponents
-        if pathComponents.count >= 3 && pathComponents[1] == "profile" {
-            let userId = pathComponents[2]
-            // We need to pass this to RootViewModel or similar
-            // In a real implementation, we'd use a shared coordinator or environment object
-            NotificationCenter.default.post(name: .didReceiveProfileDeepLink, object: userId)
         }
     }
 }

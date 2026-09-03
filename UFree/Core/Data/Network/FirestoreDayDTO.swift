@@ -66,7 +66,8 @@ struct FirestoreDayDTO: Codable {
                 id: uuid,
                 date: originalDate,
                 timeBlocks: timeBlocks.map { $0.toDomain() },
-                note: note
+                note: note,
+                updatedAt: updatedAt
             )
         } else {
             // Fallback for legacy data without timeBlocks
@@ -74,7 +75,8 @@ struct FirestoreDayDTO: Codable {
                 id: uuid,
                 date: originalDate,
                 status: AvailabilityStatus(rawValue: status) ?? .unknown,
-                note: note
+                note: note,
+                updatedAt: updatedAt
             )
         }
     }
