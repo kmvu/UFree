@@ -174,7 +174,7 @@ Finalize after pilot interviews; use as a planning range only:
 | Plus | ~$2–5 / month (or ~$20–40 / year) | Push, widget, larger circle, templates, insights |
 | Family | ~1.5–2× Plus | Up to N household members |
 
-Bias **low price, high trust**. This is intimacy software, not enterprise SaaF.
+Bias **low price, high trust**. This is intimacy software, not enterprise SaaS.
 
 ### When to introduce paid
 
