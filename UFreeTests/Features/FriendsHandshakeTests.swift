@@ -140,10 +140,27 @@ final class FriendsHandshakeTests: XCTestCase {
         XCTAssertEqual(viewModel.incomingRequests.count, 1)
     }
     
-    func test_stopListening_gracefulShutdown() {
+    func test_stopListening_gracefulShutdown() async {
         viewModel.listenToRequests()
+        // Allow the initial (empty) stream yield to apply.
+        await Task.yield()
+        await Task.yield()
+
         viewModel.stopListening()
-        XCTAssertTrue(true) // No crash = pass
+        // Second stop must be idempotent.
+        viewModel.stopListening()
+
+        let countAfterStop = viewModel.incomingRequests.count
+        mockRepo.addIncomingRequest(makeFriendRequest(id: "req_late", fromName: "Late"))
+
+        // Give any leaked listener time to fire — it should not.
+        let startDate = Date()
+        while Date().timeIntervalSince(startDate) < 0.2 {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(viewModel.incomingRequests.count, countAfterStop)
+        XCTAssertGreaterThanOrEqual(viewModel.incomingRequests.count, 0)
     }
     
     func test_listenToRequests_cancelsExisting() async {

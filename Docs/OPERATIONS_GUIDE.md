@@ -95,7 +95,7 @@ On every push to `main` that touches `firestore.rules`, `firestore.indexes.json`
 ### Rollback
 
 1. `git revert` the bad commit on `main` (or restore the last known-good rules/indexes/hosting files) and push.
-2. `firebase-deploy.yml` re-runs on the reverted paths and restores production.
+2. [`.github/workflows/firebase-deploy.yml`](../.github/workflows/firebase-deploy.yml) re-runs on the reverted paths and restores production.
 3. If CI cannot run, deploy the known-good tree manually: `firebase deploy --only firestore:rules,firestore:indexes,hosting`.
 
 ## Firebase deployment boundary

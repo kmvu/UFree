@@ -92,6 +92,7 @@ public struct FriendsScheduleView: View {
         }
         .navigationTitle("Who's Free?")
         .navigationBarTitleDisplayMode(.large)
+        .accessibilityIdentifier("whosFree.root")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 NotificationBellButton(isPresented: .constant(false))

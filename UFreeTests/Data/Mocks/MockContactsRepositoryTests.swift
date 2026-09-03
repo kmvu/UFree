@@ -1,5 +1,5 @@
 //
-//  FriendRepositoryTests.swift
+//  MockContactsRepositoryTests.swift
 //  UFreeTests
 //
 //  Created by Khang Vu on 05/01/26.
@@ -8,7 +8,7 @@
 import XCTest
 @testable import UFree
 
-final class FriendRepositoryTests: XCTestCase {
+final class MockContactsRepositoryTests: XCTestCase {
     
     // MARK: - Unit Tests for Repository Logic
     

@@ -40,19 +40,21 @@ final class MockNotificationRepositoryTests: XCTestCase {
     // MARK: - Mark as Read
     
     func test_markAsRead_doesNotThrow() async throws {
-        // Arrange
-        let notification = TestNotificationBuilder.friendRequest()
-        
-        // Act & Assert: no error
+        let notification = TestNotificationBuilder.friendRequest(isRead: false)
+        sut.mockNotifications = [notification]
+
         try await sut.markAsRead(notification)
-        XCTAssertTrue(true)
+
+        XCTAssertEqual(sut.mockNotifications.count, 1)
+        XCTAssertTrue(sut.mockNotifications[0].isRead)
     }
     
     // MARK: - Send Nudge
     
     func test_sendNudge_doesNotThrow() async throws {
-        // Act & Assert
         try await sut.sendNudge(to: "user_123")
-        XCTAssertTrue(true)
+
+        XCTAssertEqual(sut.sentNudges.count, 1)
+        XCTAssertEqual(sut.sentNudges[0].userId, "user_123")
     }
 }

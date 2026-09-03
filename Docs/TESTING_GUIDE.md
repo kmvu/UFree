@@ -2,7 +2,14 @@
 
 Use this guide for automated validation, two-person checks, and release sign-off. For the purpose and success criteria of the TestFlight pilot, read the [product overview](PRODUCT_OVERVIEW.md); for release steps, use the [operations guide](OPERATIONS_GUIDE.md).
 
-**Current inventory:** 534 test methods are present under `UFreeTests/`. Coverage must be measured from a fresh result bundle; do not treat an old percentage as a release gate.
+**Current inventory:** Count test methods live — do not hardcode a number here. CI / Fastlane `tests` prints the count after a green run; locally:
+
+```bash
+./Scripts/count_tests.sh
+# or: rg -c '^\s*func test_' UFreeTests | … 
+```
+
+Coverage must be measured from a fresh result bundle; do not treat an old percentage as a release gate.
 
 ---
 
@@ -48,6 +55,16 @@ firebase emulators:exec --only auth,firestore --project ufree-313a2 \
 ```
 
 Or in Xcode: start emulators, select the `UFreeIntegrationTests` scheme, then run tests. CI runs this job on **pushes to `main` only** (not every PR).
+
+### UI tests (`UI_TESTING_MODE`)
+
+Launch argument `UI_TESTING_MODE` wires mock auth (signed-in **UI Tester**), local SwiftData + mock remote availability, a seeded friend **Alex** (Saturday free), and mock notifications. Day cards expose `schedule.day.yyyy-MM-dd` (UTC); tabs use `tab.schedule` / `tab.whosFree` / `tab.friends`.
+
+```bash
+bundle exec fastlane ui_tests
+```
+
+Happy path: `UFreeUITests/HappyPathUITests.swift`.
 
 ### Measuring Coverage
 
@@ -172,7 +189,7 @@ Run these manually before any release to validate end-to-end stability.
 |---|---|
 | **Auth** | `RootViewModelTests.swift`, `RootViewModelAuthPhaseTests.swift`, `MockAuthRepositoryTests.swift`, `UserTests.swift` |
 | **Domain** | `AvailabilityStatusTests.swift`, `DayAvailabilityTests.swift`, `UserScheduleTests.swift`, `UpdateMyStatusUseCaseTests.swift` |
-| **Data** | `FirestoreDayDTOTests.swift`, `SwiftDataAvailabilityRepositoryTests.swift`, `PersistentDayAvailabilityTests.swift`, `FriendRepositoryTests.swift`, `FirebaseAvailabilityRepositoryTests.swift`, `CompositeAvailabilityRepositoryTests.swift` |
+| **Data** | `FirestoreDayDTOTests.swift`, `SwiftDataAvailabilityRepositoryTests.swift`, `PersistentDayAvailabilityTests.swift`, `MockContactsRepositoryTests.swift`, `MockAvailabilityRepositoryTests.swift`, `MockFriendRepositoryTests.swift`, `CompositeAvailabilityRepositoryTests.swift` |
 | **Features** | `FriendsViewModelTests.swift`, `FriendsHandshakeTests.swift`, `MyScheduleViewModelTests.swift`, `MyScheduleViewModelLoadTests.swift`, `FriendsScheduleViewModelTests.swift`, `NotificationViewModelTests.swift`, `NotificationCenterViewTests.swift`, `DayFilterViewModelTests.swift`, `StatusBannerViewModelTests.swift` |
 | **Hardening** | `FriendsScheduleViewModelBatchNudgeTests.swift` (Concurrency/Race Conditions) |
 | **Utilities** | `CryptoUtilsTests.swift`, `CryptoUtilsPhoneHashesTests.swift`, `Color+HexTests.swift` |

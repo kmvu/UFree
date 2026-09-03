@@ -38,12 +38,17 @@ final class LoginViewTests: XCTestCase {
 
     func test_render_emptyForm_showsDisabledCallToAction() async {
         await ViewHost.renderAwaitingUpdates(makeView())
+
+        XCTAssertTrue(viewModel.name.isEmpty)
+        XCTAssertFalse(viewModel.isLoading)
     }
 
     func test_render_withNameOnly_enablesSignInWithApple() async {
         viewModel.name = "Alice"
 
         await ViewHost.renderAwaitingUpdates(makeView())
+
+        XCTAssertEqual(viewModel.name, "Alice")
     }
 
     func test_render_withCompleteForm_enablesSignInWithApple() async {
@@ -51,6 +56,9 @@ final class LoginViewTests: XCTestCase {
         viewModel.phoneNumber = "555-1234"
 
         await ViewHost.renderAwaitingUpdates(makeView())
+
+        XCTAssertEqual(viewModel.name, "Alice")
+        XCTAssertEqual(viewModel.phoneNumber, "555-1234")
     }
 
     func test_render_whileLoading_showsProgressIndicator() async {
@@ -59,6 +67,8 @@ final class LoginViewTests: XCTestCase {
         viewModel.isLoading = true
 
         await ViewHost.renderAwaitingUpdates(makeView())
+
+        XCTAssertTrue(viewModel.isLoading)
     }
 
     func test_render_withError_showsFailureAlert() async {
@@ -66,6 +76,9 @@ final class LoginViewTests: XCTestCase {
         viewModel.showError = true
 
         await ViewHost.renderAwaitingUpdates(makeView())
+
+        XCTAssertTrue(viewModel.showError)
+        XCTAssertEqual(viewModel.errorMessage, "Please enter your name to start.")
     }
 
     func test_render_withErrorFlagButNoMessage_showsFallbackCopy() async {

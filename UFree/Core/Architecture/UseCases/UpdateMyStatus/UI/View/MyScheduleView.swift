@@ -188,9 +188,16 @@ public struct MyScheduleView: View {
                     viewModel.selectedDate = day.date
                 }
                 HapticManager.light()
-                selectedDayForSheet = day
+                if TestConfiguration.isRunningUITests {
+                    var updated = day
+                    updated.status = .free
+                    _ = viewModel.updateStatus(for: updated)
+                } else {
+                    selectedDayForSheet = day
+                }
             }
         )
+        .accessibilityIdentifier("schedule.day.\(DateFormatter.yyyyMMdd.string(from: day.date))")
         .onLongPressGesture {
             HapticManager.medium()
             selectedDayForSheet = day

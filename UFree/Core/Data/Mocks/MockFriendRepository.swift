@@ -12,8 +12,13 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
     private var discoveredUsers: [UserProfile]
     private var myFriends: [UserProfile]
     private var incomingRequests: [FriendRequest]
-    private var sentRequests: [FriendRequest]
+    public private(set) var sentRequests: [FriendRequest]
     private var allUsers: [UserProfile]
+
+    /// Number of `sendFriendRequest` calls recorded by this mock.
+    public var sendFriendRequestCallCount: Int { sentRequests.count }
+    /// Test hook: delay inside `sendFriendRequest` so concurrent taps can race the guard.
+    public var simulatedSendDelayNanoseconds: UInt64 = 0
     
     public init(discoveredUsers: [UserProfile] = [], myFriends: [UserProfile] = [], incomingRequests: [FriendRequest] = [], allUsers: [UserProfile] = []) {
         self.discoveredUsers = discoveredUsers
@@ -80,6 +85,9 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
     }
     
     public func sendFriendRequest(to user: UserProfile) async throws {
+        if simulatedSendDelayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: simulatedSendDelayNanoseconds)
+        }
         guard let userId = user.id else { return }
         let request = FriendRequest(
             id: UUID().uuidString,

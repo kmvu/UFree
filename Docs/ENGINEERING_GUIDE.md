@@ -32,12 +32,15 @@ SwiftUI view → View model → Composite repository → SwiftData (immediate)
 
 ## Local setup
 
+Follow the [onboarding checklist](ONBOARDING_CHECKLIST.md) for a first-time machine.
+
 ### Prerequisites
 
 - macOS with **Xcode 26.6** (pinned in CI/deploy; match local `xcodebuild -version`)
+- An **iOS 18+** Simulator (Fastlane targets **iPhone 17 Pro**)
 - Ruby from tracked `.ruby-version` (`3.3.0`)
 - Bundler and the project gems
-- Firebase configuration file for local app builds
+- Firebase configuration file for local app builds (`GoogleService-Info.plist`)
 - Tracked `Package.resolved` under the Xcode workspace (do not delete it)
 
 ```bash
@@ -45,13 +48,13 @@ bundle install
 bundle exec fastlane tests
 ```
 
-The Fastlane test lane targets the `UFreeUnitTests` scheme on an **iPhone 17 Pro** simulator with code coverage enabled. See [Testing guide](TESTING_GUIDE.md) for focused test commands.
+The Fastlane test lane targets the `UFreeUnitTests` scheme on an **iPhone 17 Pro** simulator with code coverage enabled. See [Testing guide](TESTING_GUIDE.md) for focused test commands. UI happy-path: `bundle exec fastlane ui_tests`.
 
 ### CI / CD map
 
 | Workflow | Jobs | When |
 |---|---|---|
-| `ci.yml` (Quality Check) | `firestore-rules` (ubuntu) · `unit-tests` (macos-26, Xcode 26.6) · `lint` (SwiftLint baseline) · `emulator-integration` (Auth+Firestore emulators, **main pushes only**) | Push / PR to `main` (integration: push to `main` only) |
+| `ci.yml` (Quality Check) | `firestore-rules` (ubuntu) · `unit-tests` (macos-26, Xcode 26.6) · `ui-tests` (macos-26, `UI_TESTING_MODE`) · `lint` (SwiftLint baseline) · `emulator-integration` (Auth+Firestore emulators, **main pushes only**) | Push / PR to `main` (integration: push to `main` only) |
 | `deploy.yml` (TestFlight) | Requires green `ci.yml` on the same SHA; `main` only; runs `fastlane beta` (tests always on) | Manual dispatch |
 | `firebase-deploy.yml` | Rules tests → `firebase deploy --only firestore:rules,firestore:indexes,hosting` | Push to `main` when rules/indexes/`public/` change |
 

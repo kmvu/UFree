@@ -59,7 +59,28 @@ platform :ios do
       derived_data_path: "./fastlane/builds/DerivedData",
       xcargs: "CODE_SIGN_IDENTITY='-' CODE_SIGN_STYLE=Automatic AD_HOC_CODE_SIGNING_ALLOWED=YES ENTITLEMENTS_ALLOWED=NO PROVISIONING_PROFILE_SPECIFIER='' -skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache ONLY_ACTIVE_ARCH=NO"
     )
-    puts "✅ All tests passed"
+    test_count = Dir.glob("UFreeTests/**/*.swift").sum do |path|
+      File.readlines(path).count { |line| line.match?(/^\s*func test_/) }
+    end
+    puts "✅ All tests passed (#{test_count} test methods under UFreeTests/)"
+  end
+
+  desc "UI tests: Happy-path under UI_TESTING_MODE (iPhone 17 Pro)"
+  lane :ui_tests do
+    puts "📱 Running UI tests on iPhone 17 Pro..."
+    run_tests(
+      project: "UFree.xcodeproj",
+      scheme: "UFreeUITests",
+      devices: ["iPhone 17 Pro"],
+      clean: true,
+      fail_build: true,
+      code_coverage: false,
+      output_directory: "fastlane/test_results/ui",
+      result_bundle: true,
+      derived_data_path: "./fastlane/builds/DerivedDataUI",
+      xcargs: "CODE_SIGN_IDENTITY='-' CODE_SIGN_STYLE=Automatic AD_HOC_CODE_SIGNING_ALLOWED=YES ENTITLEMENTS_ALLOWED=NO PROVISIONING_PROFILE_SPECIFIER='' -skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache ONLY_ACTIVE_ARCH=YES"
+    )
+    puts "✅ UI tests passed"
   end
 
   desc "Emulator integration: Auth+Firestore against local emulators (requires emulators running)"

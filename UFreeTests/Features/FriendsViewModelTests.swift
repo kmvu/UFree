@@ -181,15 +181,12 @@ final class FriendsViewModelTests: XCTestCase {
 
     func test_rapidTapProtection() async {
         let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123")
-        
-        // First call sets isProcessing
-        let task = Task { await sut.sendFriendRequest(to: user, source: "manual") }
-        
-        // Immediate second call should be ignored
-        await sut.sendFriendRequest(to: user, source: "manual")
-        
-        await task.value
-        
-        XCTAssertTrue(true)
+        mockRepository.simulatedSendDelayNanoseconds = 80_000_000 // 80ms — keep first call in-flight
+
+        async let first: Void = sut.sendFriendRequest(to: user, source: "manual")
+        async let second: Void = sut.sendFriendRequest(to: user, source: "manual")
+        _ = await (first, second)
+
+        XCTAssertEqual(mockRepository.sendFriendRequestCallCount, 1)
     }
 }

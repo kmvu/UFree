@@ -153,9 +153,12 @@ struct UFreeApp: App {
             FirebaseApp.configure()
         }
 
-        // In unit tests use mock auth so tests don't depend on network/Firebase Auth
+        // In unit tests use mock auth so tests don't depend on network/Firebase Auth.
+        // UI tests launch with UI_TESTING_MODE and a deterministic signed-in mock user.
         if TestConfiguration.isRunningUnitTests {
             authRepository = MockAuthRepository()
+        } else if TestConfiguration.isRunningUITests {
+            authRepository = UITestingBootstrap.makeAuthRepository()
         } else if FirebaseApp.app() != nil {
             authRepository = FirebaseAuthRepository()
         } else {

@@ -26,16 +26,33 @@ struct RootView: View {
         self.authRepository = authRepository
 
         // 1. Setup Repositories — local SwiftData is UID-scoped via bind(userId:)
-        let localAvailability = SwiftDataAvailabilityRepository(container: container)
-        let availabilityRepo = CompositeAvailabilityRepository(
-            local: localAvailability,
-            remote: FirebaseAvailabilityRepository()
-        )
+        let localAvailability: SwiftDataAvailabilityRepository
+        let availabilityRepo: CompositeAvailabilityRepository
+        let friendRepo: FriendRepositoryProtocol
+        let notificationRepo: NotificationRepository
+
+        if TestConfiguration.isRunningUITests {
+            localAvailability = UITestingBootstrap.makeLocalAvailability(container: container)
+            let remoteAvailability = UITestingBootstrap.makeAvailabilityRemote()
+            availabilityRepo = CompositeAvailabilityRepository(
+                local: localAvailability,
+                remote: remoteAvailability
+            )
+            friendRepo = UITestingBootstrap.makeFriendRepository()
+            notificationRepo = UITestingBootstrap.makeNotificationRepository()
+        } else {
+            localAvailability = SwiftDataAvailabilityRepository(container: container)
+            availabilityRepo = CompositeAvailabilityRepository(
+                local: localAvailability,
+                remote: FirebaseAvailabilityRepository()
+            )
+            friendRepo = FirebaseFriendRepository()
+            notificationRepo = FirebaseNotificationRepository()
+        }
+
         self.localAvailabilityRepository = localAvailability
         self.compositeAvailabilityRepository = availabilityRepo
-        let friendRepo = FirebaseFriendRepository()
         self.friendRepository = friendRepo
-        let notificationRepo = FirebaseNotificationRepository()
 
         // 2. Instantiate ViewModels (Non-StateObject versions for injection)
         let scheduleVM = MyScheduleViewModel(
@@ -50,6 +67,17 @@ struct RootView: View {
         let friendsVM = FriendsViewModel(friendRepository: friendRepo)
         let notificationVM = NotificationViewModel(repository: notificationRepo)
         let rootVM = RootViewModel(authRepository: authRepository)
+
+        if TestConfiguration.isRunningUITests {
+            // Deterministic authenticated entry for XCUITest (avoid AsyncStream attach races).
+            let uiUser = User(
+                id: UITestingBootstrap.uiTestUserId,
+                isAnonymous: false,
+                displayName: "UI Tester"
+            )
+            rootVM.currentUser = uiUser
+            rootVM.authPhase = .authenticated
+        }
 
         // 3. Inject dependencies into Root
         rootVM.friendsScheduleViewModel = friendsScheduleVM
@@ -406,6 +434,7 @@ struct MainAppView: View {
             }
             .tabItem {
                 Label("Schedule", systemImage: "calendar")
+                    .accessibilityIdentifier("tab.schedule")
             }
             .tag(RootViewModel.Tab.schedule)
 
@@ -421,6 +450,7 @@ struct MainAppView: View {
             }
             .tabItem {
                 Label("Who's Free?", systemImage: "person.2.fill")
+                    .accessibilityIdentifier("tab.whosFree")
             }
             .tag(RootViewModel.Tab.feed)
 
@@ -435,6 +465,7 @@ struct MainAppView: View {
             }
             .tabItem {
                 Label("Add Friends", systemImage: "person.badge.plus")
+                    .accessibilityIdentifier("tab.friends")
             }
             .tag(RootViewModel.Tab.friends)
         }
