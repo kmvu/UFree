@@ -36,15 +36,20 @@ public struct MyScheduleView: View {
                         myWeekCarouselSection
                             .padding(.vertical, 24)
 
-                        // Light invite CTA when still alone (Who's Free lives on home tab)
+                        // Light invite hint when still alone (first-hangout coach lives on Who's Free)
                         if rootViewModel.friendsScheduleViewModel?.friendSchedules.isEmpty != false {
-                            OnboardingCardView {
+                            Button {
                                 rootViewModel.activeTab = .friends
+                            } label: {
+                                Label("Invite a friend to plan together", systemImage: "person.badge.plus")
+                                    .frame(maxWidth: .infinity)
                             }
+                            .ufreeSecondaryButton()
                             .padding(.horizontal)
                             .padding(.bottom, 24)
                         }
                     }
+                    .adaptiveContentWidth(AdaptiveLayout.scheduleContentMaxWidth)
                     .opacity(isLoaded ? 1 : 0)
                     .offset(y: isLoaded ? 0 : 10)
                 }
@@ -77,7 +82,7 @@ public struct MyScheduleView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingSettings) {
+        .adaptiveSheet(isPresented: $showingSettings) {
             if let friendRepo = rootViewModel.friendsViewModel?.friendRepository {
                 SettingsView(viewModel: SettingsViewModel(
                     authRepository: rootViewModel.authRepository,
@@ -85,7 +90,6 @@ public struct MyScheduleView: View {
                 ))
             }
         }
-
         .task {
             await viewModel.loadSchedule()
 
@@ -94,11 +98,11 @@ public struct MyScheduleView: View {
                 isLoaded = true
             }
         }
-        .modifier(AdaptiveSheetModifier(item: $selectedDayForSheet) { day in
+        .adaptiveSheet(item: $selectedDayForSheet) { day in
             DayDetailsBottomSheet(day: day) { updatedDay in
                 viewModel.updateStatus(for: updatedDay)
             }
-        })
+        }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
                 viewModel.errorMessage = nil
@@ -128,7 +132,19 @@ public struct MyScheduleView: View {
                 .padding(.horizontal)
 
             if horizontalSizeClass == .regular {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 16)], spacing: 16) {
+                LazyVGrid(
+                    columns: [
+                        GridItem(
+                            .adaptive(
+                                minimum: AdaptiveLayout.scheduleDayCardMinWidth,
+                                maximum: AdaptiveLayout.scheduleDayCardMaxWidth
+                            ),
+                            spacing: 12
+                        )
+                    ],
+                    alignment: .leading,
+                    spacing: 12
+                ) {
                     ForEach(viewModel.weeklySchedule) { day in
                         dayCard(for: day)
                     }
@@ -203,28 +219,6 @@ public struct MyScheduleView: View {
             Spacer()
         }
         .padding()
-    }
-}
-
-// MARK: - Adaptive Presentation Modifier
-
-struct AdaptiveSheetModifier<Item: Identifiable, SheetContent: View>: ViewModifier {
-    @Binding var item: Item?
-    let content: (Item) -> SheetContent
-
-    func body(content: Content) -> some View {
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            content
-                .popover(item: $item) { value in
-                    self.content(value)
-                }
-        } else {
-            content
-                .sheet(item: $item) { value in
-                    self.content(value)
-                        .presentationDetents([.medium, .large])
-                }
-        }
     }
 }
 

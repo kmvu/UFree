@@ -11,6 +11,7 @@ public struct FriendsView: View {
     @StateObject private var viewModel: FriendsViewModel
     @ObservedObject var rootViewModel: RootViewModel
     @FocusState private var isSearchFocused: Bool
+    @State private var friendPendingRemoval: UserProfile?
 
     public init(friendRepository: FriendRepositoryProtocol, rootViewModel: RootViewModel) {
         self.init(viewModel: FriendsViewModel(friendRepository: friendRepository), rootViewModel: rootViewModel)
@@ -24,61 +25,94 @@ public struct FriendsView: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(spacing: 24) {
-                        if let userId = rootViewModel.currentUser?.id {
-                            DiscoveryCardView(viewModel: viewModel, userId: userId)
-                            
-                            shareInviteLinkButton(userId: userId)
-                        }
-                        
-                        VStack(spacing: 12) {
-                            incomingRequestsSection
-                            myFriendsSection
-                            suggestedFromContactsSection
-                                .id("bottomOfPage")
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 24) {
+                    if let userId = rootViewModel.currentUser?.id {
+                        DiscoveryCardView(viewModel: viewModel, userId: userId)
+                            .adaptiveContentWidth()
+
+                        shareInviteLinkButton(userId: userId)
+                            .adaptiveContentWidth()
+                    }
+
+                    VStack(spacing: 12) {
+                        incomingRequestsSection
+                        myFriendsSection
+                        suggestedFromContactsSection
+                            .id("bottomOfPage")
+                    }
+                    .adaptiveContentWidth()
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+            }
+            .onChange(of: isSearchFocused) { _, focused in
+                if focused {
+                    // Small delay to allow keyboard to begin appearing and ScrollView to adjust
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            proxy.scrollTo("bottomOfPage", anchor: .bottom)
                         }
                     }
-                    .padding()
                 }
-                .onChange(of: isSearchFocused) { _, focused in
-                    if focused {
-                        // Small delay to allow keyboard to begin appearing and ScrollView to adjust
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation(.easeOut(duration: 0.3)) {
-                                proxy.scrollTo("bottomOfPage", anchor: .bottom)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Friends")
-            .overlay { if viewModel.isLoading { ProgressView() } }
-            .task {
-                viewModel.listenToRequests()
-                await viewModel.loadFriends()
-            }
-            .onDisappear {
-                viewModel.stopListening()
-            }
-            .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
-                Button("OK") { viewModel.errorMessage = nil }
-            } message: {
-                if let error = viewModel.errorMessage { Text(error) }
-            }
-            .alert("Permission Needed", isPresented: $viewModel.showPermissionAlert) {
-                Button("Settings", role: .cancel) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
-                }
-                Button("Cancel", role: .destructive) {}
-            } message: {
-                Text("Please allow Contacts access in Settings to find friends.")
             }
         }
+        .navigationTitle("Friends")
+        .overlay { if viewModel.isLoading { ProgressView() } }
+        .task {
+            // Warm listeners if this tab is opened before MainAppView.onAppear finishes.
+            // Do not stopListening on disappear — MainAppView owns the shared VM lifecycle.
+            viewModel.listenToRequests()
+            viewModel.listenToFriends()
+            await viewModel.loadFriends()
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NotificationBellButton(isPresented: .constant(false))
+            }
+        }
+        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+            Button("OK") { viewModel.errorMessage = nil }
+        } message: {
+            if let error = viewModel.errorMessage { Text(error) }
+        }
+        .alert("Permission Needed", isPresented: $viewModel.showPermissionAlert) {
+            Button("Settings", role: .cancel) {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .destructive) {}
+        } message: {
+            Text("Please allow Contacts access in Settings to find friends.")
+        }
+        .alert("Remove Friend?", isPresented: removalConfirmationIsPresented) {
+            Button("Remove", role: .destructive) {
+                if let friend = friendPendingRemoval {
+                    Task { await viewModel.removeFriend(friend) }
+                }
+                friendPendingRemoval = nil
+            }
+            Button("Cancel", role: .cancel) {
+                friendPendingRemoval = nil
+            }
+        } message: {
+            if let friend = friendPendingRemoval {
+                Text("\(friend.displayName) will be removed from your trusted circle. You can add them again anytime.")
+            }
+        }
+    }
+
+    private var removalConfirmationIsPresented: Binding<Bool> {
+        Binding(
+            get: { friendPendingRemoval != nil },
+            set: { isPresented in
+                if !isPresented {
+                    friendPendingRemoval = nil
+                }
+            }
+        )
     }
 
     @ViewBuilder
@@ -94,11 +128,11 @@ public struct FriendsView: View {
                     Circle()
                         .fill(Color.white.opacity(0.2))
                         .frame(width: 44, height: 44)
-                    
+
                     Image(systemName: "link")
                         .font(.title3)
                 }
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Share Invite Link")
                         .font(.headline)
@@ -106,9 +140,9 @@ public struct FriendsView: View {
                         .font(.caption)
                         .opacity(0.9)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: "square.and.arrow.up")
                     .font(.subheadline)
             }
@@ -155,22 +189,31 @@ public struct FriendsView: View {
                         Spacer()
                         
                         HStack(spacing: 8) {
-                            Button("Accept") {
-                                HapticManager.success()
+                            Button {
                                 Task { await viewModel.acceptRequest(request) }
+                            } label: {
+                                if viewModel.isProcessingRequest(request) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Text("Accept")
+                                }
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.green)
-                            .controlSize(.small)
-                            
+                            .ufreeCompactButton(tint: .green)
+                            .disabled(viewModel.hasActiveRequestAction)
+
                             Button(role: .destructive) {
-                                HapticManager.warning()
                                 Task { await viewModel.declineRequest(request) }
                             } label: {
-                                Image(systemName: "xmark")
+                                if viewModel.isProcessingRequest(request) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Image(systemName: "xmark")
+                                }
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                            .ufreeCompactButton(prominent: false, tint: .secondary)
+                            .disabled(viewModel.hasActiveRequestAction)
                         }
                     }
                     .padding(.vertical, 4)
@@ -191,13 +234,6 @@ public struct FriendsView: View {
                 ForEach(viewModel.friends) { friend in
                     friendRow(for: friend, isDiscovered: false)
                         .padding(.horizontal)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                Task { await viewModel.removeFriend(friend) }
-                            } label: {
-                                Label("Remove Friend", systemImage: "person.badge.minus")
-                            }
-                        }
                 }
             }
         }
@@ -257,14 +293,9 @@ public struct FriendsView: View {
                         Task { await viewModel.findFriendsFromContacts() }
                     }) {
                         Label("Sync Contacts", systemImage: "person.2.badge.gearshape")
-                            .font(.subheadline).bold()
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.accentColor.opacity(0.1))
-                            .foregroundColor(.accentColor)
-                            .cornerRadius(20)
                     }
-                    .buttonStyle(InteractiveButtonStyle())
+                    .ufreeSecondaryButton()
                 } else {
                     ForEach(viewModel.discoveredUsers) { user in
                         friendRow(for: user, isDiscovered: true, source: "contact_sync")
@@ -301,26 +332,44 @@ public struct FriendsView: View {
                             .help("In your contacts")
                     }
                 }
-                Text(isDiscovered ? "UFree Member" : "Connected").font(.caption).foregroundStyle(.secondary)
+                Text(
+                    viewModel.isAlreadyFriend(user) || !isDiscovered
+                        ? "Connected"
+                        : "UFree Member"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             
             Spacer()
             
             if isDiscovered {
-                if viewModel.isProcessing && viewModel.isSearching {
+                if viewModel.isAlreadyFriend(user) {
+                    removeFriendButton(for: user)
+                } else if viewModel.isProcessing && viewModel.isSearching {
                     ProgressView().controlSize(.small)
                 } else {
                     Button("Request") { 
                         Task { await viewModel.sendFriendRequest(to: user, source: source) } 
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .tint(.green)
+                    .ufreeCompactButton(tint: .green)
                     .disabled(viewModel.isProcessing)
                 }
+            } else {
+                removeFriendButton(for: user)
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private func removeFriendButton(for user: UserProfile) -> some View {
+        Button("Remove") {
+            HapticManager.warning()
+            friendPendingRemoval = user
+        }
+        .ufreeCompactButton(prominent: false, tint: .red)
+        .disabled(viewModel.isProcessing)
+        .accessibilityHint("Removes \(user.displayName) from your trusted circle")
     }
 }
 

@@ -27,8 +27,8 @@ public protocol AuthRepository {
     func updateDisplayName(_ name: String) async throws
     
     #if DEBUG
-    /// Authenticates with a whitelisted test phone number (DEBUG only, no SMS required).
-    /// Firebase must have the test number configured in Authentication settings.
+    /// DEBUG multi-account helper. Implementations use anonymous auth; `phoneNumber` identifies
+    /// which test persona the UI will attach (display name + hashed phone for discovery).
     /// - Parameter phoneNumber: Test phone number (e.g., "+15550000001")
     func signInAsTestUser(phoneNumber: String) async throws -> User
     #endif

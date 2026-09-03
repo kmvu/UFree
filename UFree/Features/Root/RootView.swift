@@ -116,6 +116,7 @@ struct RootView: View {
 
 struct MainAppView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @Environment(\.verticalSizeClass) var verticalSizeClass
     let authRepository: AuthRepository
     @ObservedObject var rootViewModel: RootViewModel
     let user: User
@@ -134,26 +135,57 @@ struct MainAppView: View {
                 tabBarLayout
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            if rootViewModel.showPairChecklist
-                && onboardingStore.shouldShowPairChecklist(friendCount: friendsViewModel.friends.count) {
-                PairOnboardingChecklistView(
-                    hasInvited: onboardingStore.hasInvitedFriend,
-                    hasMarkedFree: onboardingStore.hasMarkedFreeDay,
-                    hasHandshake: onboardingStore.hasCompletedFirstHandshake,
-                    onInvite: {
-                        rootViewModel.activeTab = .friends
-                    },
-                    onMarkFree: {
-                        rootViewModel.activeTab = .schedule
-                        rootViewModel.showWeekendCTA = true
-                    },
-                    onDismiss: {
-                        rootViewModel.showPairChecklist = false
-                    }
-                )
-                .padding(.bottom, 8)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if verticalSizeClass != .compact {
+                if rootViewModel.showPairOnboardingBanner
+                    && rootViewModel.activeTab == .feed
+                    && onboardingStore.shouldShowPairOnboardingBanner(friendCount: friendsViewModel.friends.count) {
+                    PairOnboardingBannerView(
+                        title: onboardingStore.pairOnboardingBannerTitle,
+                        subtitle: onboardingStore.pairOnboardingBannerSubtitle,
+                        onTap: {
+                            rootViewModel.showPairOnboardingSheet = true
+                        }
+                    )
+                } else if onboardingStore.shouldShowPostConnectCoach
+                    && (rootViewModel.activeTab == .feed || rootViewModel.activeTab == .schedule) {
+                    PostConnectMissionChipView(
+                        title: OnboardingProgressStore.postConnectMissionTitle,
+                        subtitle: postConnectMissionSubtitle,
+                        onPrimary: { handlePostConnectMissionTap() },
+                        onDismiss: {
+                            rootViewModel.dismissPostConnectCoach(store: onboardingStore)
+                        }
+                    )
+                }
             }
+        }
+        .sheet(isPresented: $rootViewModel.showPairOnboardingSheet) {
+            PairOnboardingChecklistView(
+                hasInvited: onboardingStore.hasInvitedFriend,
+                hasMarkedFree: onboardingStore.hasMarkedFreeDay,
+                hasHandshake: onboardingStore.hasCompletedFirstHandshake,
+                onInvite: {
+                    rootViewModel.showPairOnboardingSheet = false
+                    rootViewModel.activeTab = .friends
+                },
+                onMarkFree: {
+                    rootViewModel.showPairOnboardingSheet = false
+                    rootViewModel.activeTab = .schedule
+                    rootViewModel.showWeekendCTA = true
+                },
+                onNotNow: {
+                    rootViewModel.showPairOnboardingSheet = false
+                },
+                onDontShowAgain: {
+                    onboardingStore.dismissPairChecklistPermanently()
+                    rootViewModel.showPairOnboardingSheet = false
+                    rootViewModel.showPairOnboardingBanner = false
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(.regularMaterial)
         }
         .sheet(item: $rootViewModel.deepLinkProfileId) { userId in
             // Profile Card View for Deep Links
@@ -163,7 +195,8 @@ struct MainAppView: View {
                 Button("Cancel") { rootViewModel.deepLinkProfileId = nil }.foregroundStyle(.secondary)
             }
             .padding()
-            .presentationDetents([.medium])
+            .adaptiveContentWidth(AdaptiveLayout.formContentMaxWidth)
+            .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $rootViewModel.showWeekendCTA) {
             WeekendFreePromptView(
@@ -173,34 +206,53 @@ struct MainAppView: View {
                         OnboardingProgressStore.shared.consumeWeekendCTA()
                         rootViewModel.showWeekendCTA = false
                         rootViewModel.activeTab = .feed
+                        onboardingStore.activatePostConnectCoach()
                     }
                 },
                 onDismiss: {
                     OnboardingProgressStore.shared.consumeWeekendCTA()
                     rootViewModel.showWeekendCTA = false
+                    // Stay on Schedule with a soft next-mission chip.
+                    rootViewModel.activeTab = .schedule
+                    onboardingStore.activatePostConnectCoach()
                 }
             )
-            .presentationDetents([.medium])
+            .adaptiveContentWidth(AdaptiveLayout.formContentMaxWidth)
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $notificationViewModel.showNotificationCenter) {
+            NotificationCenterView(viewModel: notificationViewModel)
+                .adaptiveNotificationCenterPresentation()
         }
         .overlay(alignment: .top) {
-            if let toast = rootViewModel.celebrationToast {
-                Text(toast)
-                    .font(.subheadline.bold())
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                            withAnimation {
-                                rootViewModel.celebrationToast = nil
-                            }
-                        }
+            VStack(spacing: 8) {
+                if let banner = notificationViewModel.incomingBanner {
+                    NotificationBannerView(notification: banner) {
+                        notificationViewModel.handleIncomingBannerTap()
                     }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
+                if let toast = rootViewModel.celebrationToast {
+                    Text(toast)
+                        .font(.subheadline.bold())
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
         }
+        .animation(
+            .spring(response: 0.35, dampingFraction: 0.86),
+            value: notificationViewModel.incomingBanner.map {
+                "\($0.senderId)-\($0.type.rawValue)-\($0.date.timeIntervalSince1970)"
+            }
+        )
+        .animation(.easeInOut(duration: 0.25), value: rootViewModel.celebrationToast)
         .environment(\.notificationViewModel, notificationViewModel)
         .onOpenURL { url in
             handleUniversalLink(url)
@@ -208,6 +260,7 @@ struct MainAppView: View {
         .onAppear {
             wireHandshakeCallback()
             friendsViewModel.listenToRequests()
+            friendsViewModel.listenToFriends()
             onboardingStore.trackReopenIfNeeded()
             Task {
                 if friendsViewModel.friends.isEmpty {
@@ -215,41 +268,105 @@ struct MainAppView: View {
                 }
                 syncPairChecklistVisibility()
             }
-            if onboardingStore.pendingWeekendCTA {
+            // Present pending weekend CTA only when no celebration toast is active
+            // (avoids stacking with first-connection toast).
+            if onboardingStore.shouldPresentWeekendCTAAfterConnection,
+               rootViewModel.celebrationToast == nil {
                 rootViewModel.showWeekendCTA = true
             }
         }
-        .onChange(of: friendsViewModel.friends.count) { _, _ in
-            syncPairChecklistVisibility()
+        .onChange(of: friendsViewModel.friends.count) { oldCount, newCount in
+            handleFriendsCountChange(from: oldCount, to: newCount)
         }
+        .onChange(of: onboardingStore.hasInvitedFriend) { wasInvited, isInvited in
+            if !wasInvited && isInvited {
+                rootViewModel.presentOnboardingStepFeedback(
+                    OnboardingProgressStore.inviteStepToastMessage
+                )
+            }
+        }
+        .onChange(of: onboardingStore.hasMarkedFreeDay) { wasMarked, isMarked in
+            if !wasMarked && isMarked {
+                rootViewModel.presentOnboardingStepFeedback(
+                    OnboardingProgressStore.freeDayStepToastMessage
+                )
+            }
+        }
+    }
+
+    private func handleFriendsCountChange(from oldCount: Int, to newCount: Int) {
+        if onboardingStore.shouldCelebrateFirstConnection(
+            previousFriendCount: oldCount,
+            newFriendCount: newCount
+        ) {
+            onboardingStore.markFirstHandshake()
+            let friendName = friendsViewModel.friends.first?.displayName
+            rootViewModel.celebrateFirstConnection(friendName: friendName, store: onboardingStore)
+            Task {
+                await friendsScheduleViewModel.loadFriendsSchedules()
+            }
+            return
+        }
+        syncPairChecklistVisibility()
     }
 
     private func syncPairChecklistVisibility() {
         let friendCount = friendsViewModel.friends.count
         if friendCount > 0 {
+            // Returning users / already-connected: sync progress without celebration.
             onboardingStore.acknowledgeExistingFriends()
-            rootViewModel.showPairChecklist = false
+            rootViewModel.showPairOnboardingBanner = false
+            rootViewModel.showPairOnboardingSheet = false
             return
         }
-        rootViewModel.showPairChecklist = onboardingStore.shouldShowPairChecklist(friendCount: friendCount)
+        let show = onboardingStore.shouldShowPairOnboardingBanner(friendCount: friendCount)
+        rootViewModel.showPairOnboardingBanner = show
+        if !show {
+            rootViewModel.showPairOnboardingSheet = false
+        }
     }
 
     private func wireHandshakeCallback() {
-        friendsViewModel.onFirstHandshakeCompleted = {
-            let store = OnboardingProgressStore.shared
-            if !store.hasCelebratedFirstAccept {
-                store.markCelebratedFirstAccept()
-                HapticManager.success()
-                rootViewModel.celebrationToast = "You're connected — find a free night!"
-            }
-            rootViewModel.showPairChecklist = false
-            rootViewModel.activeTab = .feed
-            if store.pendingWeekendCTA {
-                rootViewModel.showWeekendCTA = true
-            }
+        friendsViewModel.onAcceptCompleted = { friendName, wasFirstFriend in
+            rootViewModel.handlePostAccept(
+                friendName: friendName,
+                wasFirstFriend: wasFirstFriend,
+                store: onboardingStore
+            )
             Task {
                 await friendsScheduleViewModel.loadFriendsSchedules()
             }
+        }
+    }
+
+    private var postConnectMissionSubtitle: String {
+        if rootViewModel.activeTab == .schedule && !onboardingStore.hasMarkedFreeDay {
+            return OnboardingProgressStore.postConnectMissionMarkFree
+        }
+        if let name = rootViewModel.postConnectFriendName,
+           let friendId = friendsScheduleViewModel.friendId(named: name),
+           let date = friendsScheduleViewModel.nextFreeDate(forFriendId: friendId) {
+            let weekday = date.formatted(.dateTime.weekday(.abbreviated))
+            return OnboardingProgressStore.postConnectNudgeMission(friendName: name, weekday: weekday)
+        }
+        if let name = rootViewModel.postConnectFriendName, !name.isEmpty {
+            return "See when you and \(name) are free — then nudge a day."
+        }
+        return OnboardingProgressStore.postConnectMissionSeeBothFree
+    }
+
+    private func handlePostConnectMissionTap() {
+        if rootViewModel.activeTab == .schedule && !onboardingStore.hasMarkedFreeDay {
+            rootViewModel.showWeekendCTA = true
+            return
+        }
+
+        rootViewModel.activeTab = .feed
+        if let name = rootViewModel.postConnectFriendName,
+           let friendId = friendsScheduleViewModel.friendId(named: name),
+           let date = friendsScheduleViewModel.nextFreeDate(forFriendId: friendId) {
+            friendsScheduleViewModel.focusDate(date)
+            rootViewModel.missionFocusDate = date
         }
     }
 
@@ -272,6 +389,7 @@ struct MainAppView: View {
             NavigationStack {
                 FriendsScheduleView(
                     viewModel: friendsScheduleViewModel,
+                    scheduleViewModel: scheduleViewModel,
                     rootViewModel: rootViewModel
                 )
                 .navigationTitle("Who's Free?")
@@ -326,6 +444,7 @@ struct MainAppView: View {
                 NavigationStack {
                     FriendsScheduleView(
                         viewModel: friendsScheduleViewModel,
+                        scheduleViewModel: scheduleViewModel,
                         rootViewModel: rootViewModel
                     )
                     .navigationTitle("Who's Free?")
@@ -352,8 +471,8 @@ struct MainAppView: View {
         
         switch deepLink {
         case .notification(let userId):
-            // Navigate to notification center and highlight sender
             notificationViewModel.highlightedSenderId = userId
+            notificationViewModel.openNotificationCenter()
             
         case .profile(let userId):
             // Trigger profile sheet via RootViewModel
@@ -424,7 +543,7 @@ struct ProfileResolutionView: View {
                         await friendsViewModel.sendFriendRequest(to: user, source: "deep_link")
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .ufreePrimaryButton(isEnabled: !friendsViewModel.isProcessing)
                 .disabled(friendsViewModel.isProcessing)
             } else {
                 Image(systemName: "person.fill.questionmark")

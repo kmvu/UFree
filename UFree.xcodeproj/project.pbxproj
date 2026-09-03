@@ -41,6 +41,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		234B43D02F0E8EDC00D51A03 /* Exceptions for "UFree" folder in "UFree" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 237D8FC32EF53F24006BAE5F /* UFree */;
+		};
 		234B43D12F0E8EDC00D51A03 /* Exceptions for "UFreeTests" folder in "UFreeTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -53,6 +60,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		237D8FC62EF53F24006BAE5F /* UFree */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				234B43D02F0E8EDC00D51A03 /* Exceptions for "UFree" folder in "UFree" target */,
+			);
 			path = UFree;
 			sourceTree = "<group>";
 		};
@@ -444,13 +454,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = UFree/UFree.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
+				DEVELOPMENT_TEAM = SNUXAG727V;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = UFree/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSCameraUsageDescription = "UFree uses the camera solely to scan friends' QR codes to connect in person.";
@@ -470,7 +479,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.khangvu.UFree;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "match AppStore com.khangvu.UFree";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -498,6 +506,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = SNUXAG727V;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = UFree/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSCameraUsageDescription = "UFree uses the camera solely to scan friends' QR codes to connect in person.";

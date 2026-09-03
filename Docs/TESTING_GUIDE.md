@@ -2,7 +2,7 @@
 
 Use this guide for automated validation, two-person checks, and release sign-off. For the purpose and success criteria of the TestFlight pilot, read the [product overview](PRODUCT_OVERVIEW.md); for release steps, use the [operations guide](OPERATIONS_GUIDE.md).
 
-**Current inventory:** 528 test methods are present under `UFreeTests/`. Coverage must be measured from a fresh result bundle; do not treat an old percentage as a release gate.
+**Current inventory:** 534 test methods are present under `UFreeTests/`. Coverage must be measured from a fresh result bundle; do not treat an old percentage as a release gate.
 
 ---
 
@@ -47,7 +47,7 @@ For a per-file breakdown, add `--files-for-target UFree.app`.
 
 Most of the app's line count lives in view bodies, and SwiftUI is lazy: constructing a view value runs no `body` code at all. Views are therefore covered by attaching them to a real `UIWindow` and forcing layout, via two helpers:
 
-- **`ViewHost`** (`UFreeTests/Helpers/ViewHost.swift`) renders a view in a visible window and forces layout passes. Use `renderAwaitingUpdates` when the view has `.task` or `.onAppear` work whose result should appear in a second body pass.
+- **`ViewHost`** (`UFreeTests/Helpers/ViewHost.swift`) renders a view in a visible window and forces layout passes. Use `renderAwaitingUpdates` when the view has `.task` or `.onAppear` work whose result should appear in a second body pass. For size-class branches, pass `ViewHost.regularPadSize` or `ViewHost.compactLandscapeSize` and override `.environment(\.horizontalSizeClass, …)` (and vertical size class when needed).
 - **`TestScene`** (`UFreeTests/Helpers/TestScene.swift`) assembles the whole mock-backed ViewModel graph the way `RootView` does, because views read across each other — `MyScheduleView` reaches into `rootViewModel.friendsScheduleViewModel`, for instance.
 
 Two things to know when writing these tests:
@@ -68,11 +68,58 @@ For testing social flows that require two real accounts without real SMS codes:
    firebase deploy --only firestore:rules,firestore:indexes
    ```
    Without `friendRequests` rules, every invite fails with a permission error dialog.
-2. **Add Firebase test phone numbers** (Firebase Console > Authentication > Phone):
-   - `+1 555-000-0001`, `+1 555-000-0002`, `+1 555-000-0003` (All code: `123456`)
-3. **Use Developer Tools** in `LoginView` (DEBUG builds only):
+2. **Use Developer Tools** in `LoginView` (DEBUG builds only):
    - Run the app on two simulators (or simulator + device).
-   - Tap "User 1", "User 2", or "User 3" to bypass SMS auth and login instantly.
+   - Tap **User 1**, **User 2**, or **User 3**. Each uses anonymous Firebase Auth (same as Get Started) and saves a fixed phone hash (`+15550000001`…`03`) so you can Find by Phone across devices.
+   - No Firebase Console “Phone numbers for testing” setup is required for these buttons.
+
+### Three-platform real-time loop (iPhone + iPad + Mac)
+
+Use this when you want **three different people** interacting at once. Mac runs as **Designed for iPad** (Debug already has `SUPPORTS_MAC_DESIGNED_FOR_IPAD = YES`). Mac Catalyst is deferred; see [ENGINEERING_GUIDE.md](ENGINEERING_GUIDE.md) Adaptive layout.
+
+| Platform | Destination | DEBUG account |
+|---|---|---|
+| iPhone | Physical device or iPhone simulator | User 1 |
+| iPad | Physical device or iPad simulator | User 2 |
+| Mac | **My Mac (Designed for iPad)** — scheme **Debug** (Automatic signing) | User 3 |
+
+**Setup**
+
+1. Complete the Firebase test-user prep above (rules/indexes + phone numbers).
+2. In Xcode, select the `UFree` scheme (Debug).
+3. Run three destinations, one at a time or with multiple run destinations if configured:
+   - iPhone → tap **User 1**
+   - iPad → tap **User 2**
+   - Mac → destination **My Mac (Designed for iPad)** → tap **User 3**
+4. One install = one auth session. Do not expect multiple Mac accounts from a single Mac window.
+
+**Connect without relying on Mac camera**
+
+Mac QR **scan** is soft-gated when no usable camera is available. Prefer:
+
+- Phone search: User A finds User B by `+1555000000X`, or
+- Invite / profile link: share `https://ufree.app/profile/{userId}`, or
+- Show QR on Mac, scan from iPhone/iPad (scan direction toward a device with a camera).
+
+Accept friend requests on each side until all three are connected (or the dyads you care about).
+
+**Interact in real time**
+
+1. Keep all three apps **foregrounded**. Background push is unavailable in the current pilot; in-app listeners need an active session.
+2. Connect: User A searches User B’s phone → **Request**; User B opens **Add Friends** (Friend Requests) or the **bell** → **Accept**.
+3. Inviter / acceptor should toast **Connected with {name}!** (or the generic first-connect line). If they still need a free day → **Schedule** + weekend sheet; if already marked free → **Who’s Free?** with a **Next mission** chip. Subsequent accepts always go to Who’s Free with a named toast (Add Friends and bell). Already-connected users must not show **Request** again in search.
+4. Mark free days on My Schedule on each account (or accept the weekend CTA). Mission chip should appear / update after.
+5. Confirm **Who’s Free?** updates across devices; mission chip clears after dismiss or first nudge.
+6. Send a day-scoped nudge from one account; reply from another via the in-app notification center (bell).
+7. On Mac/iPad regular width, expect sidebar + week matrix (same adaptive path as iPad).
+
+**Quick checklist**
+
+- [ ] User 1 / 2 / 3 each logged in on a different platform.
+- [ ] At least one friend edge between each pair you intend to test (or a full triangle).
+- [ ] Schedule changes appear on the other devices without relaunch.
+- [ ] Nudge + reply works with all three apps open.
+- [ ] Mac does not block the loop when QR scan is unavailable.
 
 ---
 
@@ -82,9 +129,9 @@ Run these manually before any release to validate end-to-end stability.
 
 | # | Scenario | Steps | Expected Result |
 |---|---|---|---|
-| 1 | **Friend Request Flow** | User A searches User B by phone → sends request. User B accepts. | Both see each other in friend list within ~3s. |
+| 1 | **Friend Request Flow** | User A searches User B by phone → sends request. User B accepts. | Both see each other in friend list within ~3s. Toast + smart branch (weekend CTA or Who’s Free mission chip). |
 | 2 | **Day-scoped Nudge** | Select a day chip → tap wave on User B (or Nudge All). | User B sees “Free {weekday}?” with I’m in / Maybe / Busy actions. |
-| 3 | **Nudge Reply** | User B taps I’m in. | User A inbox shows “B is in for {weekday}”; B’s day marked free. |
+| 3 | **Nudge Reply** | User B taps I’m in. | User A inbox + banner show “B is in for {weekday}”; Who’s Free focuses that day with **In** on B’s cell (Maybe/Busy similarly); B’s day marked free for I’m in. |
 | 3b | **Batch Nudge** | Select day with 2+ free friends (incl. afternoon-only) → nudge all. | Success toast shows count. Partials are included. |
 | 4 | **QR Connection** | Open QR code on B. Scan from A. | A sees B's profile instantly with friend request button. |
 | 5 | **Rapid-Tap Guard** | Rapidly tap any nudge or request button. | Only **one** request sent; button disables while processing. |
@@ -93,6 +140,7 @@ Run these manually before any release to validate end-to-end stability.
 | 8 | **Deep Linking** | Visit `https://ufree.app/profile/{userId}` in Safari. | App opens to specific user's card. |
 | 9 | **Cold Start** | Force-quit app → reopen. | User stays logged in. Local data loads from SwiftData cache. |
 | 10 | **Notification Bell** | Tap bell after receiving nudge. | Inbox opens; unread count resets to 0. |
+| 11 | **Large screen** | Run on iPad (or iPhone landscape). | Sidebar on regular width; Who’s Free uses a week matrix; status banner doesn’t crowd the schedule. |
 
 ---
 
@@ -125,10 +173,11 @@ Run these manually before any release to validate end-to-end stability.
 Run this with two TestFlight users or two debug simulators before recruiting pilot participants:
 
 1. A shares a link or QR code; B sends or accepts the connection request.
-2. Both mark a weekend day free.
-3. Confirm **Who’s Free?** shows the other person, including partial availability.
-4. A sends a day-specific nudge; B replies **I’m in**.
-5. Confirm A sees the reply in the in-app notification center.
+2. Both mark a weekend day free (e.g. Saturday).
+3. Open **Who’s Free?** on each device **without pull-to-refresh** — each should see the other’s free day.
+4. When both are free the same day, that day should show a mutual cue (day chip **Both** and/or friend cell **Both**).
+5. A sends a day-specific nudge from that day; B replies **I’m in**.
+6. Confirm A sees the reply in the in-app notification center (and on Who’s Free).
 
 For the actual recruiting, success threshold, and foreground-only limitation, use [Operations guide → TestFlight dyad pilot](OPERATIONS_GUIDE.md#testflight-dyad-pilot).
 
@@ -144,8 +193,10 @@ For the actual recruiting, success threshold, and foreground-only limitation, us
 - [ ] Cold start preserves user authentication.
 - [ ] App remains stable in Airplane mode.
 - [ ] Two-person pilot smoke passes when a social flow changed.
+- [ ] Three-platform loop (iPhone + iPad + Mac Designed for iPad) when cross-device social behavior changed.
+- [ ] Large-screen smoke (row 11) when layout or navigation chrome changed.
 - [ ] The TestFlight release checklist in the operations guide is complete.
 
 ---
 
-**Last reviewed:** August 1, 2026
+**Last reviewed:** August 8, 2026

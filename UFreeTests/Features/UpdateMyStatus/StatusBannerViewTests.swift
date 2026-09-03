@@ -153,4 +153,41 @@ final class StatusBannerViewTests: XCTestCase {
 
         XCTAssertFalse(bannerViewModel.isExpanded)
     }
+
+    // MARK: - Adaptive Layout
+
+    func test_render_expanded_compactLandscape_fitsStatusOptions() async {
+        setStatus(.free, onDayAt: 0)
+        bannerViewModel.isExpanded = true
+
+        await ViewHost.renderAwaitingUpdates(
+            makeView().environment(\.verticalSizeClass, .compact),
+            size: ViewHost.compactLandscapeSize
+        )
+
+        XCTAssertTrue(bannerViewModel.isExpanded)
+    }
+
+    func test_render_expanded_regularWidth_clustersStatusOptions() async {
+        setStatus(.free, onDayAt: 0)
+        bannerViewModel.isExpanded = true
+
+        await ViewHost.renderAwaitingUpdates(
+            makeView().environment(\.horizontalSizeClass, .regular),
+            size: ViewHost.regularPadSize
+        )
+
+        XCTAssertTrue(bannerViewModel.isExpanded)
+    }
+
+    func test_render_collapsed_compactLandscape_usesShorterBanner() async {
+        setStatus(.free, onDayAt: 0)
+
+        await ViewHost.renderAwaitingUpdates(
+            makeView().environment(\.verticalSizeClass, .compact),
+            size: ViewHost.compactLandscapeSize
+        )
+
+        XCTAssertFalse(bannerViewModel.isExpanded)
+    }
 }

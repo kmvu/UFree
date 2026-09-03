@@ -39,7 +39,7 @@ final class MyScheduleViewTests: XCTestCase {
         await ViewHost.renderAwaitingUpdates(makeView())
     }
 
-    func test_render_withScheduleButNoFriends_showsOnboardingCard() async {
+    func test_render_withScheduleButNoFriends_showsInviteHint() async {
         await ViewHost.renderAwaitingUpdates(makeView())
 
         XCTAssertTrue(scene.friendsScheduleViewModel.friendSchedules.isEmpty)

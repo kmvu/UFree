@@ -11,6 +11,10 @@ struct DayFilterButtonView: View {
     let date: Date
     let isSelected: Bool
     let freeCount: Int
+    /// When true, I’m free and at least one friend is free on this day.
+    var isMutualFree: Bool = false
+    /// When true, the button fills available width (regular-width day filters).
+    var expandsHorizontally: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -18,7 +22,7 @@ struct DayFilterButtonView: View {
             HapticManager.selection()
             action()
         }) {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 // Weekday (abbreviated)
                 Text(date.formatted(.dateTime.weekday(.abbreviated)))
                     .font(.system(size: 10, weight: .bold))
@@ -32,17 +36,25 @@ struct DayFilterButtonView: View {
                 
                 // Free count badge
                 if freeCount > 0 {
-                    HStack(spacing: 2) {
-                        Image(systemName: "bolt.fill")
-                            .font(.system(size: 8))
-                        Text("\(freeCount)")
-                            .font(.system(size: 10, weight: .black))
+                    VStack(spacing: 3) {
+                        HStack(spacing: 2) {
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 8))
+                            Text("\(freeCount)")
+                                .font(.system(size: 10, weight: .black))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(isSelected ? .white : Color.accentColor)
+                        .foregroundStyle(isSelected ? Color.accentColor : .white)
+                        .clipShape(Capsule())
+
+                        if isMutualFree {
+                            Text("Both")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(isSelected ? .white : Color.green)
+                        }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(isSelected ? .white : Color.accentColor)
-                    .foregroundStyle(isSelected ? Color.accentColor : .white)
-                    .clipShape(Capsule())
                 } else {
                     Circle()
                         .fill(isSelected ? .white.opacity(0.2) : Color.gray.opacity(0.1))
@@ -50,7 +62,9 @@ struct DayFilterButtonView: View {
                         .padding(.top, 4)
                 }
             }
-            .frame(width: 64, height: 94)
+            .frame(width: expandsHorizontally ? nil : 64)
+            .frame(maxWidth: expandsHorizontally ? .infinity : nil)
+            .frame(height: isMutualFree && freeCount > 0 ? 104 : 94)
             .background(
                 ZStack {
                     if isSelected {

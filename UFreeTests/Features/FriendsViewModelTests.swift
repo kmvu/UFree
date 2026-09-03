@@ -137,6 +137,31 @@ final class FriendsViewModelTests: XCTestCase {
         XCTAssertEqual(sut.incomingRequests.count, 0)
     }
 
+    func test_acceptRequest_firesOnAcceptCompleted_forSubsequentFriend() async {
+        sut.friends = [UserProfile(id: "existing", displayName: "Existing")]
+        let request = FriendRequest(
+            id: "req2",
+            fromId: "user2",
+            fromName: "Bob",
+            toId: "me",
+            status: .pending,
+            timestamp: Date()
+        )
+        sut.incomingRequests = [request]
+
+        var completedName: String?
+        var completedWasFirst: Bool?
+        sut.onAcceptCompleted = { name, wasFirst in
+            completedName = name
+            completedWasFirst = wasFirst
+        }
+
+        await sut.acceptRequest(request)
+
+        XCTAssertEqual(completedName, "Bob")
+        XCTAssertEqual(completedWasFirst, false)
+    }
+
     func test_declineRequest_removesFromIncoming() async {
         let request = FriendRequest(
             id: "req1",

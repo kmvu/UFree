@@ -78,7 +78,7 @@ final class LoginViewModel: ObservableObject {
     #if DEBUG
     // MARK: - Debug Methods
     
-    /// Logs in as a test user with a whitelisted phone number (no SMS required)
+    /// Logs in as a distinct DEBUG persona (anonymous auth + fixed phone hash for discovery).
     /// - Parameter index: 0 = User 1, 1 = User 2, 2 = User 3
     func loginAsTestUser(index: Int) {
         let testNumbers = [
@@ -94,14 +94,12 @@ final class LoginViewModel: ObservableObject {
         Task {
             isLoading = true
             do {
-                // Firebase recognizes these whitelisted numbers and doesn't require SMS
                 _ = try await authRepository.signInAsTestUser(phoneNumber: phoneNumber)
                 
-                // Update name to identify the test user
                 let displayName = "Test User \(index + 1)"
                 try await authRepository.updateDisplayName(displayName)
                 
-                // Also update Firestore profile for test users so they are discoverable
+                // Same phone hashes production uses — enables Find by Phone between DEBUG users.
                 let hashes = CryptoUtils.phoneNumberHashes(for: phoneNumber)
                 try await friendRepository.saveUserProfile(
                     displayName: displayName,

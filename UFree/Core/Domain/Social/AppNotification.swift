@@ -25,6 +25,8 @@ public struct AppNotification: Identifiable, Codable {
 
     public enum NotificationType: String, Codable {
         case friendRequest
+        /// Recipient accepted — shown in the inviter’s inbox.
+        case friendAccepted
         case nudge
         case nudgeReply
     }
@@ -37,6 +39,15 @@ public struct AppNotification: Identifiable, Codable {
         public var displayLabel: String {
             switch self {
             case .imIn: return "I'm in"
+            case .maybe: return "Maybe"
+            case .busy: return "Busy"
+            }
+        }
+
+        /// Compact label for Who's Free day cells.
+        public var shortLabel: String {
+            switch self {
+            case .imIn: return "In"
             case .maybe: return "Maybe"
             case .busy: return "Busy"
             }

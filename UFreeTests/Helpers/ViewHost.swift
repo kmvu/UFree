@@ -23,6 +23,12 @@ enum ViewHost {
     /// outside the enclosing actor's isolation.
     nonisolated static let defaultSize = CGSize(width: 402, height: 2400)
 
+    /// Compact phone landscape — short height, still compact width class in tests.
+    nonisolated static let compactLandscapeSize = CGSize(width: 844, height: 390)
+
+    /// Regular-width iPad-ish host for sidebar / matrix layouts.
+    nonisolated static let regularPadSize = CGSize(width: 1024, height: 768)
+
     /// Permanent root of the shared window. Each render adds its hosting controller as a
     /// child of this container rather than becoming the window root itself.
     ///

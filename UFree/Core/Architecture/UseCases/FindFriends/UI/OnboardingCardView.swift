@@ -54,25 +54,12 @@ public struct OnboardingCardView: View {
             }) {
                 HStack(spacing: 10) {
                     Text("Invite a Friend")
-                        .fontWeight(.bold)
-                    
                     Image(systemName: "arrow.right")
                         .font(.system(size: 14, weight: .bold))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    LinearGradient(
-                        colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .foregroundColor(.white)
-                .cornerRadius(18)
-                .shadow(color: Color.accentColor.opacity(0.3), radius: 10, x: 0, y: 5)
             }
-            .buttonStyle(InteractiveButtonStyle())
+            .ufreePrimaryButton()
             .padding(.horizontal, 10)
         }
         .padding(32)

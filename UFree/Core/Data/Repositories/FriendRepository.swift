@@ -56,6 +56,41 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         return friends
     }
 
+    nonisolated func observeFriends() -> AsyncStream<[UserProfile]> {
+        AsyncStream { continuation in
+            guard let uid = Auth.auth().currentUser?.uid else {
+                continuation.finish()
+                return
+            }
+
+            let listener = db.collection("users").document(uid)
+                .addSnapshotListener { [weak self] snapshot, error in
+                    if error != nil {
+                        continuation.finish()
+                        return
+                    }
+
+                    let friendIds = snapshot?.data()?["friendIds"] as? [String] ?? []
+                    guard !friendIds.isEmpty else {
+                        continuation.yield([])
+                        return
+                    }
+
+                    Task {
+                        guard let self else { return }
+                        do {
+                            let friends = try await self.profiles(forFriendIds: friendIds)
+                            continuation.yield(friends)
+                        } catch {
+                            // Keep listening; next snapshot may succeed.
+                        }
+                    }
+                }
+
+            continuation.onTermination = { _ in listener.remove() }
+        }
+    }
+
     func findUserByPhoneNumber(_ phoneNumber: String) async throws -> UserProfile? {
         guard let currentUserId = Auth.auth().currentUser?.uid else {
             return nil
@@ -75,7 +110,7 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
 
         // Return the first match that isn't the current user
         for doc in snapshot.documents {
-            if let user = try? doc.data(as: UserProfile.self),
+            if let user = decodeUserProfile(from: doc),
                user.id != currentUserId {
                 return user
             }
@@ -88,7 +123,7 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
                 .whereField("hashedPhoneNumber", isEqualTo: legacyHash)
                 .getDocuments()
             for doc in legacySnapshot.documents {
-                if let user = try? doc.data(as: UserProfile.self),
+                if let user = decodeUserProfile(from: doc),
                    user.id != currentUserId {
                     return user
                 }
@@ -134,7 +169,7 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
 
     func findUserById(_ userId: String) async throws -> UserProfile? {
         let snapshot = try await db.collection("users").document(userId).getDocument()
-        return try? snapshot.data(as: UserProfile.self)
+        return decodeUserProfile(from: snapshot)
     }
     
     func findFriendsFromContactHashes(_ hashes: [String]) async throws -> [UserProfile] {
@@ -261,6 +296,21 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         batch.updateData(["friendIds": FieldValue.arrayUnion([request.toId])], forDocument: theirRef)
         
         try await batch.commit()
+
+        // Notify the inviter so their inbox / toast path can react even if they missed
+        // the friends-list snapshot.
+        let acceptorName = Auth.auth().currentUser?.displayName ?? "Your friend"
+        let note = AppNotification(
+            recipientId: request.fromId,
+            senderId: request.toId,
+            senderName: acceptorName,
+            type: .friendAccepted,
+            date: Date(),
+            isRead: false,
+            relatedRequestId: requestId
+        )
+        _ = try await db.collection("users").document(request.fromId).collection("notifications")
+            .addDocument(from: note)
     }
     
     func declineFriendRequest(_ request: FriendRequest) async throws {
@@ -292,6 +342,24 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
     }
     
     // MARK: - Private Helpers
+
+    /// Resolves friend profiles for the given IDs (batched; same shape as `getMyFriends`).
+    private func profiles(forFriendIds friendIds: [String]) async throws -> [UserProfile] {
+        guard !friendIds.isEmpty else { return [] }
+        let chunks = friendIds.chunked(into: 10)
+        var friends: [UserProfile] = []
+        try await withThrowingTaskGroup(of: [UserProfile].self) { group in
+            for chunk in chunks {
+                group.addTask {
+                    try await self.fetchUsers(withIds: chunk)
+                }
+            }
+            for try await users in group {
+                friends.append(contentsOf: users)
+            }
+        }
+        return friends
+    }
     
     /// Queries Firestore for users whose `hashedPhoneNumbers` array contains any of the
     /// given hashes (new array field).  Falls back to the legacy `hashedPhoneNumber`
@@ -313,7 +381,7 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         var results: [UserProfile] = []
 
         for doc in (newDocs.documents + oldDocs.documents) {
-            if let user = try? doc.data(as: UserProfile.self),
+            if let user = decodeUserProfile(from: doc),
                let id = user.id,
                seen.insert(id).inserted {
                 results.append(user)
@@ -328,9 +396,17 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
             .whereField(FieldPath.documentID(), in: ids)
             .getDocuments()
         
-        return snapshot.documents.compactMap { doc -> UserProfile? in
-            try? doc.data(as: UserProfile.self)
+        return snapshot.documents.compactMap { decodeUserProfile(from: $0) }
+    }
+
+    /// Decodes a profile and guarantees `id` is the Firestore document ID.
+    private func decodeUserProfile(from snapshot: DocumentSnapshot) -> UserProfile? {
+        guard var user = try? snapshot.data(as: UserProfile.self) else { return nil }
+        if user.id == nil {
+            user.id = snapshot.documentID
         }
+        guard user.id != nil else { return nil }
+        return user
     }
 }
 

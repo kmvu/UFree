@@ -10,6 +10,8 @@ import Foundation
 public class MockAvailabilityRepository: AvailabilityRepository {
     private var mySchedule: [DayAvailability]
     private var friendsSchedules: [String: [DayAvailability]]
+    /// Incremented on each `getSchedules(for:)` call (test spy).
+    public private(set) var getSchedulesCallCount: Int = 0
 
     public init() {
         // Pre-populate with some data for the next 7 days
@@ -27,6 +29,7 @@ public class MockAvailabilityRepository: AvailabilityRepository {
     nonisolated deinit {}
 
     public func getSchedules(for userIds: [String]) async throws -> [UserSchedule] {
+        getSchedulesCallCount += 1
         var result: [UserSchedule] = []
         for userId in userIds {
             if let days = friendsSchedules[userId] {
@@ -58,6 +61,7 @@ public class MockAvailabilityRepository: AvailabilityRepository {
     /// Clear all mock data
     public func clearMockData() {
         friendsSchedules.removeAll()
+        getSchedulesCallCount = 0
     }
 }
 

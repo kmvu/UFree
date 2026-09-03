@@ -73,6 +73,16 @@ final class LoginViewTests: XCTestCase {
 
         await ViewHost.renderAwaitingUpdates(makeView())
     }
+
+    func test_render_regularWidth_centersReadableFormColumn() async {
+        viewModel.name = "Alice"
+        viewModel.phoneNumber = "555-1234"
+
+        await ViewHost.renderAwaitingUpdates(
+            makeView().environment(\.horizontalSizeClass, .regular),
+            size: ViewHost.regularPadSize
+        )
+    }
 }
 
 // MARK: - Splash

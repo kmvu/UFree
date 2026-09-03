@@ -33,8 +33,18 @@ public final class RootViewModel: ObservableObject {
     }
     @Published public var activeTab: Tab = .feed
     @Published public var showWeekendCTA = false
-    @Published public var showPairChecklist = false
+    /// Soft bottom banner on Who's Free (does not auto-present the sheet).
+    @Published public var showPairOnboardingBanner = false
+    /// Checklist bottom sheet — opened only when the user taps the banner.
+    @Published public var showPairOnboardingSheet = false
     @Published public var celebrationToast: String?
+    /// Friend name for post-connect mission chip copy (first / latest accept).
+    @Published public var postConnectFriendName: String?
+    /// Optional day to focus on Who's Free when the mission chip is tapped.
+    @Published public var missionFocusDate: Date?
+
+    /// Duration before celebration toast clears (and optional weekend CTA presents).
+    public var celebrationToastDurationNanoseconds: UInt64 = 2_000_000_000
     
     // Feature ViewModels for navigation and cross-feature state
     @Published public var friendsScheduleViewModel: FriendsScheduleViewModel?
@@ -45,12 +55,96 @@ public final class RootViewModel: ObservableObject {
     /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
     /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
     nonisolated(unsafe) private var authStateTask: Task<Void, Never>?
+    nonisolated(unsafe) private var celebrationDismissTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
     
     public init(authRepository: AuthRepository) {
         self.authRepository = authRepository
         setupAuthStateListener()
         setupDeepLinkObserver()
+    }
+
+    // MARK: - Onboarding celebration
+
+    /// Single post-accept entry for Notification Center and Add Friends.
+    public func handlePostAccept(
+        friendName: String,
+        wasFirstFriend: Bool,
+        store: OnboardingProgressStore = .shared
+    ) {
+        postConnectFriendName = friendName
+        if wasFirstFriend {
+            celebrateFirstConnection(friendName: friendName, store: store)
+        } else {
+            HapticManager.success()
+            activeTab = .feed
+            presentCelebrationToast(
+                OnboardingProgressStore.subsequentConnectionToast(friendName: friendName)
+            )
+        }
+    }
+
+    /// Shared inviter + acceptor first-connection toast + haptic.
+    /// Smart branch: weekend CTA path lands on Schedule; already-free lands on Who's Free + mission.
+    @discardableResult
+    public func celebrateFirstConnection(
+        friendName: String? = nil,
+        store: OnboardingProgressStore = .shared
+    ) -> Bool {
+        guard !store.hasCelebratedFirstAccept else { return false }
+        store.markCelebratedFirstAccept()
+        HapticManager.success()
+        showPairOnboardingBanner = false
+        showPairOnboardingSheet = false
+        if let friendName, !friendName.isEmpty {
+            postConnectFriendName = friendName
+        }
+
+        let offerWeekendCTA = store.shouldPresentWeekendCTAAfterConnection
+        if offerWeekendCTA {
+            // Need a free day before Who's Free is useful.
+            activeTab = .schedule
+        } else {
+            activeTab = .feed
+            store.activatePostConnectCoach()
+        }
+
+        let toast = OnboardingProgressStore.firstConnectionToast(friendName: friendName)
+        presentCelebrationToast(toast) { [weak self] in
+            guard let self else { return }
+            if offerWeekendCTA && store.shouldPresentWeekendCTAAfterConnection {
+                self.showWeekendCTA = true
+            } else if store.pendingWeekendCTA && store.hasMarkedFreeDay {
+                store.consumeWeekendCTA()
+            }
+        }
+        return true
+    }
+
+    public func dismissPostConnectCoach(store: OnboardingProgressStore = .shared) {
+        store.dismissPostConnectCoach()
+        missionFocusDate = nil
+    }
+
+    /// Light haptic + brief toast for first-time invite / free-day steps (banner stays; no sheet).
+    public func presentOnboardingStepFeedback(_ message: String) {
+        HapticManager.light()
+        presentCelebrationToast(message)
+    }
+
+    public func presentCelebrationToast(
+        _ message: String,
+        afterDismiss: (() -> Void)? = nil
+    ) {
+        celebrationDismissTask?.cancel()
+        celebrationToast = message
+        let nanoseconds = celebrationToastDurationNanoseconds
+        celebrationDismissTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: nanoseconds)
+            guard !Task.isCancelled else { return }
+            self?.celebrationToast = nil
+            afterDismiss?()
+        }
     }
 
     private func setupDeepLinkObserver() {
@@ -113,6 +207,7 @@ public final class RootViewModel: ObservableObject {
     
     nonisolated deinit {
         authStateTask?.cancel()
+        celebrationDismissTask?.cancel()
     }
 }
 

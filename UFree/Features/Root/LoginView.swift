@@ -31,8 +31,8 @@ struct LoginView: View {
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                     
                     Text("Sync your free time with friends.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(UFreeType.heroBody)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.bottom, 20)
                 
@@ -71,22 +71,21 @@ struct LoginView: View {
                 Button(action: {
                     viewModel.loginTapped()
                 }) {
-                    HStack {
+                    HStack(spacing: 10) {
                         if viewModel.isLoading {
                             ProgressView()
                                 .tint(.white)
                         } else {
                             Text("Get Started")
-                                .fontWeight(.semibold)
                             Image(systemName: "arrow.right")
+                                .font(.system(size: 14, weight: .bold))
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background((viewModel.name.isEmpty || viewModel.phoneNumber.isEmpty) ? Color.gray.opacity(0.3) : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
                 }
+                .ufreePrimaryButton(
+                    isEnabled: !(viewModel.isLoading || viewModel.name.isEmpty || viewModel.phoneNumber.isEmpty)
+                )
                 .disabled(viewModel.isLoading || viewModel.name.isEmpty || viewModel.phoneNumber.isEmpty)
                 .padding(.horizontal)
                 
@@ -103,30 +102,27 @@ struct LoginView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         Button("User 1") {
                             Task {
                                 await viewModel.loginAsTestUser(index: 0)
                             }
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .ufreeCompactButton(prominent: false)
                         
                         Button("User 2") {
                             Task {
                                 await viewModel.loginAsTestUser(index: 1)
                             }
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .ufreeCompactButton(prominent: false)
                         
                         Button("User 3") {
                             Task {
                                 await viewModel.loginAsTestUser(index: 2)
                             }
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .ufreeCompactButton(prominent: false)
                     }
                 }
                 .padding()
@@ -136,6 +132,7 @@ struct LoginView: View {
                 #endif
             }
             .padding()
+            .adaptiveContentWidth(AdaptiveLayout.formContentMaxWidth)
         }
         .alert("Login Failed", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) { }

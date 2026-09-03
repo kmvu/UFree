@@ -8,8 +8,16 @@
 import SwiftUI
 
 struct StatusBannerView: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var viewModel: StatusBannerViewModel
     let scheduleViewModel: MyScheduleViewModel
+
+    private let statusOptions: [UserStatus] = [.free, .morning, .afternoon, .evening, .busy]
+
+    private var isRegularWidth: Bool {
+        horizontalSizeClass == .regular
+    }
 
     init(scheduleViewModel: MyScheduleViewModel) {
         self.init(scheduleViewModel: scheduleViewModel, viewModel: StatusBannerViewModel())
@@ -20,6 +28,16 @@ struct StatusBannerView: View {
     init(scheduleViewModel: MyScheduleViewModel, viewModel: StatusBannerViewModel) {
         self.scheduleViewModel = scheduleViewModel
         _viewModel = StateObject(wrappedValue: viewModel)
+    }
+
+    private var isCompactHeight: Bool {
+        verticalSizeClass == .compact
+    }
+
+    private var collapsedHeight: CGFloat {
+        isCompactHeight
+            ? AdaptiveLayout.statusBannerCollapsedHeightCompact
+            : AdaptiveLayout.statusBannerCollapsedHeightRegular
     }
 
     var body: some View {
@@ -55,12 +73,12 @@ struct StatusBannerView: View {
             HapticManager.medium()
             viewModel.toggleExpansion()
         }) {
-            HStack(spacing: 16) {
+            HStack(spacing: isCompactHeight ? 12 : 16) {
                 Image(systemName: viewModel.currentStatus.iconName)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 32, height: 32)
-                    .font(.system(size: 26))
+                    .frame(width: isCompactHeight ? 28 : 32, height: isCompactHeight ? 28 : 32)
+                    .font(.system(size: isCompactHeight ? 22 : 26))
                     .foregroundColor(.white)
                     .id("icon-\(viewModel.currentStatus)")
 
@@ -72,44 +90,46 @@ struct StatusBannerView: View {
                         .textCase(.uppercase)
 
                     Text(viewModel.currentStatus.title(customMixed: viewModel.customMixedTitle))
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.system(size: isCompactHeight ? 18 : 20, weight: .bold))
                         .foregroundColor(.white)
                         .id("title-\(viewModel.currentStatus)-\(viewModel.customMixedTitle ?? "")")
 
-                    Text(viewModel.currentStatus.subtitle)
-                        .font(.footnote)
-                        .foregroundColor(.white.opacity(0.8))
+                    if !isCompactHeight {
+                        Text(viewModel.currentStatus.subtitle)
+                            .font(.footnote)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: "chevron.down")
                     .foregroundColor(.white.opacity(0.6))
                     .font(.system(size: 14, weight: .bold))
             }
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity)
-            .frame(height: 110)
+            .frame(height: collapsedHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(NoInteractionButtonStyle())
     }
 
     private var expandedView: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: isCompactHeight ? 12 : 20) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(Calendar.current.isDateInToday(viewModel.selectedDate) ? "Today's Status" : "\(dateString(for: viewModel.selectedDate))'s Status")
                         .font(.headline)
                         .foregroundColor(.white)
-                    
+
                     Text("Select your availability")
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.8))
                 }
-                
+
                 Spacer()
-                
+
                 Button(action: {
                     HapticManager.light()
                     viewModel.toggleExpansion()
@@ -119,20 +139,48 @@ struct StatusBannerView: View {
                         .foregroundColor(.white.opacity(0.5))
                 }
             }
-            .padding(.top, 20)
+            .padding(.top, isCompactHeight ? 12 : 20)
             .padding(.horizontal, 24)
 
-            HStack(spacing: 12) {
-                ForEach([UserStatus.free, .morning, .afternoon, .evening, .busy], id: \.self) { status in
-                    statusOptionButton(status)
+            Group {
+                if isRegularWidth {
+                    // Keep chips clustered — don't let HStack expand across a wide iPad/Mac pane.
+                    HStack(spacing: 16) {
+                        ForEach(statusOptions, id: \.self) { status in
+                            statusOptionButton(status, expands: false)
+                        }
+                    }
+                    .frame(maxWidth: AdaptiveLayout.statusOptionsClusterMaxWidth)
+                    .frame(maxWidth: .infinity)
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) {
+                            ForEach(statusOptions, id: \.self) { status in
+                                statusOptionButton(status, expands: true)
+                            }
+                        }
+
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ],
+                            spacing: 12
+                        ) {
+                            ForEach(statusOptions, id: \.self) { status in
+                                statusOptionButton(status, expands: true)
+                            }
+                        }
+                    }
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 24)
+            .padding(.bottom, isCompactHeight ? 12 : 24)
         }
     }
 
-    private func statusOptionButton(_ status: UserStatus) -> some View {
+    private func statusOptionButton(_ status: UserStatus, expands: Bool) -> some View {
         Button(action: {
             HapticManager.medium()
             viewModel.setStatus(status)
@@ -141,18 +189,21 @@ struct StatusBannerView: View {
                 ZStack {
                     Circle()
                         .fill(viewModel.currentStatus == status ? .white : .white.opacity(0.2))
-                        .frame(width: 48, height: 48)
-                    
+                        .frame(width: isCompactHeight ? 40 : 48, height: isCompactHeight ? 40 : 48)
+
                     Image(systemName: status.iconName)
-                        .font(.system(size: 20))
+                        .font(.system(size: isCompactHeight ? 16 : 20))
                         .foregroundColor(viewModel.currentStatus == status ? .black : .white)
                 }
-                
+
                 Text(status.title.replacingOccurrences(of: "I'm ", with: "").replacingOccurrences(of: "Free in ", with: "").replacingOccurrences(of: " Right Now", with: ""))
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            .frame(maxWidth: .infinity)
+            .frame(width: expands ? nil : 64)
+            .frame(maxWidth: expands ? .infinity : nil)
         }
         .buttonStyle(NoInteractionButtonStyle())
     }

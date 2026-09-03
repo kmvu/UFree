@@ -36,6 +36,16 @@ public class MockNotificationRepository: NotificationRepository {
             mockNotifications[index].isRead = true
         }
     }
+
+    public func markAsUnread(_ notification: AppNotification) async throws {
+        if let index = mockNotifications.firstIndex(where: { $0.id == notification.id }) {
+            mockNotifications[index].isRead = false
+        }
+    }
+
+    public func deleteNotification(_ notification: AppNotification) async throws {
+        mockNotifications.removeAll { $0.id == notification.id }
+    }
     
     public func sendNudge(to userId: String, targetDate: Date?) async throws {
         if simulatedDelay > 0 {

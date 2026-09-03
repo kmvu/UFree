@@ -64,4 +64,30 @@ final class UserProfileTests: XCTestCase {
 
         XCTAssertEqual(profile.hashedPhoneNumbers, ["hash_a"])
     }
+
+    func test_decode_missingFriendIdsAndHashArray_defaultsAndSeedsLegacy() throws {
+        let json = """
+        {"displayName":"Test User 1","hashedPhoneNumber":"abc123"}
+        """.data(using: .utf8)!
+
+        let profile = try JSONDecoder().decode(UserProfile.self, from: json)
+
+        XCTAssertEqual(profile.displayName, "Test User 1")
+        XCTAssertEqual(profile.hashedPhoneNumber, "abc123")
+        XCTAssertEqual(profile.hashedPhoneNumbers, ["abc123"])
+        XCTAssertTrue(profile.friendIds.isEmpty)
+        // JSONDecoder has no Firestore document ref — id stays nil (Firestore path sets it).
+        XCTAssertNil(profile.id)
+    }
+
+    func test_decode_withHashArray_preservesArray() throws {
+        let json = """
+        {"displayName":"Test User 2","hashedPhoneNumbers":["h1","h2"],"friendIds":["u9"]}
+        """.data(using: .utf8)!
+
+        let profile = try JSONDecoder().decode(UserProfile.self, from: json)
+
+        XCTAssertEqual(profile.hashedPhoneNumbers, ["h1", "h2"])
+        XCTAssertEqual(profile.friendIds, ["u9"])
+    }
 }

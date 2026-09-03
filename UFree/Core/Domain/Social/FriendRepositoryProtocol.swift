@@ -27,6 +27,10 @@ public protocol FriendRepositoryProtocol {
     /// Gets the current user's list of friends.
     func getMyFriends() async throws -> [UserProfile]
 
+    /// Observes the current user's friends list in real-time (via `friendIds` on the user doc).
+    /// Used so the inviter can celebrate the first connection without a manual pull.
+    func observeFriends() -> AsyncStream<[UserProfile]>
+
     // MARK: - User Lookup
 
     /// Finds a single user by their phone number (privacy-safe via multi-hash lookup).

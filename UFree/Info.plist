@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>Firebase Auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Encoded Firebase GOOGLE_APP_ID (colons → dashes). Required by PhoneAuthProvider. -->
+				<string>app-1-883816336910-ios-525a508d29a3fb4a6cf65f</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

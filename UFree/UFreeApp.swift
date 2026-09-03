@@ -159,20 +159,18 @@ struct UFreeApp: App {
     
     var body: some Scene {
         WindowGroup {
-            NavigationView {
-                RootView(
-                    container: container,
-                    authRepository: authRepository
-                )
-                .onOpenURL { url in
-                    // Universal Links (AASA) are handled by handleUniversalLink inside MainAppView
-                    // via the .onOpenURL attached there.
-                    // If we want to handle them at the RootView level, we'd do it here.
-                }
-                .onAppear {
-                    // This allows dismissing keyboard by tapping anywhere outside
-                    UIApplication.shared.addTapGestureRecognizerToWindow()
-                }
+            RootView(
+                container: container,
+                authRepository: authRepository
+            )
+            .onOpenURL { url in
+                // Universal Links (AASA) are handled by handleUniversalLink inside MainAppView
+                // via the .onOpenURL attached there.
+                // If we want to handle them at the RootView level, we'd do it here.
+            }
+            .onAppear {
+                // This allows dismissing keyboard by tapping anywhere outside
+                UIApplication.shared.addTapGestureRecognizerToWindow()
             }
         }
     }
