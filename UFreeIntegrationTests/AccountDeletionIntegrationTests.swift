@@ -78,6 +78,13 @@ final class AccountDeletionIntegrationTests: XCTestCase {
         let bobFriendIds = bobSnap.data()?["friendIds"] as? [String] ?? []
         XCTAssertFalse(bobFriendIds.contains(aliceId))
 
+        // Missing users/{uid} has null `resource`, so friend get rules deny.
+        // Only the owner path (`isOwner`) can probe that the wipe succeeded.
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "alice-delete@test.ufree",
+            displayName: "Alice"
+        )
         let aliceSnap = try await Firestore.firestore().collection("users").document(aliceId).getDocument()
         XCTAssertFalse(aliceSnap.exists, "Alice users doc should be gone")
     }
