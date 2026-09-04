@@ -27,7 +27,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Require green Quality Check on this SHA
+      - name: Require green main-push Quality Check (incl. emulator-integration)
         uses: actions/github-script@v7
         with:
           script: |
@@ -41,24 +41,50 @@ jobs:
               per_page: 20,
             });
 
-            const successful = (data.workflow_runs || []).find(
-              (run) => run.status === 'completed' && run.conclusion === 'success'
+            // PR runs skip emulator-integration. Only a successful *push* to main
+            // (which includes that job) may unlock TestFlight.
+            const successfulPush = (data.workflow_runs || []).find(
+              (run) =>
+                run.status === 'completed' &&
+                run.conclusion === 'success' &&
+                run.event === 'push'
             );
 
-            if (!successful) {
+            if (!successfulPush) {
               const summaries = (data.workflow_runs || [])
                 .slice(0, 5)
-                .map((r) => `${r.id}:${r.status}/${r.conclusion}`)
+                .map((r) => `${r.id}:${r.event}/${r.status}/${r.conclusion}`)
                 .join(', ') || 'none';
               core.setFailed(
-                `No successful Quality Check (ci.yml) run for SHA ${sha}. ` +
-                  `Wait for firestore-rules + unit-tests + lint (+ emulator-integration on main) to pass, then re-run deploy. ` +
+                `No successful main-push Quality Check (ci.yml) for SHA ${sha}. ` +
+                  `PR-only green runs are not enough (emulator-integration is skipped on PRs). ` +
+                  `Push to main, wait for firestore-rules + unit-tests + lint + emulator-integration (+ ui-tests), then re-run deploy. ` +
                   `Recent runs: ${summaries}`
               );
               return;
             }
 
-            core.info(`Green CI gate OK: run ${successful.id} (${successful.html_url})`);
+            const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: successfulPush.id,
+            });
+            const integration = (jobsData.jobs || []).find((j) =>
+              (j.name || '').includes('Emulator Integration')
+            );
+            if (!integration || integration.conclusion !== 'success') {
+              core.setFailed(
+                `Quality Check run ${successfulPush.id} did not include a successful Emulator Integration job ` +
+                  `(got: ${integration ? integration.conclusion : 'missing'}). ` +
+                  `Deploy only after a green push to main.`
+              );
+              return;
+            }
+
+            core.info(
+              `Green main-push CI gate OK: run ${successfulPush.id} ` +
+                `(emulator-integration=${integration.conclusion}) ${successfulPush.html_url}`
+            );
 
       - name: Verify required secrets
         env:

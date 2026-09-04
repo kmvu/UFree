@@ -8,8 +8,7 @@ import XCTest
 @testable import UFree
 
 /// Covers the parts of `NotificationViewModel` that `NotificationViewModelTests` leaves out:
-/// the hybrid listener's scene-lifecycle observers, the FCM token bridge, and the nudge and
-/// read-receipt write paths.
+/// the hybrid listener's scene-lifecycle observers, and the nudge and read-receipt write paths.
 @MainActor
 final class NotificationViewModelLifecycleTests: XCTestCase {
 
@@ -76,33 +75,6 @@ final class NotificationViewModelLifecycleTests: XCTestCase {
         await waitUntil("the restarted listener delivers the feed again") {
             self.sut.notifications.count == 1
         }
-    }
-
-    // MARK: - FCM Token
-
-    func test_receivingFCMToken_forwardsItToTheRepository() async {
-        await start()
-
-        // `MockNotificationRepository.updatePushToken` is a no-op, so this asserts the
-        // observer fires and the ViewModel survives the round trip rather than the write
-        // itself. Without the token in `userInfo` the observer bails out.
-        NotificationCenter.default.post(
-            name: .didReceiveFCMToken,
-            object: nil,
-            userInfo: ["token": "fcm_abc123"]
-        )
-
-        await drainPendingTasks()
-        XCTAssertNotNil(sut)
-    }
-
-    func test_receivingFCMTokenWithoutAToken_isIgnored() async {
-        await start()
-
-        NotificationCenter.default.post(name: .didReceiveFCMToken, object: nil, userInfo: [:])
-
-        await drainPendingTasks()
-        XCTAssertNotNil(sut)
     }
 
     // MARK: - Read Receipts

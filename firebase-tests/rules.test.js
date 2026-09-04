@@ -613,4 +613,15 @@ describe("account deletion", () => {
       deleteDoc(doc(authedDb("alice"), "users/alice/notifications/n1"))
     );
   });
+
+  it("allows deleting user to remove self from a peer friendIds list", async () => {
+    await seedAcceptedFriends();
+    // Alice (account being deleted) removes herself from Bob's friendIds — peer self-remove.
+    await assertSucceeds(
+      updateDoc(doc(authedDb("alice"), "users/bob"), {
+        friendIds: arrayRemove("alice"),
+      })
+    );
+    await assertSucceeds(deleteDoc(doc(authedDb("alice"), "users/alice")));
+  });
 });

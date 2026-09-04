@@ -101,7 +101,7 @@ Adapt by **size class / available width**, not device idiom (`UFree/Core/UI/Adap
 - Firestore rules and indexes are configured through `firebase.json`.
 - **Privacy model (Phase 1):** user profiles and availability are readable only by the owner and accepted friends. Phone/QR discovery uses get-only collections `publicProfiles/{uid}` and `phoneDirectory/{hash}` (list queries are denied). Friend-request docs use deterministic ids `{fromId}_{toId}`; peer `friendIds` self-add requires an accepted request in the same batch.
 - **Identity (Phase 2):** production login is **Sign in with Apple**. Existing anonymous pilot sessions are linked via `link(with:)` so UIDs/friends are preserved. DEBUG simulator personas (User 1/2/3) still use anonymous Auth. Phone is an optional discovery hash only (first-writer-wins; OTP is a later phase).
-- **Account deletion:** Settings → Delete Account re-authenticates with Apple, wipes the user's Firestore tree (availability, notifications, own friendRequests, phoneDirectory claims, publicProfiles, users doc), deletes the Auth user, and clears local SwiftData / onboarding prefs. Rules allow owner/participant deletes.
+- **Account deletion:** Settings → Delete Account re-authenticates with Apple, wipes the user's Firestore tree (availability, notifications, own friendRequests, phoneDirectory claims, publicProfiles, users doc), **removes this UID from peers’ `friendIds`**, deletes the Auth user, and clears local SwiftData / onboarding prefs. Rules allow owner/participant deletes and peer self-remove from `friendIds`.
 - **App Check:** client uses App Attest (DeviceCheck fallback) in Release; DEBUG/Simulator use the App Check debug provider. Register the Xcode console debug token under Firebase Console → App Check → Manage debug tokens before enabling enforcement for Firestore.
 - **Rules tests:** `firebase-tests/` runs against the local Firestore emulator. From the repo root (Java 21+ required locally):
 
@@ -114,7 +114,7 @@ Adapt by **size class / available width**, not device idiom (`UFree/Core/UI/Adap
 - Firebase Hosting serves the Apple App Site Association file for `ufree.app`.
 - Deep links support notification and profile paths; keep app entitlements, hosting configuration, and parser behavior aligned when changing them.
 - Release builds enable Analytics and Crashlytics; debug builds disable analytics to avoid development noise.
-- Push-registration code exists in the app, but the server-side Functions implementation is not currently configured for deployment. Treat background push as unavailable for the current pilot.
+- **Push:** Firebase Messaging / APNs are not linked. Treat background push as unavailable until Phase 7 (Blaze). Foreground in-app inbox via Firestore listeners only.
 
 ## Where to make common changes
 

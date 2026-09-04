@@ -368,12 +368,13 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
 
         let userRef = db.collection("users").document(userId)
 
-        // Read hashes before wiping the user doc.
+        // Read hashes + friend graph before wiping the user doc.
         let userSnap = try await userRef.getDocument()
         var hashes = Set(userSnap.data()?["hashedPhoneNumbers"] as? [String] ?? [])
         if let legacy = userSnap.data()?["hashedPhoneNumber"] as? String {
             hashes.insert(legacy)
         }
+        let friendIds = userSnap.data()?["friendIds"] as? [String] ?? []
 
         try await deleteCollectionDocuments(userRef.collection("availability"))
         try await deleteCollectionDocuments(userRef.collection("notifications"))
@@ -390,6 +391,18 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         }
         for ref in requestRefs {
             try await ref.delete()
+        }
+
+        // Clear orphan friend entries: peer self-remove is allowed by rules (same as removeFriend).
+        for chunk in friendIds.chunked(into: 450) {
+            let batch = db.batch()
+            for friendId in chunk {
+                batch.updateData(
+                    ["friendIds": FieldValue.arrayRemove([userId])],
+                    forDocument: db.collection("users").document(friendId)
+                )
+            }
+            try await batch.commit()
         }
 
         for hash in hashes {

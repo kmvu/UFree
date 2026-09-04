@@ -1,0 +1,82 @@
+//
+//  AccountDeletionIntegrationTests.swift
+//  UFreeIntegrationTests
+//
+//  Account wipe must clear the deleted UID from peers' friendIds.
+//
+
+import XCTest
+import FirebaseAuth
+import FirebaseFirestore
+@testable import UFree
+
+@MainActor
+final class AccountDeletionIntegrationTests: XCTestCase {
+    override func setUp() async throws {
+        try requireIntegrationEnvironment()
+        try await EmulatorHarness.resetEmulatorData()
+    }
+
+    func test_deleteAccountData_removesSelfFromPeersFriendIds() async throws {
+        let friends = FirebaseFriendRepository()
+
+        let aliceId = try await EmulatorHarness.signInUser(
+            email: "alice-delete@test.ufree",
+            displayName: "Alice"
+        )
+        try await friends.saveUserProfile(displayName: "Alice", hashedPhoneNumbers: [])
+
+        let bobId = try await EmulatorHarness.signInUser(
+            email: "bob-delete@test.ufree",
+            displayName: "Bob"
+        )
+        try await friends.saveUserProfile(displayName: "Bob", hashedPhoneNumbers: [])
+
+        // Alice invites Bob; Bob accepts.
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "alice-delete@test.ufree",
+            displayName: "Alice"
+        )
+        let bobProfile = try XCTUnwrap(try await friends.findUserById(bobId))
+        try await friends.sendFriendRequest(to: bobProfile)
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "bob-delete@test.ufree",
+            displayName: "Bob"
+        )
+        let pending = try XCTUnwrap(try await friends.pendingFriendRequest(from: aliceId))
+        try await friends.acceptFriendRequest(pending)
+
+        var bobFriends = try await friends.getMyFriends()
+        XCTAssertTrue(bobFriends.contains(where: { $0.id == aliceId }))
+
+        // Alice deletes her Firestore tree (friend-graph cleanup included).
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "alice-delete@test.ufree",
+            displayName: "Alice"
+        )
+        try await friends.deleteAccountData()
+
+        // Bob should no longer list Alice.
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "bob-delete@test.ufree",
+            displayName: "Bob"
+        )
+        bobFriends = try await friends.getMyFriends()
+        XCTAssertFalse(
+            bobFriends.contains(where: { $0.id == aliceId }),
+            "Deleted UID must be removed from peers' friendIds"
+        )
+
+        let bobSnap = try await Firestore.firestore().collection("users").document(bobId).getDocument()
+        let bobFriendIds = bobSnap.data()?["friendIds"] as? [String] ?? []
+        XCTAssertFalse(bobFriendIds.contains(aliceId))
+
+        let aliceSnap = try await Firestore.firestore().collection("users").document(aliceId).getDocument()
+        XCTAssertFalse(aliceSnap.exists, "Alice users doc should be gone")
+    }
+}

@@ -10,9 +10,6 @@ import SwiftData
 import FirebaseCore
 import FirebaseCrashlytics
 import FirebaseAnalytics
-#if canImport(FirebaseMessaging)
-import FirebaseMessaging
-#endif
 import UserNotifications
 
 
@@ -44,16 +41,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
             // Log app launch
             AnalyticsManager.log(.appLaunched)
-            
-            // Set up Push Notifications delegates
-            // Only if NOT running unit tests to avoid crashes in test host
+
+            // Foreground in-app notifications only. APNs / FCM push is deferred to Phase 7 (Blaze).
             UNUserNotificationCenter.current().delegate = self
-            #if canImport(FirebaseMessaging)
-            Messaging.messaging().delegate = self
-            #endif
-            
-            // Register for remote notifications
-            application.registerForRemoteNotifications()
         }
 
         return true
@@ -77,7 +67,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     ) {
         let userInfo = response.notification.request.content.userInfo
         
-        // Extract senderId from FCM payload (custom data)
+        // Local / future push payloads may carry senderId for deep-link routing.
         if let senderId = userInfo["senderId"] as? String {
             NotificationCenter.default.post(
                 name: .didReceiveProfileDeepLink,
@@ -89,25 +79,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
     
     private func userIdFromSenderId(_ senderId: String) -> String {
-        // In a real app, this might involve some parsing if the ID is nested
         return senderId
     }
 }
-
-#if canImport(FirebaseMessaging)
-extension AppDelegate: MessagingDelegate {
-    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        guard let token = fcmToken else { return }
-        
-        // Broadcast the token update so repositories can save it to Firestore
-        NotificationCenter.default.post(
-            name: .didReceiveFCMToken,
-            object: nil,
-            userInfo: ["token": token]
-        )
-    }
-}
-#endif
 
 
 @main
@@ -182,7 +156,6 @@ struct UFreeApp: App {
 
 extension Notification.Name {
     static let didReceiveProfileDeepLink = Notification.Name("didReceiveProfileDeepLink")
-    static let didReceiveFCMToken = Notification.Name("didReceiveFCMToken")
 }
 
 // MARK: - Keyboard Dismissal Helper

@@ -81,7 +81,8 @@ public protocol FriendRepositoryProtocol {
     func saveUserProfile(displayName: String, hashedPhoneNumbers: [String]) async throws
 
     /// Deletes the signed-in user's Firestore tree (availability, notifications,
-    /// own friendRequests, phoneDirectory claims, publicProfiles, users doc).
+    /// own friendRequests, phoneDirectory claims, publicProfiles, users doc) and
+    /// removes this UID from each peer's `friendIds` so friends do not keep orphans.
     /// Does not delete the Firebase Auth user — call `AuthRepository.deleteAccount()` after.
     func deleteAccountData() async throws
 }

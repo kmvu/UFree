@@ -98,17 +98,6 @@ public class NotificationViewModel: ObservableObject {
                 .store(in: &cancellables)
         }
         #endif
-            
-        // Listen for FCM token updates
-        NotificationCenter.default.publisher(for: .didReceiveFCMToken)
-            .sink { [weak self] notification in
-                if let token = notification.userInfo?["token"] as? String {
-                    Task { [weak self] in
-                        try? await self?.repository.updatePushToken(token)
-                    }
-                }
-            }
-            .store(in: &cancellables)
     }
     
     public func startListening() {
