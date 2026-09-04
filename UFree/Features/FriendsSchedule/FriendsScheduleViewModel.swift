@@ -94,7 +94,11 @@ public final class FriendsScheduleViewModel: ObservableObject {
     // MARK: - Nudge replies (inviter Who's Free)
 
     public func nudgeReplyKey(friendId: String, date: Date) -> String {
-        "\(friendId)|\(AppNotification.dateString(from: date))"
+        nudgeReplyKey(friendId: friendId, dayKey: AppNotification.dateString(from: date))
+    }
+
+    public func nudgeReplyKey(friendId: String, dayKey: String) -> String {
+        "\(friendId)|\(dayKey)"
     }
 
     public func nudgeReply(forFriendId friendId: String, date: Date) -> AppNotification.NudgeResponse? {
@@ -107,8 +111,13 @@ public final class FriendsScheduleViewModel: ObservableObject {
               let response = note.nudgeResponse.flatMap(AppNotification.NudgeResponse.init(rawValue:)) else {
             return
         }
-        let targetDate = note.targetDateString.flatMap(AppNotification.date(from:))
-        applyNudgeReply(from: note.senderId, response: response, targetDate: targetDate)
+        // Keep the UTC day key from the payload — do not parse→local-startOfDay→reformat
+        // (that shifts the calendar day in UTC+ timezones).
+        applyNudgeReply(
+            from: note.senderId,
+            response: response,
+            targetDayKey: note.targetDateString
+        )
     }
 
     public func applyNudgeReply(
@@ -116,17 +125,45 @@ public final class FriendsScheduleViewModel: ObservableObject {
         response: AppNotification.NudgeResponse,
         targetDate: Date?
     ) {
-        let day = Calendar.current.startOfDay(for: targetDate ?? selectedDate ?? Date())
-        nudgeRepliesByFriendDay[nudgeReplyKey(friendId: senderId, date: day)] = response
+        let dayKey = targetDate.map { AppNotification.dateString(from: $0) }
+        applyNudgeReply(from: senderId, response: response, targetDayKey: dayKey)
+    }
+
+    public func applyNudgeReply(
+        from senderId: String,
+        response: AppNotification.NudgeResponse,
+        targetDayKey: String?
+    ) {
+        let dayKey = targetDayKey
+            ?? selectedDate.map { AppNotification.dateString(from: $0) }
+            ?? AppNotification.dateString(from: Date())
+
+        nudgeRepliesByFriendDay[nudgeReplyKey(friendId: senderId, dayKey: dayKey)] = response
+
+        let day = resolveScheduleDate(forDayKey: dayKey)
         focusDate(day)
 
         if response == .imIn || response == .busy {
             patchFriendAvailability(
                 friendId: senderId,
-                date: day,
+                dayKey: dayKey,
+                fallbackDate: day,
                 status: response == .imIn ? .free : .busy
             )
         }
+    }
+
+    /// Prefer an existing schedule `Date` that already maps to this UTC day key so UI
+    /// selection stays on the same local calendar day the user sees.
+    private func resolveScheduleDate(forDayKey dayKey: String) -> Date {
+        for display in friendSchedules {
+            if let match = display.userSchedule.weeklyStatus.first(where: {
+                AppNotification.dateString(from: $0.date) == dayKey
+            }) {
+                return Calendar.current.startOfDay(for: match.date)
+            }
+        }
+        return AppNotification.date(from: dayKey) ?? Date()
     }
 
     private func patchFriendAvailability(
@@ -134,16 +171,31 @@ public final class FriendsScheduleViewModel: ObservableObject {
         date: Date,
         status: AvailabilityStatus
     ) {
+        patchFriendAvailability(
+            friendId: friendId,
+            dayKey: AppNotification.dateString(from: date),
+            fallbackDate: date,
+            status: status
+        )
+    }
+
+    private func patchFriendAvailability(
+        friendId: String,
+        dayKey: String,
+        fallbackDate: Date,
+        status: AvailabilityStatus
+    ) {
         guard let index = friendSchedules.firstIndex(where: { $0.id == friendId }) else { return }
         var display = friendSchedules[index]
         var schedule = display.userSchedule
-        let dayKey = DateFormatter.yyyyMMdd.string(from: date)
         if let dayIndex = schedule.weeklyStatus.firstIndex(where: {
-            DateFormatter.yyyyMMdd.string(from: $0.date) == dayKey
+            AppNotification.dateString(from: $0.date) == dayKey
         }) {
-            schedule.weeklyStatus[dayIndex].applyStatusPreservingTimeBlocks(status)
+            // Optimistic Who's Free overlay from their reply — replace displayed status.
+            // (Own-schedule nudge side effects use applyStatusPreservingTimeBlocks separately.)
+            schedule.weeklyStatus[dayIndex].status = status
         } else {
-            schedule.weeklyStatus.append(DayAvailability(date: date, status: status))
+            schedule.weeklyStatus.append(DayAvailability(date: fallbackDate, status: status))
         }
         display.userSchedule = schedule
         friendSchedules[index] = display
@@ -153,11 +205,12 @@ public final class FriendsScheduleViewModel: ObservableObject {
         for (key, response) in nudgeRepliesByFriendDay {
             let parts = key.split(separator: "|", maxSplits: 1).map(String.init)
             guard parts.count == 2,
-                  let date = AppNotification.date(from: parts[1]),
                   response == .imIn || response == .busy else { continue }
+            let dayKey = parts[1]
             patchFriendAvailability(
                 friendId: parts[0],
-                date: date,
+                dayKey: dayKey,
+                fallbackDate: resolveScheduleDate(forDayKey: dayKey),
                 status: response == .imIn ? .free : .busy
             )
         }
