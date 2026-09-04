@@ -193,7 +193,7 @@ final class FirestoreDayDTOTests: XCTestCase {
     
     // MARK: - Tests: Round-Trip Consistency
     
-    func test_roundTrip_encodeDecodePreservesData() {
+    func test_roundTrip_encodeDecodePreservesData() throws {
         // Arrange
         let originalDay = DayAvailability(
             date: Date(),
@@ -204,9 +204,9 @@ final class FirestoreDayDTOTests: XCTestCase {
         // Act
         let encodedData = FirestoreDayDTO.fromDomain(originalDay)
         let dto = FirestoreDayDTO(
-            id: encodedData["id"] as! String,
-            dateString: encodedData["dateString"] as! String,
-            status: encodedData["status"] as! Int,
+            id: try XCTUnwrap(encodedData["id"] as? String),
+            dateString: try XCTUnwrap(encodedData["dateString"] as? String),
+            status: try XCTUnwrap(encodedData["status"] as? Int),
             note: encodedData["note"] as? String,
             timeBlocks: nil,
             updatedAt: encodedData["updatedAt"] as? Date
@@ -246,7 +246,7 @@ final class FirestoreDayDTOTests: XCTestCase {
         XCTAssertEqual(reformattedString, dateString)
     }
     
-    func test_multiBlockRoundTrip() {
+    func test_multiBlockRoundTrip() throws {
         let now = Date()
         let block1 = TimeBlock(startTime: now, endTime: now.addingTimeInterval(3600), status: .free)
         let block2 = TimeBlock(startTime: now.addingTimeInterval(3600), endTime: now.addingTimeInterval(7200), status: .busy)
@@ -255,20 +255,20 @@ final class FirestoreDayDTOTests: XCTestCase {
         let encoded = FirestoreDayDTO.fromDomain(original)
         
         // Simulate decoding
-        let blocksData = encoded["timeBlocks"] as! [[String: Any]]
-        let blocks = blocksData.map { data in
+        let blocksData = try XCTUnwrap(encoded["timeBlocks"] as? [[String: Any]])
+        let blocks = try blocksData.map { data in
             FirestoreDayDTO.FirestoreTimeBlockDTO(
-                id: data["id"] as! String,
-                startTime: data["startTime"] as! Date,
-                endTime: data["endTime"] as! Date,
-                status: data["status"] as! Int
+                id: try XCTUnwrap(data["id"] as? String),
+                startTime: try XCTUnwrap(data["startTime"] as? Date),
+                endTime: try XCTUnwrap(data["endTime"] as? Date),
+                status: try XCTUnwrap(data["status"] as? Int)
             )
         }
         
         let dto = FirestoreDayDTO(
-            id: encoded["id"] as! String,
-            dateString: encoded["dateString"] as! String,
-            status: encoded["status"] as! Int,
+            id: try XCTUnwrap(encoded["id"] as? String),
+            dateString: try XCTUnwrap(encoded["dateString"] as? String),
+            status: try XCTUnwrap(encoded["status"] as? Int),
             note: encoded["note"] as? String,
             timeBlocks: blocks,
             updatedAt: nil

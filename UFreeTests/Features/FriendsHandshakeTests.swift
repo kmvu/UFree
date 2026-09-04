@@ -133,7 +133,7 @@ final class FriendsHandshakeTests: XCTestCase {
         
         // Wait deterministically for the listener to process the mock stream
         let startDate = Date()
-        while viewModel.incomingRequests.count == 0 && Date().timeIntervalSince(startDate) < 1.0 {
+        while viewModel.incomingRequests.isEmpty && Date().timeIntervalSince(startDate) < 1.0 {
             await Task.yield()
         }
         
@@ -170,7 +170,7 @@ final class FriendsHandshakeTests: XCTestCase {
         viewModel.listenToRequests()
         
         let startDate = Date()
-        while viewModel.incomingRequests.count == 0 && Date().timeIntervalSince(startDate) < 1.0 {
+        while viewModel.incomingRequests.isEmpty && Date().timeIntervalSince(startDate) < 1.0 {
             await Task.yield()
         }
         
