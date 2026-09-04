@@ -68,10 +68,12 @@ platform :ios do
   desc "UI tests: Happy-path under UI_TESTING_MODE (iPhone 17 Pro)"
   lane :ui_tests do
     puts "📱 Running UI tests on iPhone 17 Pro..."
+    # Prefer destination-by-name (stable across CI simulator UUID churn) over devices:[]
+    # which can resolve an id that later disappears when the scheme's platforms are wrong.
     run_tests(
       project: "UFree.xcodeproj",
       scheme: "UFreeUITests",
-      devices: ["iPhone 17 Pro"],
+      destination: "platform=iOS Simulator,name=iPhone 17 Pro",
       clean: true,
       fail_build: true,
       code_coverage: false,
