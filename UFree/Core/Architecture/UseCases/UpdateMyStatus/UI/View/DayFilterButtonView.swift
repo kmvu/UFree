@@ -96,14 +96,14 @@ struct DayFilterButtonView: View {
             )
             
             DayFilterButtonView(
-                date: Calendar.current.date(byAdding: .day, value: 1, to: Date())!,
+                date: Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date().addingTimeInterval(86_400),
                 isSelected: true,
                 freeCount: 2,
                 action: {}
             )
             
             DayFilterButtonView(
-                date: Calendar.current.date(byAdding: .day, value: 2, to: Date())!,
+                date: Calendar.current.date(byAdding: .day, value: 2, to: Date()) ?? Date().addingTimeInterval(172_800),
                 isSelected: false,
                 freeCount: 0,
                 action: {}

@@ -15,11 +15,11 @@ public class MockAvailabilityRepository: AvailabilityRepository {
 
     public init() {
         // Pre-populate with some data for the next 7 days
-        self.mySchedule = (0..<7).map { i in
-            DayAvailability(
-                date: Calendar.current.date(byAdding: .day, value: i, to: Date())!,
-                status: .unknown
-            )
+        self.mySchedule = (0..<7).compactMap { i in
+            guard let date = Calendar.current.date(byAdding: .day, value: i, to: Date()) else {
+                return nil
+            }
+            return DayAvailability(date: date, status: .unknown)
         }
         self.friendsSchedules = [:]
     }

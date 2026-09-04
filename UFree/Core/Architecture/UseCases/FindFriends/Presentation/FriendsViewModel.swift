@@ -17,14 +17,14 @@ public final class FriendsViewModel: ObservableObject {
     @Published public var discoveredUsers: [UserProfile] = []
     @Published public var isLoading = false
     @Published public var isProcessing = false
-    @Published public var errorMessage: String? = nil
+    @Published public var errorMessage: String?
     @Published public var showPermissionAlert = false
     
     // QR Code & Handshake
     @Published public var showQRScanner = false
     @Published public var showMyQR = false
     @Published public var showMyQRCard = false // Managed within the Discovery Card flip
-    @Published public var qrImage: UIImage? = nil
+    @Published public var qrImage: UIImage?
     
     // Privacy & Trust
     @Published public var contactHashes: Set<String> = []
@@ -33,7 +33,7 @@ public final class FriendsViewModel: ObservableObject {
     @Published public var searchText: String = ""
     @Published public var searchResult: UserProfile?
     @Published public var isSearching = false
-    @Published public var scannedCode: String? = nil {
+    @Published public var scannedCode: String? {
         didSet {
             if let code = scannedCode {
                 Task { await handleScannedCode(code) }

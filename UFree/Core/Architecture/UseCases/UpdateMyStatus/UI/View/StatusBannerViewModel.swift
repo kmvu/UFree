@@ -12,7 +12,7 @@ import SwiftUI
 @MainActor
 final class StatusBannerViewModel: ObservableObject {
     @Published var currentStatus: UserStatus = .checkSchedule
-    @Published var customMixedTitle: String? = nil
+    @Published var customMixedTitle: String?
     @Published var isProcessing: Bool = false
     @Published var isExpanded: Bool = false
     @Published var selectedDate: Date = Date()
