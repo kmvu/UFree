@@ -179,6 +179,7 @@ public struct MyScheduleView: View {
 
     @ViewBuilder
     private func dayCard(for day: DayAvailability) -> some View {
+        let dayKey = DateFormatter.yyyyMMdd.string(from: day.date)
         DayStatusCardView(
             day: day,
             isSelected: Calendar.current.isDate(day.date, inSameDayAs: viewModel.selectedDate),
@@ -197,7 +198,13 @@ public struct MyScheduleView: View {
                 }
             }
         )
-        .accessibilityIdentifier("schedule.day.\(DateFormatter.yyyyMMdd.string(from: day.date))")
+        // One hittable element for XCUITest — avoid matching child StaticText ("Sat").
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("schedule.day.\(dayKey)")
+        .accessibilityLabel(
+            "\(day.date.formatted(.dateTime.weekday(.wide))), \(day.status.displayName)"
+        )
         .onLongPressGesture {
             HapticManager.medium()
             selectedDayForSheet = day

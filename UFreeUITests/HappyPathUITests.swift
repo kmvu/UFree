@@ -32,14 +32,16 @@ final class HappyPathUITests: XCTestCase {
         scheduleTab.tap()
 
         let saturdayId = "schedule.day.\(Self.saturdayDateStringInNext7Days())"
-        let saturdayCard = app.descendants(matching: .any)
-            .matching(identifier: saturdayId)
-            .firstMatch
+        // Prefer the combined button trait; fall back to any element with the id.
+        let saturdayCard = firstExisting(
+            app.buttons[saturdayId],
+            app.descendants(matching: .any).matching(identifier: saturdayId).element(boundBy: 0)
+        )
         XCTAssertTrue(
             saturdayCard.waitForExistence(timeout: 5),
             "Expected Saturday day card \(saturdayId)"
         )
-        saturdayCard.tap()
+        tapHittable(saturdayCard)
 
         let whosFreeTab = app.tabBars.buttons["Who's Free?"]
         XCTAssertTrue(whosFreeTab.waitForExistence(timeout: 5))
@@ -53,6 +55,24 @@ final class HappyPathUITests: XCTestCase {
             "Expected Who's Free root after tab switch"
         )
         XCTAssertTrue(app.navigationBars["Who's Free?"].waitForExistence(timeout: 5))
+    }
+
+    /// Scroll horizontally if needed, then tap via center coordinate (avoids non-hittable StaticText).
+    private func tapHittable(_ element: XCUIElement) {
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline && !element.isHittable {
+            app.swipeLeft()
+        }
+        if element.isHittable {
+            element.tap()
+        } else {
+            element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+    }
+
+    private func firstExisting(_ primary: XCUIElement, _ fallback: XCUIElement) -> XCUIElement {
+        if primary.waitForExistence(timeout: 2) { return primary }
+        return fallback
     }
 
     /// Matches app day-card ids: UTC `yyyy-MM-dd` for the next Saturday in the upcoming week.
