@@ -125,10 +125,16 @@ jobs:
         with:
           xcode-version: ${{ env.XCODE_VERSION }}
 
+      - name: Install SwiftLint
+        run: |
+          # Runner images sometimes omit or unlink SwiftLint — install when missing.
+          if ! command -v swiftlint >/dev/null 2>&1; then
+            brew install swiftlint
+          fi
+          swiftlint version
+
       - name: Run SwiftLint
         run: |
-          # macos-26 images ship SwiftLint; avoid Homebrew install drift.
-          swiftlint version
           # Fail on error-severity only (baseline). Do not use --strict yet —
           # that would require a full style rewrite.
           swiftlint lint --reporter github-actions-logging --quiet
