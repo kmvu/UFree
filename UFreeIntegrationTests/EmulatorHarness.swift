@@ -15,6 +15,15 @@ import FirebaseFirestore
 enum EmulatorHarness {
     private static var didConfigure = false
 
+    /// Short-timeout session so a wedged emulator clear fails fast and can retry.
+    private static let clearSession: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 12
+        config.timeoutIntervalForResource = 20
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
+
     static func prepareSuite() {
         if FirebaseApp.app() == nil {
             FirebaseApp.configure()
@@ -30,13 +39,27 @@ enum EmulatorHarness {
             try Auth.auth().signOut()
         }
 
+        // Pause SDK traffic so the emulator clear endpoint is not blocked by open streams.
+        let db = Firestore.firestore()
+        try? await db.disableNetwork()
+
         let projectId = FirebaseApp.app()?.options.projectID ?? "ufree-313a2"
-        try await clearHTTP(
-            url: URL(string: "http://127.0.0.1:8080/emulator/v1/projects/\(projectId)/databases/(default)/documents")!
-        )
-        try await clearHTTP(
-            url: URL(string: "http://127.0.0.1:9099/emulator/v1/projects/\(projectId)/accounts")!
-        )
+        let firestoreClear = URL(
+            string: "http://127.0.0.1:8080/emulator/v1/projects/\(projectId)/databases/(default)/documents"
+        )!
+        let authClear = URL(
+            string: "http://127.0.0.1:9099/emulator/v1/projects/\(projectId)/accounts"
+        )!
+
+        do {
+            try await clearHTTPWithRetry(url: firestoreClear)
+            try await clearHTTPWithRetry(url: authClear)
+        } catch {
+            try? await Firestore.firestore().enableNetwork()
+            throw error
+        }
+
+        try await Firestore.firestore().enableNetwork()
     }
 
     /// Create (or sign in) an email/password user on the Auth emulator and set displayName.
@@ -69,10 +92,30 @@ enum EmulatorHarness {
         }
     }
 
+    private static func clearHTTPWithRetry(url: URL, attempts: Int = 4) async throws {
+        var lastError: Error?
+        for attempt in 1...attempts {
+            do {
+                try await clearHTTP(url: url)
+                return
+            } catch {
+                lastError = error
+                // Back off briefly; emulator clear can stall under concurrent SDK traffic.
+                try? await Task.sleep(nanoseconds: UInt64(attempt) * 250_000_000)
+            }
+        }
+        throw lastError ?? NSError(
+            domain: "EmulatorHarness",
+            code: -1,
+            userInfo: [NSLocalizedDescriptionKey: "Failed to clear emulator at \(url)"]
+        )
+    }
+
     private static func clearHTTP(url: URL) async throws {
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
-        let (_, response) = try await URLSession.shared.data(for: request)
+        request.timeoutInterval = 12
+        let (_, response) = try await clearSession.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
         // 200 OK, 204 No Content — also tolerate 404 if emulator just started empty.
         guard (200..<300).contains(status) || status == 404 else {
