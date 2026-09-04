@@ -38,7 +38,8 @@ final class AccountDeletionIntegrationTests: XCTestCase {
             email: "alice-delete@test.ufree",
             displayName: "Alice"
         )
-        let bobProfile = try XCTUnwrap(try await friends.findUserById(bobId))
+        let bobOptional = try await friends.findUserById(bobId)
+        let bobProfile = try XCTUnwrap(bobOptional)
         try await friends.sendFriendRequest(to: bobProfile)
 
         try EmulatorHarness.signOut()
@@ -46,7 +47,8 @@ final class AccountDeletionIntegrationTests: XCTestCase {
             email: "bob-delete@test.ufree",
             displayName: "Bob"
         )
-        let pending = try XCTUnwrap(try await friends.pendingFriendRequest(from: aliceId))
+        let pendingOptional = try await friends.pendingFriendRequest(from: aliceId)
+        let pending = try XCTUnwrap(pendingOptional)
         try await friends.acceptFriendRequest(pending)
 
         var bobFriends = try await friends.getMyFriends()
