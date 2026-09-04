@@ -84,6 +84,14 @@ final class OnboardingProgressStoreTests: XCTestCase {
         XCTAssertFalse(sut.shouldCelebrateFirstConnection(previousFriendCount: 0, newFriendCount: 1))
     }
 
+    func test_prepareForUITestingWithSeededFriends_suppressesCelebrationAndWeekendCTA() {
+        sut.prepareForUITestingWithSeededFriends()
+        XCTAssertFalse(sut.shouldCelebrateFirstConnection(previousFriendCount: 0, newFriendCount: 1))
+        XCTAssertFalse(sut.shouldPresentWeekendCTAAfterConnection)
+        XCTAssertFalse(sut.shouldShowPostConnectCoach)
+        XCTAssertTrue(sut.hasCompletedFirstHandshake)
+    }
+
     func test_shouldCelebrateFirstConnection_falseWhenNotLeavingZero() {
         XCTAssertFalse(sut.shouldCelebrateFirstConnection(previousFriendCount: 1, newFriendCount: 2))
         XCTAssertFalse(sut.shouldCelebrateFirstConnection(previousFriendCount: 0, newFriendCount: 0))

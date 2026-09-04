@@ -89,6 +89,14 @@ public final class OnboardingProgressStore: ObservableObject {
         defaults.set(true, forKey: scoped(KeyBase.hasCelebratedFirstAccept))
     }
 
+    /// Seeded friends in UI_TESTING_MODE must not trigger first-connection toast / weekend sheet.
+    public func prepareForUITestingWithSeededFriends() {
+        acknowledgeExistingFriends()
+        markCelebratedFirstAccept()
+        consumeWeekendCTA()
+        dismissPostConnectCoach()
+    }
+
     /// Soft bottom banner: incomplete first hangout, not permanently dismissed, no friends yet.
     public func shouldShowPairOnboardingBanner(friendCount: Int) -> Bool {
         !hasDismissedPairChecklist && !hasCompletedFirstHandshake && friendCount == 0

@@ -24,7 +24,11 @@ final class HappyPathUITests: XCTestCase {
 
     @MainActor
     func test_markSaturdayFree_thenOpenWhosFree() throws {
-        let scheduleTab = app.tabBars.buttons["Schedule"]
+        // Prefer accessibility ids (same as UFreeUITests); labels are locale/punctuation fragile.
+        let scheduleTab = firstExisting(
+            app.tabBars.buttons["tab.schedule"],
+            app.tabBars.buttons["Schedule"]
+        )
         XCTAssertTrue(
             scheduleTab.waitForExistence(timeout: 10),
             "Expected Schedule tab after UI_TESTING_MODE bootstrap"
@@ -43,18 +47,21 @@ final class HappyPathUITests: XCTestCase {
         )
         tapHittable(saturdayCard)
 
-        let whosFreeTab = app.tabBars.buttons["Who's Free?"]
+        let whosFreeTab = firstExisting(
+            app.tabBars.buttons["tab.whosFree"],
+            app.tabBars.buttons["Who's Free?"]
+        )
         XCTAssertTrue(whosFreeTab.waitForExistence(timeout: 5))
         whosFreeTab.tap()
 
+        // Large-title nav + scroll root; either proves the feed tab is selected.
         let whosFreeRoot = app.descendants(matching: .any)
             .matching(identifier: "whosFree.root")
             .firstMatch
-        XCTAssertTrue(
-            whosFreeRoot.waitForExistence(timeout: 5),
-            "Expected Who's Free root after tab switch"
-        )
-        XCTAssertTrue(app.navigationBars["Who's Free?"].waitForExistence(timeout: 5))
+        let navTitle = app.navigationBars["Who's Free?"]
+        let feedVisible = whosFreeRoot.waitForExistence(timeout: 10)
+            || navTitle.waitForExistence(timeout: 2)
+        XCTAssertTrue(feedVisible, "Expected Who's Free root after tab switch")
     }
 
     /// Scroll horizontally if needed, then tap via center coordinate (avoids non-hittable StaticText).

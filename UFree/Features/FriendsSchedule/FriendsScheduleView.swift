@@ -92,6 +92,7 @@ public struct FriendsScheduleView: View {
         }
         .navigationTitle("Who's Free?")
         .navigationBarTitleDisplayMode(.large)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("whosFree.root")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

@@ -310,6 +310,11 @@ struct MainAppView: View {
             handleUniversalLink(url)
         }
         .onAppear {
+            // Seeded Alex friend would otherwise look like a live 0→1 accept and open
+            // the weekend CTA sheet, which blocks Who's Free tab switches in XCUITest.
+            if TestConfiguration.isRunningUITests {
+                onboardingStore.prepareForUITestingWithSeededFriends()
+            }
             wireHandshakeCallback()
             friendsViewModel.listenToRequests()
             friendsViewModel.listenToFriends()
@@ -322,7 +327,8 @@ struct MainAppView: View {
             }
             // Present pending weekend CTA only when no celebration toast is active
             // (avoids stacking with first-connection toast).
-            if onboardingStore.shouldPresentWeekendCTAAfterConnection,
+            if !TestConfiguration.isRunningUITests,
+               onboardingStore.shouldPresentWeekendCTAAfterConnection,
                rootViewModel.celebrationToast == nil {
                 rootViewModel.showWeekendCTA = true
             }
@@ -338,7 +344,7 @@ struct MainAppView: View {
             }
         }
         .onChange(of: onboardingStore.hasMarkedFreeDay) { wasMarked, isMarked in
-            if !wasMarked && isMarked {
+            if !TestConfiguration.isRunningUITests, !wasMarked && isMarked {
                 rootViewModel.presentOnboardingStepFeedback(
                     OnboardingProgressStore.freeDayStepToastMessage
                 )
@@ -347,6 +353,10 @@ struct MainAppView: View {
     }
 
     private func handleFriendsCountChange(from oldCount: Int, to newCount: Int) {
+        if TestConfiguration.isRunningUITests {
+            syncPairChecklistVisibility()
+            return
+        }
         if onboardingStore.shouldCelebrateFirstConnection(
             previousFriendCount: oldCount,
             newFriendCount: newCount
