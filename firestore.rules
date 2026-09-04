@@ -145,7 +145,8 @@ service cloud.firestore {
       // so strangers cannot scrape the users collection.
       // Use `resource` (not get()) so evaluation does not re-fetch the same doc.
       allow get: if isOwner(userId)
-        || (isSignedIn()
+        || (resource != null
+            && isSignedIn()
             && request.auth.uid in resource.data.get('friendIds', []));
       allow list: if false;
 

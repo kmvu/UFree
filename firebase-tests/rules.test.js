@@ -624,4 +624,16 @@ describe("account deletion", () => {
     );
     await assertSucceeds(deleteDoc(doc(authedDb("alice"), "users/alice")));
   });
+
+  it("lets owner probe a wiped users doc; former friends get permission-denied", async () => {
+    await seedAcceptedFriends();
+    await assertSucceeds(deleteDoc(doc(authedDb("alice"), "users/alice")));
+    // Friend get rules need resource.data; missing docs leave resource null → deny.
+    await assertFails(getDoc(doc(authedDb("bob"), "users/alice")));
+    // Owner path does not touch resource, so Alice can observe the wipe.
+    const snap = await assertSucceeds(getDoc(doc(authedDb("alice"), "users/alice")));
+    if (snap.exists()) {
+      throw new Error("expected wiped users/alice document to be missing");
+    }
+  });
 });
