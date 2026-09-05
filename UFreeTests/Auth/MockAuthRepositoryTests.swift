@@ -163,31 +163,26 @@ final class MockAuthRepositoryTests: XCTestCase {
     
     func test_authState_emitsNilAfterSignOut() async throws {
         _ = try await repository.signInAnonymously()
-        
-        var emittedNil = false
-        
+
+        // bufferingNewest(1) may collapse the prior sign-in yield if the listener
+        // attaches late — so treat *any* nil as success, not "second emission".
+        let nilSeen = expectation(description: "authState emits nil")
         let task = Task {
-            var emissionCount = 0
             for await user in repository.authState {
-                emissionCount += 1
-                // After sign out (second sign-in then sign-out), expect nil
-                if emissionCount > 1 && user == nil {
-                    emittedNil = true
+                if user == nil {
+                    nilSeen.fulfill()
                     break
                 }
             }
         }
-        
+        // Let the for-await register before sign-out so the nil yield is delivered.
+        await Task.yield()
+        await Task.yield()
+
         try await repository.signOut()
-        
-        // Yield to allow task to process the emission
-        let startDate = Date()
-        while !emittedNil && Date().timeIntervalSince(startDate) < 1.0 {
-            await Task.yield()
-        }
+
+        await fulfillment(of: [nilSeen], timeout: 2.0)
         task.cancel()
-        
-        XCTAssertTrue(emittedNil)
     }
     
     // MARK: - Protocol Conformance
