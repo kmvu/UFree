@@ -16,9 +16,10 @@ public class MockAuthRepository: AuthRepository {
     public init(user: User? = nil) {
         self.user = user
         
-        // Set up the AsyncStream for auth state changes
+        // Newest-only buffer: rapid sign-in then sign-out must not let a stale
+        // signed-in emission overwrite `currentUser` after sign-out clears it.
         var continuation: AsyncStream<User?>.Continuation!
-        let stream = AsyncStream<User?> { cont in
+        let stream = AsyncStream<User?>(bufferingPolicy: .bufferingNewest(1)) { cont in
             continuation = cont
         }
         self.authStateStream = stream

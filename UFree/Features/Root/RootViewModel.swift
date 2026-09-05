@@ -198,7 +198,11 @@ public final class RootViewModel: ObservableObject {
         return Task {
             do {
                 try await authRepository.signOut()
+                // Clear immediately for UI; auth-state stream also emits nil.
+                // Repositories use bufferingNewest(1) so a lagged sign-in emission
+                // cannot resurrect currentUser after this.
                 self.currentUser = nil
+                self.authPhase = .unauthenticated
             } catch {
                 self.errorMessage = error.localizedDescription
             }

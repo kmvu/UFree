@@ -27,9 +27,9 @@ public final class FirebaseAuthRepository: AuthRepository {
         self.auth = auth
         self.appleSignIn = AppleSignInCoordinator()
         
-        // Set up the AsyncStream for auth state changes
+        // Newest-only buffer so a lagged sign-in emission cannot outrun sign-out.
         var continuation: AsyncStream<User?>.Continuation!
-        let stream = AsyncStream<User?> { cont in
+        let stream = AsyncStream<User?>(bufferingPolicy: .bufferingNewest(1)) { cont in
             continuation = cont
         }
         self.authStateStream = stream

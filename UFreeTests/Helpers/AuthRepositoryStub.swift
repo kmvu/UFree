@@ -32,7 +32,7 @@ final class AuthRepositoryStub: AuthRepository, @unchecked Sendable {
         self.stubbedUser = user
 
         var continuation: AsyncStream<User?>.Continuation!
-        self.stream = AsyncStream<User?> { continuation = $0 }
+        self.stream = AsyncStream<User?>(bufferingPolicy: .bufferingNewest(1)) { continuation = $0 }
         self.continuation = continuation
     }
 

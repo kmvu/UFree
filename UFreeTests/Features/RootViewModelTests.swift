@@ -73,9 +73,15 @@ final class RootViewModelTests: XCTestCase {
     
     func test_signOut_clearsCurrentUser() async throws {
         await viewModel.signInAnonymously().value
+        XCTAssertNotNil(viewModel.currentUser)
+
         await viewModel.signOut().value
-        
-        XCTAssertNil(viewModel.currentUser)
+
+        // Auth-state listener may still be draining a buffered sign-in emission;
+        // wait until sign-out's nil (or the stream's nil) wins.
+        await waitUntil("sign-out clears currentUser") {
+            self.viewModel.currentUser == nil
+        }
     }
     
     // MARK: - Auth State Stream
