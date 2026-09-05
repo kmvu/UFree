@@ -135,4 +135,85 @@ extension XCTestCase {
             throw XCTSkip("Set UFREE_INTEGRATION_TESTS=1 and start Auth+Firestore emulators (see Docs/TESTING_GUIDE.md).")
         }
     }
+
+    func firstYield<T>(
+        of stream: AsyncStream<T>,
+        timeout: TimeInterval = 5,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws -> T {
+        try await firstMatching(of: stream, timeout: timeout, file: file, line: line) { _ in true }
+    }
+
+    /// Snapshot listeners can emit an empty cache before the write is visible.
+    func firstMatching<T>(
+        of stream: AsyncStream<T>,
+        timeout: TimeInterval = 8,
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        where predicate: @escaping (T) -> Bool
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                for await value in stream {
+                    if predicate(value) { return value }
+                }
+                throw NSError(
+                    domain: "EmulatorHarness",
+                    code: -2,
+                    userInfo: [NSLocalizedDescriptionKey: "Stream finished without a matching value"]
+                )
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                throw NSError(
+                    domain: "EmulatorHarness",
+                    code: -3,
+                    userInfo: [NSLocalizedDescriptionKey: "Timed out waiting for stream value"]
+                )
+            }
+            let value = try await group.next()!
+            group.cancelAll()
+            return value
+        }
+    }
+}
+
+extension EmulatorHarness {
+    /// Sign in both users, persist profiles, and complete Alice → Bob accept.
+    static func connectAliceToBob(
+        aliceEmail: String,
+        bobEmail: String,
+        aliceHashes: [String] = []
+    ) async throws -> (aliceId: String, bobId: String) {
+        let friends = FirebaseFriendRepository()
+        let aliceId = try await signInUser(email: aliceEmail, displayName: "Alice")
+        try await friends.saveUserProfile(displayName: "Alice", hashedPhoneNumbers: aliceHashes)
+
+        let bobId = try await signInUser(email: bobEmail, displayName: "Bob")
+        try await friends.saveUserProfile(displayName: "Bob", hashedPhoneNumbers: [])
+
+        try signOut()
+        _ = try await signInUser(email: aliceEmail, displayName: "Alice")
+        guard let bobProfile = try await friends.findUserById(bobId) else {
+            throw NSError(
+                domain: "EmulatorHarness",
+                code: 404,
+                userInfo: [NSLocalizedDescriptionKey: "Bob profile missing after sign-in"]
+            )
+        }
+        try await friends.sendFriendRequest(to: bobProfile)
+
+        try signOut()
+        _ = try await signInUser(email: bobEmail, displayName: "Bob")
+        guard let pending = try await friends.pendingFriendRequest(from: aliceId) else {
+            throw NSError(
+                domain: "EmulatorHarness",
+                code: 404,
+                userInfo: [NSLocalizedDescriptionKey: "Pending Alice→Bob request missing"]
+            )
+        }
+        try await friends.acceptFriendRequest(pending)
+        return (aliceId, bobId)
+    }
 }

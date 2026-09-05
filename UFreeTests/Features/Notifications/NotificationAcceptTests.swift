@@ -228,6 +228,34 @@ final class NotificationAcceptTests: XCTestCase {
         XCTAssertNil(sut.processingNotificationKey)
     }
 
+    func test_acceptFriendRequest_forgedRelatedRequestId_isRejected() async {
+        friendRepo.addIncomingRequest(
+            FriendRequest(
+                id: "mallory_victim",
+                fromId: "mallory",
+                fromName: "Mallory",
+                toId: "victim",
+                status: .pending,
+                timestamp: Date()
+            )
+        )
+        let note = AppNotification(
+            recipientId: "me",
+            senderId: "alice",
+            senderName: "Alice",
+            type: .friendRequest,
+            date: Date(),
+            relatedRequestId: "mallory_victim"
+        )
+        sut.notifications = [note]
+
+        await sut.acceptFriendRequest(from: note)
+
+        XCTAssertNotNil(sut.errorMessage)
+        XCTAssertTrue(friendsVM.friends.isEmpty)
+        XCTAssertTrue(sut.isFriendRequestActionable(sut.notifications[0]))
+    }
+
     private final class NoopUpdateUseCase: UpdateMyStatusUseCaseProtocol {
         func execute(day: DayAvailability) async throws {}
     }

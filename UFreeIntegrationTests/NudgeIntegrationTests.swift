@@ -73,4 +73,77 @@ final class NudgeIntegrationTests: XCTestCase {
         XCTAssertEqual(nudge.senderName, "Alice")
         XCTAssertEqual(nudge.targetDateString, AppNotification.dateString(from: tomorrow))
     }
+
+    func test_nudgeReply_visibleInSenderInbox() async throws {
+        let friends = FirebaseFriendRepository()
+        let notifications = FirebaseNotificationRepository()
+        let (aliceId, bobId) = try await EmulatorHarness.connectAliceToBob(
+            aliceEmail: "alice-reply@test.ufree",
+            bobEmail: "bob-reply@test.ufree"
+        )
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "alice-reply@test.ufree",
+            displayName: "Alice"
+        )
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        try await notifications.sendNudge(to: bobId, targetDate: tomorrow)
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "bob-reply@test.ufree",
+            displayName: "Bob"
+        )
+        try await notifications.sendNudgeReply(
+            to: aliceId,
+            targetDateString: AppNotification.dateString(from: tomorrow),
+            response: .imIn
+        )
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "alice-reply@test.ufree",
+            displayName: "Alice"
+        )
+        let snap = try await Firestore.firestore()
+            .collection("users")
+            .document(aliceId)
+            .collection("notifications")
+            .getDocuments()
+        let notes = snap.documents.compactMap { try? $0.data(as: AppNotification.self) }
+        let reply = notes.first { $0.type == .nudgeReply && $0.senderId == bobId }
+        XCTAssertNotNil(
+            reply,
+            "Expected Bob's nudgeReply in Alice's inbox; decoded \(notes.map(\.type)) from \(snap.documents.count) docs"
+        )
+        let replyNote = try XCTUnwrap(reply)
+        XCTAssertEqual(replyNote.nudgeResponse, AppNotification.NudgeResponse.imIn.rawValue)
+        XCTAssertEqual(replyNote.targetDateString, AppNotification.dateString(from: tomorrow))
+    }
+
+    func test_listenToNotifications_emitsNudge() async throws {
+        let notifications = FirebaseNotificationRepository()
+        let (_, bobId) = try await EmulatorHarness.connectAliceToBob(
+            aliceEmail: "alice-nlisten@test.ufree",
+            bobEmail: "bob-nlisten@test.ufree"
+        )
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "alice-nlisten@test.ufree",
+            displayName: "Alice"
+        )
+        try await notifications.sendNudge(to: bobId, targetDate: Date())
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "bob-nlisten@test.ufree",
+            displayName: "Bob"
+        )
+        let inbox = try await firstMatching(of: notifications.listenToNotifications()) { notes in
+            notes.contains(where: { $0.type == .nudge && $0.senderName == "Alice" })
+        }
+        XCTAssertFalse(inbox.isEmpty)
+    }
 }

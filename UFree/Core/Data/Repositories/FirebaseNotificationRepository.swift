@@ -73,20 +73,8 @@ public class FirebaseNotificationRepository: NotificationRepository {
     }
     
     public func sendNudge(to userId: String, targetDate: Date?) async throws {
-        guard let currentUid = auth.currentUser?.uid else {
-            throw NSError(
-                domain: "FirebaseNotificationRepository",
-                code: 401,
-                userInfo: [NSLocalizedDescriptionKey: "User not logged in"]
-            )
-        }
-        guard let currentName = auth.currentUser?.displayName, !currentName.isEmpty else {
-            throw NSError(
-                domain: "FirebaseNotificationRepository",
-                code: 400,
-                userInfo: [NSLocalizedDescriptionKey: "Display name required to send a nudge"]
-            )
-        }
+        let currentUid = try NotificationSenderIdentity.requireSignedInUserId(auth.currentUser?.uid)
+        let currentName = try NotificationSenderIdentity.requireDisplayName(auth.currentUser?.displayName)
 
         var data: [String: Any] = [
             "recipientId": userId,
@@ -110,22 +98,26 @@ public class FirebaseNotificationRepository: NotificationRepository {
         targetDateString: String?,
         response: AppNotification.NudgeResponse
     ) async throws {
-        guard let currentUid = auth.currentUser?.uid,
-              let currentName = auth.currentUser?.displayName else { return }
+        let currentUid = try NotificationSenderIdentity.requireSignedInUserId(auth.currentUser?.uid)
+        let currentName = try NotificationSenderIdentity.requireDisplayName(auth.currentUser?.displayName)
 
-        let note = AppNotification(
-            recipientId: userId,
-            senderId: currentUid,
-            senderName: currentName,
-            type: .nudgeReply,
-            date: Date(),
-            isRead: false,
-            targetDateString: targetDateString,
-            nudgeResponse: response.rawValue
-        )
+        var data: [String: Any] = [
+            "recipientId": userId,
+            "senderId": currentUid,
+            "senderName": currentName,
+            "type": AppNotification.NotificationType.nudgeReply.rawValue,
+            "date": Timestamp(date: Date()),
+            "isRead": false,
+            "nudgeResponse": response.rawValue
+        ]
+        if let targetDateString {
+            data["targetDateString"] = targetDateString
+        }
 
+        // Same explicit dictionary write as `sendNudge` — Codable/@DocumentID
+        // can omit or reshape fields and fail notification create rules.
         _ = try await db.collection("users").document(userId).collection("notifications")
-            .addDocument(from: note)
+            .addDocument(data: data)
     }
 
     public func markNudgeResponded(

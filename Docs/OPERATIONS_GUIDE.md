@@ -20,8 +20,8 @@ Internal Firebase App Distribution (`fastlane alpha`) was removed. TestFlight is
 Deploy cannot skip quality. The flow is:
 
 1. Land the commit on `main` (a push, not only a PR merge SHA that never ran integration).
-2. Wait for **Quality Check** on that exact SHA from a **`push` event** to finish green: `firestore-rules`, `unit-tests`, `lint`, **`emulator-integration`**, and `ui-tests`. PR runs skip emulator-integration and **cannot** unlock TestFlight.
-3. Trigger **Deploy to TestFlight** (workflow_dispatch, `main` only). The workflow refuses to ship if there is no successful main-push CI with Emulator Integration success for that SHA, required secrets are absent, or the ref is not `main`.
+2. Wait for **Quality Check** on that exact SHA from a **`push` event** to finish green: **Firestore Rules**, **Unit Tests**, **UI Tests**, **SwiftLint**, and **Emulator Integration**. PR-only green cannot unlock TestFlight.
+3. Trigger **Deploy to TestFlight** (workflow_dispatch, `main` only). The workflow refuses to ship if there is no successful main-push CI that name-checks all five jobs, required secrets are absent, or the ref is not `main`.
 4. `fastlane beta` runs the unit suite again, then signs, builds, and uploads to TestFlight.
 
 Pinned toolchain: **Xcode 26.6** on `macos-26`, simulator **iPhone 17 Pro**, Ruby from tracked `.ruby-version` (`3.3.0`).

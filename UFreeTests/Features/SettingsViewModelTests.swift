@@ -197,4 +197,56 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(wipeCallCount, 0)
         XCTAssertFalse(sut.isDeleteSuccessful)
     }
+
+    func test_deleteAccount_reauthenticateError_surfacesErrorWithoutDeleting() async {
+        authRepository.stubbedUser = User(id: "u1", isAnonymous: false, displayName: "Alice")
+        authRepository.reauthenticateError = NSError(
+            domain: "auth",
+            code: 17014,
+            userInfo: [NSLocalizedDescriptionKey: "Re-auth failed"]
+        )
+
+        await sut.deleteAccount()
+
+        XCTAssertEqual(authRepository.reauthenticateCallCount, 1)
+        XCTAssertEqual(friendRepository.deleteAccountDataCallCount, 0)
+        XCTAssertEqual(authRepository.deleteAccountCallCount, 0)
+        XCTAssertEqual(wipeCallCount, 0)
+        XCTAssertEqual(sut.errorMessage, "Re-auth failed")
+        XCTAssertFalse(sut.isDeleteSuccessful)
+        XCTAssertFalse(sut.isProcessing)
+    }
+
+    func test_deleteAccount_appleCancel_clearsProcessingWithoutError() async {
+        authRepository.stubbedUser = User(id: "u1", isAnonymous: false, displayName: "Alice")
+        authRepository.reauthenticateError = AppleSignInError.cancelled
+
+        await sut.deleteAccount()
+
+        XCTAssertEqual(authRepository.reauthenticateCallCount, 1)
+        XCTAssertEqual(friendRepository.deleteAccountDataCallCount, 0)
+        XCTAssertEqual(authRepository.deleteAccountCallCount, 0)
+        XCTAssertEqual(wipeCallCount, 0)
+        XCTAssertNil(sut.errorMessage)
+        XCTAssertFalse(sut.isDeleteSuccessful)
+        XCTAssertFalse(sut.isProcessing)
+    }
+
+    func test_deleteAccount_authDeleteFailure_surfacesErrorWithoutLocalWipe() async {
+        authRepository.stubbedUser = User(id: "u1", isAnonymous: false, displayName: "Alice")
+        authRepository.deleteAccountError = NSError(
+            domain: "auth",
+            code: 17000,
+            userInfo: [NSLocalizedDescriptionKey: "Auth delete failed"]
+        )
+
+        await sut.deleteAccount()
+
+        XCTAssertEqual(friendRepository.deleteAccountDataCallCount, 1)
+        XCTAssertEqual(authRepository.deleteAccountCallCount, 1)
+        XCTAssertEqual(wipeCallCount, 0)
+        XCTAssertEqual(sut.errorMessage, "Auth delete failed")
+        XCTAssertFalse(sut.isDeleteSuccessful)
+        XCTAssertFalse(sut.isProcessing)
+    }
 }

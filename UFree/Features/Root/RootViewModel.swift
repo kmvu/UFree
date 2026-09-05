@@ -159,8 +159,10 @@ public final class RootViewModel: ObservableObject {
     // MARK: - Auth State Setup
     
     private func setupAuthStateListener() {
-        authStateTask = Task {
+        authStateTask = Task { [weak self] in
+            guard let authRepository = self?.authRepository else { return }
             for await user in authRepository.authState {
+                guard let self else { return }
                 self.currentUser = user
                 self.isSigningIn = false
                 

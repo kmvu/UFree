@@ -18,6 +18,16 @@ final class FriendsHandshakeTests: XCTestCase {
         try await super.setUp()
         mockRepo = MockFriendRepository()
         viewModel = FriendsViewModel(friendRepository: mockRepo)
+        trackForMemoryLeaks(viewModel)
+    }
+
+    override func tearDown() async throws {
+        viewModel.stopListening()
+        viewModel = nil
+        mockRepo = nil
+        await drainPendingTasks()
+        verifyNoMemoryLeaks()
+        try await super.tearDown()
     }
     
     // MARK: - Send Friend Request
@@ -131,10 +141,8 @@ final class FriendsHandshakeTests: XCTestCase {
         
         viewModel.listenToRequests()
         
-        // Wait deterministically for the listener to process the mock stream
-        let startDate = Date()
-        while viewModel.incomingRequests.isEmpty && Date().timeIntervalSince(startDate) < 1.0 {
-            await Task.yield()
+        await waitUntil("incoming request listener yields") {
+            !viewModel.incomingRequests.isEmpty
         }
         
         XCTAssertEqual(viewModel.incomingRequests.count, 1)
@@ -153,11 +161,7 @@ final class FriendsHandshakeTests: XCTestCase {
         let countAfterStop = viewModel.incomingRequests.count
         mockRepo.addIncomingRequest(makeFriendRequest(id: "req_late", fromName: "Late"))
 
-        // Give any leaked listener time to fire — it should not.
-        let startDate = Date()
-        while Date().timeIntervalSince(startDate) < 0.2 {
-            await Task.yield()
-        }
+        await drainPendingTasks()
 
         XCTAssertEqual(viewModel.incomingRequests.count, countAfterStop)
         XCTAssertGreaterThanOrEqual(viewModel.incomingRequests.count, 0)
@@ -169,9 +173,8 @@ final class FriendsHandshakeTests: XCTestCase {
         
         viewModel.listenToRequests()
         
-        let startDate = Date()
-        while viewModel.incomingRequests.isEmpty && Date().timeIntervalSince(startDate) < 1.0 {
-            await Task.yield()
+        await waitUntil("incoming request listener yields") {
+            !viewModel.incomingRequests.isEmpty
         }
         
         // Start listener again to verify it cancels the previous one

@@ -82,6 +82,7 @@ public struct NotificationCenterView: View {
             .adaptiveContentWidth(640)
             .navigationTitle("Notifications")
             .navigationBarTitleDisplayMode(horizontalSizeClass == .regular ? .large : .inline)
+            .accessibilityIdentifier("notifications.root")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if viewModel.unreadCount > 0 {
@@ -157,6 +158,7 @@ struct NotificationRow: View {
                 }
                 .ufreeCompactButton(tint: .green)
                 .disabled(viewModel.hasActiveNotificationAction)
+                .accessibilityIdentifier("notifications.accept")
             } else if note.type == .friendRequest || note.type == .friendAccepted {
                 Label("Connected", systemImage: "checkmark.circle.fill")
                     .font(.subheadline.weight(.semibold))
@@ -174,6 +176,7 @@ struct NotificationRow: View {
                             tint: response == .imIn ? .green : (response == .busy ? .red : .orange)
                         )
                         .disabled(viewModel.hasActiveNotificationAction)
+                        .accessibilityIdentifier("notifications.reply.\(response.rawValue)")
                     }
                 }
             }

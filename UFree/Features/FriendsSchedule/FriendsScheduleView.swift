@@ -380,6 +380,8 @@ private struct FriendScheduleRow: View {
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(12)
         .padding(.horizontal)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("whosFree.friend.\(display.id)")
     }
 
     private var replyCaptionColor: Color {

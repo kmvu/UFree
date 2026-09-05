@@ -20,6 +20,16 @@ final class MyScheduleViewModelLoadTests: XCTestCase {
         mockUseCase = UpdateMyStatusUseCaseSpy()
         mockRepo = AvailabilityRepositorySpy()
         sut = MyScheduleViewModel(updateUseCase: mockUseCase, repository: mockRepo)
+        trackForMemoryLeaks(sut)
+    }
+
+    override func tearDown() async throws {
+        sut = nil
+        mockUseCase = nil
+        mockRepo = nil
+        await drainPendingTasks()
+        verifyNoMemoryLeaks()
+        try await super.tearDown()
     }
     
     func test_loadSchedule_success_mergesWithGeneratedWeek() async {

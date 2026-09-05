@@ -135,6 +135,75 @@ final class CompositeAvailabilityRepositoryTests: XCTestCase {
 
         XCTAssertEqual(localSpy.updateCallCount, 0)
     }
+
+    func test_retryPendingSync_flushesInMemoryPendingAfterRemoteRecovers() async throws {
+        let day = DayAvailability(date: Date(), status: .free, updatedAt: Date())
+        remoteSpy.shouldFailUpdate = true
+
+        try await sut.updateMySchedule(for: day)
+        await waitUntil("first remote attempt") {
+            remoteSpy.updateCallCount == 1
+        }
+
+        remoteSpy.shouldFailUpdate = false
+        await sut.retryPendingSync()
+
+        await waitUntil("retry flushed pending day") {
+            remoteSpy.updateCallCount == 2
+        }
+        XCTAssertEqual(remoteSpy.lastUpdatedDay?.status, .free)
+    }
+
+    func test_retryPendingSync_hydratesPendingFromSwiftDataStore() async throws {
+        let container = TestContainerFactory.makeInMemoryContainer()
+        let localStore = SwiftDataAvailabilityRepository(container: container, userId: "user-a")
+        let remote = AvailabilityRepositorySpy()
+        remote.shouldFailUpdate = true
+        let first = CompositeAvailabilityRepository(
+            local: localStore,
+            remote: remote,
+            observesLifecycle: false
+        )
+
+        let day = DayAvailability(date: Date(), status: .free, updatedAt: Date())
+        try await first.updateMySchedule(for: day)
+        await waitUntil("remote fail leaves pending flag") {
+            remote.updateCallCount == 1
+        }
+        let persisted = try await localStore.pendingDaysForSync()
+        XCTAssertEqual(persisted.count, 1)
+
+        remote.shouldFailUpdate = false
+        let reopened = CompositeAvailabilityRepository(
+            local: localStore,
+            remote: remote,
+            observesLifecycle: false
+        )
+        await reopened.retryPendingSync()
+
+        await waitUntil("reopened composite flushed persisted pending") {
+            remote.updateCallCount == 2
+        }
+        let remaining = try await localStore.pendingDaysForSync()
+        XCTAssertTrue(remaining.isEmpty)
+    }
+
+    func test_handleConnectivityRestored_retriesPending() async throws {
+        let day = DayAvailability(date: Date(), status: .busy, updatedAt: Date())
+        remoteSpy.shouldFailUpdate = true
+        try await sut.updateMySchedule(for: day)
+        await waitUntil("remote fail") {
+            remoteSpy.updateCallCount == 1
+        }
+
+        remoteSpy.shouldFailUpdate = false
+        // Foreground + path-monitor regain both call this shared flush.
+        await sut.handleConnectivityRestored()
+
+        await waitUntil("connectivity flush") {
+            remoteSpy.updateCallCount == 2
+        }
+    }
     
     // MARK: - Spy
     

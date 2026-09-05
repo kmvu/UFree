@@ -173,6 +173,12 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         }
     }
 
+    /// Shared flush used by foreground and path-monitor regain.
+    @MainActor
+    func handleConnectivityRestored() async {
+        await retryPendingSync()
+    }
+
     // MARK: - Lifecycle
 
     private func observeLifecycle() {
@@ -183,7 +189,7 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                await self?.retryPendingSync()
+                await self?.handleConnectivityRestored()
             }
         }
         #endif
@@ -191,7 +197,7 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         pathMonitor.pathUpdateHandler = { [weak self] path in
             guard path.status == .satisfied else { return }
             Task { @MainActor in
-                await self?.retryPendingSync()
+                await self?.handleConnectivityRestored()
             }
         }
         pathMonitor.start(queue: pathMonitorQueue)

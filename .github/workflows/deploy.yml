@@ -57,8 +57,8 @@ jobs:
                 .join(', ') || 'none';
               core.setFailed(
                 `No successful main-push Quality Check (ci.yml) for SHA ${sha}. ` +
-                  `PR-only green runs are not enough (emulator-integration is skipped on PRs). ` +
-                  `Push to main, wait for firestore-rules + unit-tests + lint + emulator-integration (+ ui-tests), then re-run deploy. ` +
+                  `PR-only green runs are not enough (deploy requires a push-event Quality Check). ` +
+                  `Push to main, wait for Firestore Rules + Unit Tests + UI Tests + SwiftLint + Emulator Integration, then re-run deploy. ` +
                   `Recent runs: ${summaries}`
               );
               return;
@@ -69,21 +69,33 @@ jobs:
               repo: context.repo.repo,
               run_id: successfulPush.id,
             });
-            const integration = (jobsData.jobs || []).find((j) =>
-              (j.name || '').includes('Emulator Integration')
-            );
-            if (!integration || integration.conclusion !== 'success') {
+            const requiredJobs = [
+              'Firestore Rules',
+              'Unit Tests',
+              'UI Tests',
+              'SwiftLint',
+              'Emulator Integration',
+            ];
+            const missing = [];
+            for (const name of requiredJobs) {
+              const job = (jobsData.jobs || []).find((j) =>
+                (j.name || '').includes(name)
+              );
+              if (!job || job.conclusion !== 'success') {
+                missing.push(`${name}=${job ? job.conclusion : 'missing'}`);
+              }
+            }
+            if (missing.length > 0) {
               core.setFailed(
-                `Quality Check run ${successfulPush.id} did not include a successful Emulator Integration job ` +
-                  `(got: ${integration ? integration.conclusion : 'missing'}). ` +
-                  `Deploy only after a green push to main.`
+                `Quality Check run ${successfulPush.id} is missing a successful required job ` +
+                  `(${missing.join(', ')}). Deploy only after a green push to main.`
               );
               return;
             }
 
             core.info(
               `Green main-push CI gate OK: run ${successfulPush.id} ` +
-                `(emulator-integration=${integration.conclusion}) ${successfulPush.html_url}`
+                `(jobs=${requiredJobs.join(', ')}) ${successfulPush.html_url}`
             );
 
       - name: Verify required secrets

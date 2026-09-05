@@ -15,6 +15,8 @@ public class MockNotificationRepository: NotificationRepository {
     public var userIdsToFailFor: Set<String> = []  // Test hook: cause sendNudge to fail for these user IDs
     public var shouldThrowRateLimit = false
     public var simulatedDelay: UInt64 = 0 // Nanoseconds
+    /// Mirrors Auth.displayName. Empty / nil throws the same error as production.
+    public var senderDisplayName: String? = "You"
     
     public init(notifications: [AppNotification] = []) {
         self.mockNotifications = notifications
@@ -48,6 +50,7 @@ public class MockNotificationRepository: NotificationRepository {
     }
     
     public func sendNudge(to userId: String, targetDate: Date?) async throws {
+        _ = try NotificationSenderIdentity.requireDisplayName(senderDisplayName)
         if simulatedDelay > 0 {
             try? await Task.sleep(nanoseconds: simulatedDelay)
         }
@@ -80,6 +83,7 @@ public class MockNotificationRepository: NotificationRepository {
         targetDateString: String?,
         response: AppNotification.NudgeResponse
     ) async throws {
+        _ = try NotificationSenderIdentity.requireDisplayName(senderDisplayName)
         sentReplies.append((userId, targetDateString, response))
         let reply = AppNotification(
             recipientId: userId,

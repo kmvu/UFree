@@ -26,14 +26,17 @@ final class FriendsScheduleViewModelTests: XCTestCase {
             availabilityRepository: mockAvailabilityRepo,
             notificationRepository: mockNotificationRepo
         )
+        trackForMemoryLeaks(sut)
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         sut = nil
         mockFriendRepo = nil
         mockAvailabilityRepo = nil
         mockNotificationRepo = nil
-        super.tearDown()
+        await drainPendingTasks()
+        verifyNoMemoryLeaks()
+        try await super.tearDown()
     }
 
     // MARK: - Loading Data
@@ -236,6 +239,18 @@ final class FriendsScheduleViewModelTests: XCTestCase {
 
         // Assert
         XCTAssertNil(sut.errorMessage)
+    }
+
+    func test_sendNudge_emptyDisplayName_surfacesError() async {
+        mockNotificationRepo.senderDisplayName = ""
+
+        await sut.sendNudge(to: "friend1")
+
+        XCTAssertEqual(
+            sut.errorMessage,
+            "Failed to send nudge: Display name required to send a nudge"
+        )
+        XCTAssertTrue(mockNotificationRepo.sentNudges.isEmpty)
     }
 
     // MARK: - Group Nudge (Phase 3 - Sprint 6)

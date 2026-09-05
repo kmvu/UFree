@@ -101,6 +101,60 @@ final class NudgeReplyTests: XCTestCase {
         )
     }
 
+    func test_replyToNudge_emptyDisplayName_surfacesError() async {
+        mockRepo.senderDisplayName = ""
+        let today = scheduleVM.weeklySchedule[0].date
+        let note = AppNotification(
+            recipientId: "me",
+            senderId: "friend1",
+            senderName: "Alex",
+            type: .nudge,
+            date: Date(),
+            targetDateString: AppNotification.dateString(from: today)
+        )
+        sut.notifications = [note]
+
+        await sut.replyToNudge(note, response: .imIn)
+
+        XCTAssertEqual(sut.errorMessage, "Couldn't send reply. Try again.")
+        XCTAssertTrue(mockRepo.sentReplies.isEmpty)
+        XCTAssertEqual(updateSpy.executeCallCount, 0)
+    }
+
+    func test_replyToNudge_matchesUTCDayKey_whenLocalCalendarDayDiffers() async {
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let lateUTC = utcCalendar.date(
+            from: DateComponents(year: 2026, month: 6, day: 15, hour: 23, minute: 30)
+        )!
+        let utcKey = DateFormatter.yyyyMMdd.string(from: lateUTC)
+        XCTAssertEqual(utcKey, "2026-06-15")
+
+        scheduleVM.weeklySchedule = [
+            DayAvailability(date: lateUTC, status: .unknown)
+        ]
+
+        let note = AppNotification(
+            recipientId: "me",
+            senderId: "friend1",
+            senderName: "Alex",
+            type: .nudge,
+            date: Date(),
+            targetDateString: utcKey
+        )
+        sut.notifications = [note]
+
+        await sut.replyToNudge(note, response: .imIn)
+
+        XCTAssertEqual(mockRepo.sentReplies.count, 1)
+        XCTAssertEqual(updateSpy.executeCallCount, 1)
+        XCTAssertEqual(updateSpy.executedDay?.status, .free)
+        XCTAssertEqual(
+            DateFormatter.yyyyMMdd.string(from: updateSpy.executedDay?.date ?? Date.distantPast),
+            utcKey
+        )
+    }
+
     private final class UpdateSpy: UpdateMyStatusUseCaseProtocol {
         var executeCallCount = 0
         var executedDay: DayAvailability?

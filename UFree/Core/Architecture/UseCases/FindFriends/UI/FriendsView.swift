@@ -366,6 +366,8 @@ public struct FriendsView: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("friends.friend.\(user.id ?? "")")
     }
 
     private func removeFriendButton(for user: UserProfile) -> some View {

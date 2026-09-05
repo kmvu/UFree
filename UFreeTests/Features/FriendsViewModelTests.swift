@@ -189,4 +189,14 @@ final class FriendsViewModelTests: XCTestCase {
 
         XCTAssertEqual(mockRepository.sendFriendRequestCallCount, 1)
     }
+
+    func test_sendFriendRequest_alreadyFriend_setsErrorWithoutCallingRepo() async {
+        let user = UserProfile(id: "user1", displayName: "Alice", hashedPhoneNumber: "abc123")
+        sut.friends = [user]
+
+        await sut.sendFriendRequest(to: user, source: "manual")
+
+        XCTAssertEqual(sut.errorMessage, "You're already connected with Alice.")
+        XCTAssertEqual(mockRepository.sendFriendRequestCallCount, 0)
+    }
 }

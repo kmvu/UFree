@@ -109,8 +109,10 @@ struct UFreeApp: App {
                 }
             }
             
-            // Use in-memory storage for unit tests, disk storage for production/UI tests
+            // In-memory for unit + UI tests so XCUITest launches stay hermetic
+            // (disk leftovers from HappyPath were slowing the next launch).
             let isInMemory = TestConfiguration.isRunningUnitTests
+                || TestConfiguration.isRunningUITests
             let configuration = ModelConfiguration(isStoredInMemoryOnly: isInMemory)
             container = try ModelContainer(
                 for: PersistentDayAvailability.self,

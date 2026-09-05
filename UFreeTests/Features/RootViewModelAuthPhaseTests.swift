@@ -18,6 +18,15 @@ final class RootViewModelAuthPhaseTests: XCTestCase {
         try await super.setUp()
         authRepository = MockAuthRepository()
         viewModel = RootViewModel(authRepository: authRepository)
+        trackForMemoryLeaks(viewModel)
+    }
+
+    override func tearDown() async throws {
+        viewModel = nil
+        authRepository = nil
+        await drainPendingTasks()
+        verifyNoMemoryLeaks()
+        try await super.tearDown()
     }
     
     func test_authPhase_initialState_isLoading() {
@@ -27,9 +36,8 @@ final class RootViewModelAuthPhaseTests: XCTestCase {
     func test_authPhase_transitionsToAuthenticated() async throws {
         _ = try await authRepository.signInAnonymously()
         
-        let startDate = Date()
-        while viewModel.authPhase != .authenticated && Date().timeIntervalSince(startDate) < 1.0 {
-            await Task.yield()
+        await waitUntil("authPhase becomes authenticated") {
+            viewModel.authPhase == .authenticated
         }
         
         XCTAssertEqual(viewModel.authPhase, .authenticated)
@@ -38,17 +46,14 @@ final class RootViewModelAuthPhaseTests: XCTestCase {
     func test_authPhase_transitionsToUnauthenticated_whenSignedOut() async throws {
         _ = try await authRepository.signInAnonymously()
         
-        // Wait for sign in to reflect
-        let startIn = Date()
-        while viewModel.authPhase != .authenticated && Date().timeIntervalSince(startIn) < 1.0 {
-            await Task.yield()
+        await waitUntil("authPhase becomes authenticated") {
+            viewModel.authPhase == .authenticated
         }
         
         try await authRepository.signOut()
         
-        let startOut = Date()
-        while viewModel.authPhase != .unauthenticated && Date().timeIntervalSince(startOut) < 1.0 {
-            await Task.yield()
+        await waitUntil("authPhase becomes unauthenticated") {
+            viewModel.authPhase == .unauthenticated
         }
         
         XCTAssertEqual(viewModel.authPhase, .unauthenticated)

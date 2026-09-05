@@ -88,4 +88,68 @@ final class AccountDeletionIntegrationTests: XCTestCase {
         let aliceSnap = try await Firestore.firestore().collection("users").document(aliceId).getDocument()
         XCTAssertFalse(aliceSnap.exists, "Alice users doc should be gone")
     }
+
+    func test_deleteAccountData_removesAvailabilityNotificationsRequestsAndDiscovery() async throws {
+        let friends = FirebaseFriendRepository()
+        let availability = FirebaseAvailabilityRepository()
+        let notifications = FirebaseNotificationRepository()
+        let aliceHashes = CryptoUtils.phoneNumberHashes(for: "+15557654321")
+        let hash = try XCTUnwrap(aliceHashes.first)
+
+        let (aliceId, bobId) = try await EmulatorHarness.connectAliceToBob(
+            aliceEmail: "alice-cascade@test.ufree",
+            bobEmail: "bob-cascade@test.ufree",
+            aliceHashes: aliceHashes
+        )
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "alice-cascade@test.ufree",
+            displayName: "Alice"
+        )
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        try await availability.updateMySchedule(for: DayAvailability(date: tomorrow, status: .free))
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "bob-cascade@test.ufree",
+            displayName: "Bob"
+        )
+        try await notifications.sendNudge(to: aliceId, targetDate: tomorrow)
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(
+            email: "alice-cascade@test.ufree",
+            displayName: "Alice"
+        )
+        try await friends.deleteAccountData()
+
+        let db = Firestore.firestore()
+        let usersSnap = try await db.collection("users").document(aliceId).getDocument()
+        XCTAssertFalse(usersSnap.exists)
+
+        let availabilitySnap = try await db.collection("users").document(aliceId)
+            .collection("availability").getDocuments()
+        XCTAssertTrue(availabilitySnap.documents.isEmpty)
+
+        let notesSnap = try await db.collection("users").document(aliceId)
+            .collection("notifications").getDocuments()
+        XCTAssertTrue(notesSnap.documents.isEmpty)
+
+        let requestId = FriendRequest.documentId(fromId: aliceId, toId: bobId)
+        // Missing friendRequests docs evaluate `resource.data` as null, so get is
+        // denied (PERMISSION_DENIED) rather than returning exists=false.
+        do {
+            let requestSnap = try await db.collection("friendRequests").document(requestId).getDocument()
+            XCTAssertFalse(requestSnap.exists)
+        } catch {
+            XCTAssertEqual((error as NSError).code, FirestoreErrorCode.permissionDenied.rawValue)
+        }
+
+        let profileSnap = try await db.collection("publicProfiles").document(aliceId).getDocument()
+        XCTAssertFalse(profileSnap.exists)
+
+        let directorySnap = try await db.collection("phoneDirectory").document(hash).getDocument()
+        XCTAssertFalse(directorySnap.exists)
+    }
 }

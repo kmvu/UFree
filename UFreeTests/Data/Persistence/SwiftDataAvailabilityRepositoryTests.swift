@@ -181,6 +181,34 @@ final class SwiftDataAvailabilityRepositoryTests: XCTestCase {
         let restored = try await sut.getMySchedule().status(for: day.date)
         XCTAssertEqual(restored?.status, .free)
     }
+
+    @MainActor
+    func test_setPendingSync_survivesRepositoryReopen() async throws {
+        let day = makeDay(daysOffset: 0, status: .free, note: "pending")
+        try await sut.updateMySchedule(for: day)
+        try await sut.setPendingSync(for: day, pending: true)
+
+        let reopened = SwiftDataAvailabilityRepository(container: container)
+        let pending = try await reopened.pendingDaysForSync()
+
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.status, .free)
+        XCTAssertEqual(pending.first?.note, "pending")
+
+        try await reopened.setPendingSync(for: day, pending: false)
+        let cleared = try await reopened.pendingDaysForSync()
+        XCTAssertTrue(cleared.isEmpty)
+    }
+
+    @MainActor
+    func test_setPendingSync_createsRowWhenDayIsMissing() async throws {
+        let day = makeDay(daysOffset: 4, status: .busy)
+        try await sut.setPendingSync(for: day, pending: true)
+
+        let pending = try await sut.pendingDaysForSync()
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.status, .busy)
+    }
     
     // MARK: - Helper Methods
     

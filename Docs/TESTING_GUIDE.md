@@ -54,17 +54,17 @@ firebase emulators:exec --only auth,firestore --project ufree-313a2 \
   "bundle exec fastlane integration_tests"
 ```
 
-Or in Xcode: start emulators, select the `UFreeIntegrationTests` scheme, then run tests. CI runs this job on **pushes to `main` only** (not every PR).
+Or in Xcode: start emulators, select the `UFreeIntegrationTests` scheme, then run tests. CI runs this job on every **push to `main`**, and on PRs that change `firestore.rules`, `firebase.json`, `UFree/Core/Data/**`, or `UFreeIntegrationTests/**`.
 
 ### UI tests (`UI_TESTING_MODE`)
 
-Launch argument `UI_TESTING_MODE` wires mock auth (signed-in **UI Tester**), local SwiftData + mock remote availability, a seeded friend **Alex** (Saturday free), and mock notifications. Day cards expose `schedule.day.yyyy-MM-dd` (UTC); tabs use `tab.schedule` / `tab.whosFree` / `tab.friends`.
+Launch argument `UI_TESTING_MODE` wires mock auth (signed-in **UI Tester**), local SwiftData + mock remote availability, a seeded friend **Alex** (Saturday free), a pending request from **Casey**, and inbox notes (request + Alex nudge). Day cards expose `schedule.day.yyyy-MM-dd` (UTC); tabs use `tab.schedule` / `tab.whosFree` / `tab.friends`. The notification bell is `notifications.bell`.
 
 ```bash
 bundle exec fastlane ui_tests
 ```
 
-Happy path: `UFreeUITests/HappyPathUITests.swift`.
+Happy path: `UFreeUITests/HappyPathUITests.swift`. Inbox accept / nudge-reply: `UFreeUITests/InboxUITests.swift`.
 
 ### Measuring Coverage
 

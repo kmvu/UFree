@@ -27,7 +27,7 @@ final class UFreeUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(
-            app.tabBars.buttons["tab.schedule"].waitForExistence(timeout: 10),
+            app.tabBars.buttons["tab.schedule"].waitForExistence(timeout: 20),
             "UI_TESTING_MODE should land on authenticated tabs"
         )
     }

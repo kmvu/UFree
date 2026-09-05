@@ -19,6 +19,15 @@ final class RootViewModelTests: XCTestCase {
         try await super.setUp()
         authRepository = MockAuthRepository()
         viewModel = RootViewModel(authRepository: authRepository)
+        trackForMemoryLeaks(viewModel)
+    }
+
+    override func tearDown() async throws {
+        viewModel = nil
+        authRepository = nil
+        await drainPendingTasks()
+        verifyNoMemoryLeaks()
+        try await super.tearDown()
     }
     
     // MARK: - Initial State
@@ -93,10 +102,8 @@ final class RootViewModelTests: XCTestCase {
         // Since we are mocking the stream, we can yield to the runloop to let the AsyncStream process
         await Task.yield()
         
-        // Let's ensure we wait deterministically until the user matches
-        let startDate = Date()
-        while viewModel.currentUser?.id != user.id && Date().timeIntervalSince(startDate) < 1.0 {
-            await Task.yield()
+        await waitUntil("auth listener updates currentUser") {
+            viewModel.currentUser?.id == user.id
         }
         
         XCTAssertEqual(viewModel.currentUser?.id, user.id)
@@ -156,8 +163,9 @@ final class RootViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.activeTab, .schedule)
         XCTAssertFalse(viewModel.showWeekendCTA)
 
-        try? await Task.sleep(nanoseconds: 120_000_000)
-        XCTAssertNil(viewModel.celebrationToast)
+        await waitUntil("celebration toast dismissed") {
+            viewModel.celebrationToast == nil
+        }
         XCTAssertTrue(viewModel.showWeekendCTA)
     }
 
@@ -173,7 +181,9 @@ final class RootViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.celebrateFirstConnection(friendName: "Bob", store: store))
         XCTAssertEqual(viewModel.activeTab, .feed)
         XCTAssertTrue(store.shouldShowPostConnectCoach)
-        try? await Task.sleep(nanoseconds: 120_000_000)
+        await waitUntil("celebration toast dismissed") {
+            viewModel.celebrationToast == nil
+        }
         XCTAssertFalse(viewModel.showWeekendCTA)
     }
 

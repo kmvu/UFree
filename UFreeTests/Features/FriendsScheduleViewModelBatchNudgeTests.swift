@@ -29,6 +29,17 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
             availabilityRepository: mockAvailabilityRepo,
             notificationRepository: mockNotificationRepo
         )
+        trackForMemoryLeaks(sut)
+    }
+
+    override func tearDown() async throws {
+        sut = nil
+        mockFriendRepo = nil
+        mockAvailabilityRepo = nil
+        mockNotificationRepo = nil
+        await drainPendingTasks()
+        verifyNoMemoryLeaks()
+        try await super.tearDown()
     }
 
     // MARK: - Helper Methods

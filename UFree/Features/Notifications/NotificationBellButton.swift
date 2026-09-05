@@ -50,6 +50,8 @@ private struct NotificationBellButtonContent: View {
             }
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: viewModel.unreadCount)
         }
+        .accessibilityIdentifier("notifications.bell")
+        .accessibilityLabel("Notifications")
     }
 
     private var badgeLabel: String {

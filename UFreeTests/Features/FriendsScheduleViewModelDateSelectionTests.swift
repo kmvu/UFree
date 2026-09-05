@@ -19,11 +19,13 @@ final class FriendsScheduleViewModelDateSelectionTests: XCTestCase {
             availabilityRepository: MockAvailabilityRepository(),
             notificationRepository: MockNotificationRepository()
         )
+        trackForMemoryLeaks(sut)
     }
 
     override func tearDown() async throws {
         sut = nil
         await drainPendingTasks()
+        verifyNoMemoryLeaks()
         try await super.tearDown()
     }
 

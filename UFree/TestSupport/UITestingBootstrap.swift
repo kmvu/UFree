@@ -22,13 +22,27 @@ enum UITestingBootstrap {
         )
     }
 
+    static let caseyFriendId = "casey-ui-test"
+
     static func makeFriendRepository() -> MockFriendRepository {
         let alex = UserProfile(
             id: alexFriendId,
             displayName: "Alex",
             hashedPhoneNumber: "ui_test_alex_hash"
         )
-        return MockFriendRepository(myFriends: [alex])
+        let caseyRequest = FriendRequest(
+            id: FriendRequest.documentId(fromId: caseyFriendId, toId: uiTestUserId),
+            fromId: caseyFriendId,
+            fromName: "Casey",
+            toId: uiTestUserId,
+            status: .pending,
+            timestamp: Date()
+        )
+        return MockFriendRepository(
+            myFriends: [alex],
+            incomingRequests: [caseyRequest],
+            allUsers: [alex]
+        )
     }
 
     static func makeAvailabilityRemote() -> MockAvailabilityRepository {
@@ -53,7 +67,30 @@ enum UITestingBootstrap {
     }
 
     static func makeNotificationRepository() -> MockNotificationRepository {
-        MockNotificationRepository()
+        let saturday = nextSaturdayInUpcomingWeek()
+        var requestNote = AppNotification(
+            recipientId: uiTestUserId,
+            senderId: caseyFriendId,
+            senderName: "Casey",
+            type: .friendRequest,
+            date: Date(),
+            isRead: false,
+            relatedRequestId: FriendRequest.documentId(fromId: caseyFriendId, toId: uiTestUserId)
+        )
+        requestNote.id = "ui-test-casey-request"
+
+        var nudgeNote = AppNotification(
+            recipientId: uiTestUserId,
+            senderId: alexFriendId,
+            senderName: "Alex",
+            type: .nudge,
+            date: Date(),
+            isRead: false,
+            targetDateString: AppNotification.dateString(from: saturday)
+        )
+        nudgeNote.id = "ui-test-alex-nudge"
+
+        return MockNotificationRepository(notifications: [requestNote, nudgeNote])
     }
 
     static func makeLocalAvailability(container: ModelContainer) -> SwiftDataAvailabilityRepository {

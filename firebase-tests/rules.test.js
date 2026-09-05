@@ -637,3 +637,251 @@ describe("account deletion", () => {
     }
   });
 });
+
+// ── Phase 6.75: caps, notification branches, decline, create, lists ──────────
+
+function tenTimeBlocks() {
+  return Array.from({ length: 10 }, (_, i) => ({
+    id: `block-${i}`,
+    start: i,
+    end: i + 1,
+  }));
+}
+
+describe("availability caps", () => {
+  it("allows owner write with 10 timeBlocks", async () => {
+    await seedAliceAndBob();
+    await assertSucceeds(
+      setDoc(doc(authedDb("alice"), "users/alice/availability/2099-03-01"), {
+        dateString: "2099-03-01",
+        status: 1,
+        timeBlocks: tenTimeBlocks(),
+      })
+    );
+  });
+
+  it("denies owner write with 11 timeBlocks", async () => {
+    await seedAliceAndBob();
+    await assertFails(
+      setDoc(doc(authedDb("alice"), "users/alice/availability/2099-03-02"), {
+        dateString: "2099-03-02",
+        status: 1,
+        timeBlocks: [...tenTimeBlocks(), { id: "block-10", start: 10, end: 11 }],
+      })
+    );
+  });
+
+  it("denies availability doc with more than 10 top-level fields", async () => {
+    await seedAliceAndBob();
+    await assertFails(
+      setDoc(doc(authedDb("alice"), "users/alice/availability/2099-03-03"), {
+        dateString: "2099-03-03",
+        status: 1,
+        timeBlocks: [],
+        extra1: 1,
+        extra2: 2,
+        extra3: 3,
+        extra4: 4,
+        extra5: 5,
+        extra6: 6,
+        extra7: 7,
+        extra8: 8,
+      })
+    );
+  });
+});
+
+describe("notification type branches", () => {
+  it("allows friendAccepted when an accepted request exists", async () => {
+    await seedAcceptedFriends();
+    await assertSucceeds(
+      setDoc(doc(authedDb("alice"), "users/bob/notifications/accepted1"), {
+        recipientId: "bob",
+        senderId: "alice",
+        senderName: "Alice",
+        type: "friendAccepted",
+        date: new Date(),
+        isRead: false,
+        relatedRequestId: "bob_alice",
+      })
+    );
+  });
+
+  it("denies friendAccepted without an accepted request", async () => {
+    await seedAliceAndBob();
+    await assertFails(
+      setDoc(doc(authedDb("alice"), "users/bob/notifications/accepted2"), {
+        recipientId: "bob",
+        senderId: "alice",
+        senderName: "Alice",
+        type: "friendAccepted",
+        date: new Date(),
+        isRead: false,
+      })
+    );
+  });
+
+  it("allows nudgeReply between mutual friends", async () => {
+    await seedAcceptedFriends();
+    await assertSucceeds(
+      setDoc(doc(authedDb("bob"), "users/alice/notifications/reply1"), {
+        recipientId: "alice",
+        senderId: "bob",
+        senderName: "Bob",
+        type: "nudgeReply",
+        date: new Date(),
+        isRead: false,
+        targetDateString: "2099-01-01",
+        nudgeResponse: "imIn",
+      })
+    );
+  });
+
+  it("denies nudgeReply from a stranger", async () => {
+    await seedAliceAndBob();
+    await assertFails(
+      setDoc(doc(authedDb("mallory"), "users/alice/notifications/reply2"), {
+        recipientId: "alice",
+        senderId: "mallory",
+        senderName: "Mallory",
+        type: "nudgeReply",
+        date: new Date(),
+        isRead: false,
+        nudgeResponse: "imIn",
+      })
+    );
+  });
+
+  it("denies notification type outside the allowed enum", async () => {
+    await seedAcceptedFriends();
+    await assertFails(
+      setDoc(doc(authedDb("alice"), "users/bob/notifications/spam"), {
+        recipientId: "bob",
+        senderId: "alice",
+        senderName: "Alice",
+        type: "spam",
+        date: new Date(),
+        isRead: false,
+      })
+    );
+  });
+});
+
+describe("friend request decline and re-send", () => {
+  it("allows recipient to decline; freezes further updates", async () => {
+    await seedAliceAndBob();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "friendRequests/bob_alice"), {
+        fromId: "bob",
+        fromName: "Bob",
+        toId: "alice",
+        status: "pending",
+        timestamp: new Date(),
+      });
+    });
+
+    await assertSucceeds(
+      updateDoc(doc(authedDb("alice"), "friendRequests/bob_alice"), {
+        status: "declined",
+      })
+    );
+    await assertFails(
+      updateDoc(doc(authedDb("alice"), "friendRequests/bob_alice"), {
+        status: "accepted",
+      })
+    );
+  });
+
+  it("denies sender setDoc on a declined deterministic id", async () => {
+    await seedAliceAndBob();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "friendRequests/bob_alice"), {
+        fromId: "bob",
+        fromName: "Bob",
+        toId: "alice",
+        status: "declined",
+        timestamp: new Date(),
+      });
+    });
+
+    await assertFails(
+      setDoc(doc(authedDb("bob"), "friendRequests/bob_alice"), {
+        fromId: "bob",
+        fromName: "Bob",
+        toId: "alice",
+        status: "pending",
+        timestamp: new Date(),
+      })
+    );
+  });
+});
+
+describe("users create and list denials", () => {
+  it("denies users create with a non-empty friendIds list", async () => {
+    await assertFails(
+      setDoc(doc(authedDb("carol"), "users/carol"), {
+        displayName: "Carol",
+        friendIds: ["alice"],
+      })
+    );
+  });
+
+  it("allows users create with an empty friendIds list", async () => {
+    await assertSucceeds(
+      setDoc(doc(authedDb("carol"), "users/carol"), {
+        displayName: "Carol",
+        friendIds: [],
+      })
+    );
+  });
+
+  it("denies listing friendRequests and another user's notifications", async () => {
+    await seedAliceAndBob();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, "friendRequests/bob_alice"), {
+        fromId: "bob",
+        fromName: "Bob",
+        toId: "alice",
+        status: "pending",
+        timestamp: new Date(),
+      });
+      await setDoc(doc(db, "users/alice/notifications/n1"), {
+        recipientId: "alice",
+        senderId: "bob",
+        senderName: "Bob",
+        type: "nudge",
+        date: new Date(),
+        isRead: false,
+      });
+    });
+
+    await assertFails(getDocs(collection(authedDb("mallory"), "friendRequests")));
+    await assertFails(
+      getDocs(collection(authedDb("mallory"), "users/alice/notifications"))
+    );
+  });
+
+  it("denies a stranger deleting someone else's phoneDirectory entry", async () => {
+    await seedAliceAndBob();
+    await assertFails(
+      deleteDoc(doc(authedDb("mallory"), "phoneDirectory/hash_alice"))
+    );
+  });
+
+  it("does not grant reads when the owner pollutes their own friendIds", async () => {
+    await seedAliceAndBob();
+    await assertSucceeds(
+      setDoc(
+        doc(authedDb("alice"), "users/alice"),
+        { friendIds: ["mallory"] },
+        { merge: true }
+      )
+    );
+
+    await assertFails(getDoc(doc(authedDb("alice"), "users/mallory")));
+    await assertFails(
+      getDoc(doc(authedDb("alice"), "users/mallory/availability/2099-01-01"))
+    );
+  });
+});

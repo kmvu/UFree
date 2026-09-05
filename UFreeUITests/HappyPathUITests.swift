@@ -47,6 +47,14 @@ final class HappyPathUITests: XCTestCase {
         )
         tapHittable(saturdayCard)
 
+        let freeLabel = NSPredicate(format: "label CONTAINS[c] %@", "Free")
+        let becameFree = XCTNSPredicateExpectation(predicate: freeLabel, object: saturdayCard)
+        wait(for: [becameFree], timeout: 5)
+        XCTAssertTrue(
+            saturdayCard.label.localizedCaseInsensitiveContains("Free"),
+            "Saturday card should show free after tap; label was \(saturdayCard.label)"
+        )
+
         let whosFreeTab = firstExisting(
             app.tabBars.buttons["tab.whosFree"],
             app.tabBars.buttons["Who's Free?"]
@@ -62,6 +70,15 @@ final class HappyPathUITests: XCTestCase {
         let feedVisible = whosFreeRoot.waitForExistence(timeout: 10)
             || navTitle.waitForExistence(timeout: 2)
         XCTAssertTrue(feedVisible, "Expected Who's Free root after tab switch")
+
+        let alex = firstExisting(
+            app.descendants(matching: .any)["whosFree.friend.alex-ui-test"],
+            app.staticTexts["Alex"]
+        )
+        XCTAssertTrue(
+            alex.waitForExistence(timeout: 10),
+            "Seeded friend Alex should appear on Who's Free"
+        )
     }
 
     /// Scroll horizontally if needed, then tap via center coordinate (avoids non-hittable StaticText).

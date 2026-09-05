@@ -21,6 +21,16 @@ final class MyScheduleViewModelTests: XCTestCase {
         updateUseCaseSpy = UpdateMyStatusUseCaseSpy()
         repositorySpy = AvailabilityRepositorySpy()
         sut = MyScheduleViewModel(updateUseCase: updateUseCaseSpy, repository: repositorySpy)
+        trackForMemoryLeaks(sut)
+    }
+
+    override func tearDown() async throws {
+        sut = nil
+        updateUseCaseSpy = nil
+        repositorySpy = nil
+        await drainPendingTasks()
+        verifyNoMemoryLeaks()
+        try await super.tearDown()
     }
     
     func test_setupInitialWeek_generatesSevenDays() {

@@ -313,6 +313,7 @@ struct MainAppView: View {
             // Seeded Alex friend would otherwise look like a live 0→1 accept and open
             // the weekend CTA sheet, which blocks Who's Free tab switches in XCUITest.
             if TestConfiguration.isRunningUITests {
+                onboardingStore.resetAllProgress()
                 onboardingStore.prepareForUITestingWithSeededFriends()
             }
             wireHandshakeCallback()
