@@ -1,6 +1,6 @@
 # UFree sprint history
 
-This is a compact record of completed milestones. It explains how the project arrived at the current product; for current behavior and operating instructions, use the [documentation hub](README.md).
+This is a compact record of completed milestones. It explains how the project arrived at the current product; for current behavior and operating instructions, use the [documentation map in the root README](../README.md).
 
 | Sprint | Milestone | Lasting outcome |
 |---|---|---|
@@ -26,5 +26,4 @@ This is a compact record of completed milestones. It explains how the project ar
 
 - Push registration and Cloud Function code were explored, but Functions are intentionally not deployed in the present Spark-tier TestFlight pilot.
 - Earlier documentation included detailed implementation snapshots, old test counts, and setup instructions. Those living instructions now reside in the engineering, testing, and operations guides to prevent history from becoming a second source of truth.
-
-**Last reviewed:** August 1, 2026
+- A later pass merged the separate documentation hub and onboarding checklist into the root README and engineering guide, so navigation and machine setup each have exactly one home.

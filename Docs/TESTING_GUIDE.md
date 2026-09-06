@@ -13,7 +13,7 @@ Coverage must be measured from a fresh result bundle; do not treat an old percen
 
 ---
 
-## 1. 🤖 Automated Unit Tests (CI/CD)
+## 1. Automated tests
 
 Tests use mocks and in-memory SwiftData for deterministic coverage without requiring a live Firebase project. View-model tests should use the shared memory-leak tracking helper.
 
@@ -54,7 +54,7 @@ firebase emulators:exec --only auth,firestore --project ufree-313a2 \
   "bundle exec fastlane integration_tests"
 ```
 
-Or in Xcode: start emulators, select the `UFreeIntegrationTests` scheme, then run tests. CI runs this job on every **push to `main`**, and on PRs that change `firestore.rules`, `firebase.json`, `UFree/Core/Data/**`, or `UFreeIntegrationTests/**`.
+Or in Xcode: start emulators, select the `UFreeIntegrationTests` scheme, then run tests. When CI runs this suite is defined in the [engineering guide CI/CD map](ENGINEERING_GUIDE.md#cicd-map).
 
 ### UI tests (`UI_TESTING_MODE`)
 
@@ -95,7 +95,7 @@ Prefer `MainAppView` over `RootView` when testing the authenticated state: it ta
 
 ---
 
-## 2. 📱 Manual Multi-User Testing (Firebase Test Users)
+## 2. Manual multi-user testing (Firebase test users)
 
 For testing social flows that require two real accounts without real SMS codes:
 
@@ -160,7 +160,7 @@ Accept friend requests on each side until all three are connected (or the dyads 
 
 ---
 
-## Manual release smoke test
+## 3. Manual release smoke test
 
 Run these manually before any release to validate end-to-end stability.
 
@@ -181,20 +181,11 @@ Run these manually before any release to validate end-to-end stability.
 
 ---
 
-## 4. 📂 Test Organization
+## 4. Test organization
 
-### Test Files by Layer
+Unit tests under `UFreeTests/` mirror the source layout (`Auth/`, `Domain/`, `Data/`, `Features/`, `Core/`), so find a test by its subject's path rather than a hardcoded inventory. Emulator suites live in `UFreeIntegrationTests/`, XCUITest flows in `UFreeUITests/`, and Firestore rules tests in `firebase-tests/`. Count methods live with `./Scripts/count_tests.sh`.
 
-| Layer | Primary Test Files |
-|---|---|
-| **Auth** | `RootViewModelTests.swift`, `RootViewModelAuthPhaseTests.swift`, `MockAuthRepositoryTests.swift`, `UserTests.swift` |
-| **Domain** | `AvailabilityStatusTests.swift`, `DayAvailabilityTests.swift`, `UserScheduleTests.swift`, `UpdateMyStatusUseCaseTests.swift` |
-| **Data** | `FirestoreDayDTOTests.swift`, `SwiftDataAvailabilityRepositoryTests.swift`, `PersistentDayAvailabilityTests.swift`, `MockContactsRepositoryTests.swift`, `MockAvailabilityRepositoryTests.swift`, `MockFriendRepositoryTests.swift`, `CompositeAvailabilityRepositoryTests.swift` |
-| **Features** | `FriendsViewModelTests.swift`, `FriendsHandshakeTests.swift`, `MyScheduleViewModelTests.swift`, `MyScheduleViewModelLoadTests.swift`, `FriendsScheduleViewModelTests.swift`, `NotificationViewModelTests.swift`, `NotificationCenterViewTests.swift`, `DayFilterViewModelTests.swift`, `StatusBannerViewModelTests.swift` |
-| **Hardening** | `FriendsScheduleViewModelBatchNudgeTests.swift` (Concurrency/Race Conditions) |
-| **Utilities** | `CryptoUtilsTests.swift`, `CryptoUtilsPhoneHashesTests.swift`, `Color+HexTests.swift` |
-
-### Shared Test Helpers (`UFreeTests/Helpers/`)
+### Shared test helpers (`UFreeTests/Helpers/`)
 
 | Helper | Purpose |
 |---|---|
@@ -205,7 +196,7 @@ Run these manually before any release to validate end-to-end stability.
 
 ---
 
-## 5. 👥 Two-Person Pilot Smoke
+## 5. Two-person pilot smoke
 
 Run this with two TestFlight users or two debug simulators before recruiting pilot participants:
 
@@ -220,7 +211,7 @@ For the actual recruiting, success threshold, and foreground-only limitation, us
 
 ---
 
-## 6. ✅ Sign-Off Checklist
+## 6. Sign-off checklist
 
 - [ ] All unit tests pass (`UFreeUnitTests` scheme).
 - [ ] Friend requests sync across accounts under 3s.
@@ -233,7 +224,3 @@ For the actual recruiting, success threshold, and foreground-only limitation, us
 - [ ] Three-platform loop (iPhone + iPad + Mac Designed for iPad) when cross-device social behavior changed.
 - [ ] Large-screen smoke (row 11) when layout or navigation chrome changed.
 - [ ] The TestFlight release checklist in the operations guide is complete.
-
----
-
-**Last reviewed:** August 8, 2026

@@ -8,8 +8,8 @@ Use this guide to release a build, operate the TestFlight pilot, and understand 
 
 | Activity | Current path | Owner |
 |---|---|---|
-| Automated quality check | GitHub Actions **Quality Check** (`ci.yml`): Firestore Rules + Unit Tests + SwiftLint on pushes/PRs to `main`; **Emulator Integration** on `main` pushes | Engineering |
-| TestFlight upload | Manual **Deploy to TestFlight** (`deploy.yml`) on `main` only, after a **green main-push** Quality Check on that SHA (must include Emulator Integration — PR-only green is not enough) | Release owner |
+| Automated quality check | GitHub Actions **Quality Check** (`ci.yml`); jobs and triggers in the [engineering guide CI/CD map](ENGINEERING_GUIDE.md#cicd-map) | Engineering |
+| TestFlight upload | Manual **Deploy to TestFlight** (`deploy.yml`); see [Release gate](#release-gate-testflight) | Release owner |
 | Firestore rules, indexes, hosting | Auto on `main` when those paths change (`firebase-deploy.yml`); or local `firebase deploy --only …` | Engineering |
 | App Check enforcement | Firebase Console → App Check → Firestore (enforce after debug tokens are registered for simulators) | Engineering |
 
@@ -34,7 +34,8 @@ Complete before recruiting TestFlight pairs:
 2. **Sign in with Apple** — enable the capability in Apple Developer for the App ID; enable the Apple provider in Firebase Console → Authentication.
 3. **App Check** — register each Simulator/DEBUG token (Xcode console) under Firebase Console → App Check → Manage debug tokens, then **Enforce** App Check for **Firestore**. Device/TestFlight builds use App Attest.
 4. **Push stays off** — no APNs / FCM until Phase 7 (Blaze). In-app inbox works only while the app is foregrounded.
-5. Smoke two DEBUG simulators (User 1 / 2), then one SiwA device build; confirm Settings → Delete Account.
+
+Validation of the flow itself happens in [Before recruiting people](#before-recruiting-people) below.
 
 ## Release commands
 
@@ -48,8 +49,8 @@ bundle exec fastlane sync_certs   # refresh or create signing material when need
 
 ## TestFlight release checklist
 
-1. Confirm the intended commit is on `main` and **Quality Check** passed for that SHA on a **main push** (Emulator Integration included — not a PR-only run).
-2. Complete the [manual smoke test](TESTING_GUIDE.md#manual-release-smoke-test), including two-user flows when social behavior changed.
+1. Confirm the [release gate](#release-gate-testflight) is satisfied for the intended commit.
+2. Complete the [manual smoke test](TESTING_GUIDE.md#3-manual-release-smoke-test), including two-user flows when social behavior changed.
 3. Verify the marketing version in Xcode if it needs to change; Fastlane only increments the build number.
 4. Trigger **Deploy to TestFlight** in GitHub Actions, or run `bundle exec fastlane beta` with the required local credentials.
 5. Wait for Apple to process the build, then complete any TestFlight approval and tester-group actions in App Store Connect.
@@ -61,18 +62,10 @@ Do not promise that a TestFlight upload immediately reaches external testers: Ap
 
 ### Before recruiting people
 
-1. Deploy Firestore rules and indexes (required after Phase 1 privacy changes — old open-read rules break the product promise). Prefer merging to `main` so `firebase-deploy.yml` runs after rules tests; or deploy manually:
-
-   ```bash
-   npm --prefix firebase-tests test
-   firebase deploy --only firestore:rules,firestore:indexes
-   ```
-
-2. Enable Sign in with Apple in Apple Developer + Firebase Auth, and App Check (App Attest). For Simulator/DEBUG builds, copy the App Check debug token from the Xcode console into Firebase Console → App Check → Manage debug tokens **before** turning on Firestore enforcement. See [Founder launch checklist](#founder-launch-checklist-spark).
-
-3. Validate the flow on two debug simulators using the debug test-user controls (User 1 / 2 / 3 — anonymous Auth; SiwA is the device/TestFlight path). Keep both apps foregrounded — background push is Phase 7.
+1. Complete the [founder launch checklist](#founder-launch-checklist-spark) above: rules and indexes deployed, Sign in with Apple enabled, App Check debug tokens registered before enforcement, push confirmed off.
+2. Validate the flow on two debug simulators using the debug test-user controls (User 1 / 2 / 3 — anonymous Auth; SiwA is the device/TestFlight path). Keep both apps foregrounded — background push is Phase 7.
+3. Confirm Settings → Delete Account completes on a SiwA account (re-auth sheet → cloud wipe including peers’ friendIds → signed out).
 4. Build and distribute through TestFlight only after the uncoached flow works.
-5. Confirm Settings → Delete Account completes on a SiwA account (re-auth sheet → cloud wipe including peers’ friendIds → signed out).
 
 ### Recruiting and measuring
 
@@ -87,11 +80,11 @@ Do not promise that a TestFlight upload immediately reaches external testers: Ap
 | 2 | | | | | |
 | 3 | | | | | |
 
-The pilot passes only when at least half of seeded pairs complete the core loop in one weekend and reopen the following Friday without a founder reminder. Full product context and the decision boundary are in the [product overview](PRODUCT_OVERVIEW.md).
+The pilot passes only when the [decision rule](PRODUCT_OVERVIEW.md#decision-rule) in the product overview is met; that document is the canonical statement of the threshold.
 
 ## Firebase deployment (rules / indexes / hosting)
 
-Spark-tier only: `firebase-deploy.yml` deploys `firestore:rules`, `firestore:indexes`, and `hosting` (AASA). It does **not** deploy Cloud Functions.
+Spark-tier only: `firebase-deploy.yml` deploys `firestore:rules`, `firestore:indexes`, and `hosting` (AASA). It does **not** deploy Cloud Functions: the repository has `functions/index.js` with push-notification and weekend-digest code, but no Functions source is configured in `firebase.json`. Background / killed-app push and FCM stay deferred to Phase 7 (Blaze) — the app does not link Firebase Messaging or register for APNs on Spark. Do not deploy Functions or enable billing until the team deliberately accepts the required Firebase plan and adds a reviewed Functions deployment configuration.
 
 ### CI secret setup
 
@@ -106,17 +99,6 @@ On every push to `main` that touches `firestore.rules`, `firestore.indexes.json`
 1. `git revert` the bad commit on `main` (or restore the last known-good rules/indexes/hosting files) and push.
 2. [`.github/workflows/firebase-deploy.yml`](../.github/workflows/firebase-deploy.yml) re-runs on the reverted paths and restores production.
 3. If CI cannot run, deploy the known-good tree manually: `firebase deploy --only firestore:rules,firestore:indexes,hosting`.
-
-## Firebase deployment boundary
-
-The current `firebase.json` config deploys Firestore rules, indexes, and Hosting. It does **not** configure a Functions source. The repository has `functions/index.js` containing push-notification and weekend-digest code, but it is not part of the current deployment path.
-
-For the Spark-tier pilot:
-
-- Deploying Firestore rules and indexes is supported.
-- In-app friend requests, nudges, and replies work through Firestore listeners when the app is active (foreground-only).
-- **Background / killed-app push and FCM are deferred to Phase 7** (Blaze + Functions). The app does not link Firebase Messaging or register for APNs on Spark.
-- Do not deploy Functions or enable billing until the team deliberately accepts the required Firebase plan and adds a reviewed Functions deployment configuration.
 
 ## Monitoring and incident response
 

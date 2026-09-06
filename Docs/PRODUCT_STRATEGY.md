@@ -89,12 +89,7 @@ Promise:     Less awkward asking, more actual time together
 
 ### Pilot decision rule
 
-Do **not** broaden to a public App Store launch until at least half of seeded pairs:
-
-1. complete the core path in one weekend, and  
-2. reopen the following Friday without a founder reminder.
-
-Operational details live in [Operations guide](OPERATIONS_GUIDE.md).
+The canonical go / no-go threshold lives in the [product overview decision rule](PRODUCT_OVERVIEW.md#decision-rule): do **not** broaden to a public App Store launch until it is met. Operational details live in the [operations guide](OPERATIONS_GUIDE.md).
 
 ### Hypothesis
 
@@ -224,5 +219,4 @@ Until then, stay free and measure hangs.
 
 ---
 
-**Last updated:** August 2, 2026  
 **Status:** Strategy draft for pilot → soft launch → monetization

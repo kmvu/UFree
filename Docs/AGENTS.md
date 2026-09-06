@@ -29,7 +29,7 @@ bundle exec fastlane ui_tests      # UI happy path (UI_TESTING_MODE)
 swiftlint lint                     # baseline; CI fails on error-severity only
 ```
 
-CI jobs on PRs/`main`: **Firestore Rules** · **Unit Tests** (Xcode **26.6**, coverage artifact + job-summary percent) · **UI Tests** · **SwiftLint**. **Emulator Integration** runs on every **main push**, and on PRs that touch `firestore.rules`, `firebase.json`, `UFree/Core/Data/**`, or `UFreeIntegrationTests/**`. TestFlight deploy is `main`-only and name-checks all five Quality Check jobs on a **green main-push** run — PR-only green is not enough. There is no `alpha` lane. Run the smallest relevant test first when practical. Rules or discovery/handshake changes must keep the emulator suite green. Follow the manual smoke checks in [TESTING_GUIDE.md](TESTING_GUIDE.md) when changing social, authentication, deep-link, or release behavior.
+CI runs **Firestore Rules**, **Unit Tests**, **UI Tests**, and **SwiftLint** on every push/PR to `main`, plus **Emulator Integration** on main pushes and on PRs touching rules, data-layer, or integration-test paths; the TestFlight deploy gate needs all five green on a main push. Exact jobs, triggers, and toolchain pins live in the [engineering guide CI/CD map](ENGINEERING_GUIDE.md#cicd-map). Run the smallest relevant test first when practical. Rules or discovery/handshake changes must keep the emulator suite green. Follow the manual smoke checks in [TESTING_GUIDE.md](TESTING_GUIDE.md) when changing social, authentication, deep-link, or release behavior.
 
 ## Security
 
