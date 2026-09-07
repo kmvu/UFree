@@ -45,7 +45,7 @@ final class HappyPathUITests: XCTestCase {
             saturdayCard.waitForExistence(timeout: 5),
             "Expected Saturday day card \(saturdayId)"
         )
-        tapHittable(saturdayCard)
+        app.tapScheduleDayCard(saturdayCard)
 
         let freeLabel = NSPredicate(format: "label CONTAINS[c] %@", "Free")
         let becameFree = XCTNSPredicateExpectation(predicate: freeLabel, object: saturdayCard)
@@ -79,19 +79,6 @@ final class HappyPathUITests: XCTestCase {
             alex.waitForExistence(timeout: 10),
             "Seeded friend Alex should appear on Who's Free"
         )
-    }
-
-    /// Scroll horizontally if needed, then tap via center coordinate (avoids non-hittable StaticText).
-    private func tapHittable(_ element: XCUIElement) {
-        let deadline = Date().addingTimeInterval(5)
-        while Date() < deadline && !element.isHittable {
-            app.swipeLeft()
-        }
-        if element.isHittable {
-            element.tap()
-        } else {
-            element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        }
     }
 
     private func firstExisting(_ primary: XCUIElement, _ fallback: XCUIElement) -> XCUIElement {

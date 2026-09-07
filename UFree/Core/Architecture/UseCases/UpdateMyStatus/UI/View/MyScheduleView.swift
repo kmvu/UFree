@@ -173,6 +173,7 @@ public struct MyScheduleView: View {
                     .padding(.horizontal)
                     .padding(.vertical, 8)
                 }
+                .accessibilityIdentifier("schedule.weekCarousel")
             }
         }
     }
