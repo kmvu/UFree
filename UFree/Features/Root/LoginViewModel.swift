@@ -37,39 +37,38 @@ final class LoginViewModel: ObservableObject {
     // MARK: - Intent
 
     /// Production path: Sign in with Apple (links an anonymous session when present).
-    func loginTapped() {
+    func loginTapped() async {
         guard !name.trimmingCharacters(in: .whitespaces).isEmpty else {
             errorMessage = "Please enter your name to start."
             showError = true
             return
         }
+        guard !isLoading else { return }
 
-        Task {
-            isLoading = true
-            do {
-                // 1. Sign in with Apple (or link to existing anonymous pilot UID).
-                _ = try await authRepository.signInWithApple()
-                
-                // 2. Update Auth Name (nudges / Auth profile use displayName).
-                try await authRepository.updateDisplayName(name)
-                
-                // 3. Update Firestore profile + optional phone discovery hashes.
-                // Phone is optional: first-writer-wins directory claim can be squatted until OTP (Phase 7).
-                let trimmedPhone = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
-                let hashes = trimmedPhone.isEmpty ? [] : CryptoUtils.phoneNumberHashes(for: trimmedPhone)
-                try await friendRepository.saveUserProfile(
-                    displayName: name,
-                    hashedPhoneNumbers: hashes
-                )
-                
-                // Success! RootView will automatically switch to MainAppView
-            } catch let error as AppleSignInError where error == .cancelled {
-                // User dismissed the sheet — don't show a failure alert.
-            } catch {
-                errorMessage = error.localizedDescription
-                showError = true
-            }
-            isLoading = false
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            // 1. Sign in with Apple (or link to existing anonymous pilot UID).
+            _ = try await authRepository.signInWithApple()
+
+            // 2. Update Auth Name (nudges / Auth profile use displayName).
+            try await authRepository.updateDisplayName(name)
+
+            // 3. Update Firestore profile + optional phone discovery hashes.
+            // Phone is optional: first-writer-wins directory claim can be squatted until OTP (Phase 7).
+            let trimmedPhone = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+            let hashes = trimmedPhone.isEmpty ? [] : CryptoUtils.phoneNumberHashes(for: trimmedPhone)
+            try await friendRepository.saveUserProfile(
+                displayName: name,
+                hashedPhoneNumbers: hashes
+            )
+
+            // Success! RootView will automatically switch to MainAppView
+        } catch let error as AppleSignInError where error == .cancelled {
+            // User dismissed the sheet — don't show a failure alert.
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
         }
     }
     
@@ -79,36 +78,35 @@ final class LoginViewModel: ObservableObject {
     /// Logs in as a distinct DEBUG persona (anonymous auth + fixed phone hash for discovery).
     /// SiwA is unavailable on Simulator — keep these buttons for multi-account testing.
     /// - Parameter index: 0 = User 1, 1 = User 2, 2 = User 3
-    func loginAsTestUser(index: Int) {
+    func loginAsTestUser(index: Int) async {
         let testNumbers = [
             "+15550000001",
             "+15550000002",
             "+15550000003"
         ]
-        
+
         guard index < testNumbers.count else { return }
-        
+        guard !isLoading else { return }
+
         let phoneNumber = testNumbers[index]
-        
-        Task {
-            isLoading = true
-            do {
-                _ = try await authRepository.signInAsTestUser(phoneNumber: phoneNumber)
-                
-                let displayName = "Test User \(index + 1)"
-                try await authRepository.updateDisplayName(displayName)
-                
-                // Same phone hashes production uses — enables Find by Phone between DEBUG users.
-                let hashes = CryptoUtils.phoneNumberHashes(for: phoneNumber)
-                try await friendRepository.saveUserProfile(
-                    displayName: displayName,
-                    hashedPhoneNumbers: hashes
-                )
-            } catch {
-                errorMessage = error.localizedDescription
-                showError = true
-            }
-            isLoading = false
+
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            _ = try await authRepository.signInAsTestUser(phoneNumber: phoneNumber)
+
+            let displayName = "Test User \(index + 1)"
+            try await authRepository.updateDisplayName(displayName)
+
+            // Same phone hashes production uses — enables Find by Phone between DEBUG users.
+            let hashes = CryptoUtils.phoneNumberHashes(for: phoneNumber)
+            try await friendRepository.saveUserProfile(
+                displayName: displayName,
+                hashedPhoneNumbers: hashes
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
         }
     }
     #endif

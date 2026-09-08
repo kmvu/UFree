@@ -25,9 +25,6 @@ final class LoginViewModelTests: XCTestCase {
         sut = nil
         authRepository = nil
         friendRepository = nil
-        // `loginTapped` runs inside an unstructured Task that retains the ViewModel
-        // until it returns, so let that work finish before checking for leaks.
-        await drainPendingTasks()
         verifyNoMemoryLeaks()
         try await super.tearDown()
     }
@@ -44,10 +41,10 @@ final class LoginViewModelTests: XCTestCase {
 
     // MARK: - Validation
 
-    func test_loginTapped_emptyName_showsErrorWithoutSigningIn() {
+    func test_loginTapped_emptyName_showsErrorWithoutSigningIn() async {
         sut.phoneNumber = "555-1234"
 
-        sut.loginTapped()
+        await sut.loginTapped()
 
         XCTAssertTrue(sut.showError)
         XCTAssertEqual(sut.errorMessage, "Please enter your name to start.")
@@ -55,11 +52,11 @@ final class LoginViewModelTests: XCTestCase {
         XCTAssertEqual(authRepository.signInWithAppleCallCount, 0)
     }
 
-    func test_loginTapped_whitespaceOnlyName_showsError() {
+    func test_loginTapped_whitespaceOnlyName_showsError() async {
         sut.name = "   "
         sut.phoneNumber = "555-1234"
 
-        sut.loginTapped()
+        await sut.loginTapped()
 
         XCTAssertTrue(sut.showError)
         XCTAssertEqual(sut.errorMessage, "Please enter your name to start.")
@@ -69,8 +66,7 @@ final class LoginViewModelTests: XCTestCase {
         sut.name = "Alice"
         sut.phoneNumber = ""
 
-        sut.loginTapped()
-        await waitUntil("profile saved") { !self.friendRepository.savedProfiles.isEmpty }
+        await sut.loginTapped()
 
         XCTAssertEqual(authRepository.signInWithAppleCallCount, 1)
         XCTAssertEqual(
@@ -85,8 +81,7 @@ final class LoginViewModelTests: XCTestCase {
         sut.name = "Alice"
         sut.phoneNumber = "555-1234"
 
-        sut.loginTapped()
-        await waitUntil("profile saved") { !self.friendRepository.savedProfiles.isEmpty }
+        await sut.loginTapped()
 
         let expectedHashes = CryptoUtils.phoneNumberHashes(for: "555-1234")
         XCTAssertEqual(authRepository.signInWithAppleCallCount, 1)
@@ -100,8 +95,7 @@ final class LoginViewModelTests: XCTestCase {
         sut.name = "Alice"
         sut.phoneNumber = "555-1234"
 
-        sut.loginTapped()
-        await waitUntil("display name updated") { !self.authRepository.updatedDisplayNames.isEmpty }
+        await sut.loginTapped()
 
         XCTAssertEqual(authRepository.updatedDisplayNames, ["Alice"])
     }
@@ -110,9 +104,9 @@ final class LoginViewModelTests: XCTestCase {
         sut.name = "Alice"
         sut.phoneNumber = "555-1234"
 
-        sut.loginTapped()
-        await waitUntil("loading finished") { !self.sut.isLoading && !self.friendRepository.savedProfiles.isEmpty }
+        await sut.loginTapped()
 
+        XCTAssertFalse(sut.isLoading)
         XCTAssertFalse(sut.showError)
         XCTAssertNil(sut.errorMessage)
     }
@@ -128,9 +122,9 @@ final class LoginViewModelTests: XCTestCase {
         sut.name = "Alice"
         sut.phoneNumber = "555-1234"
 
-        sut.loginTapped()
-        await waitUntil("error surfaced") { self.sut.showError }
+        await sut.loginTapped()
 
+        XCTAssertTrue(sut.showError)
         XCTAssertEqual(sut.errorMessage, "Network unavailable")
         XCTAssertTrue(friendRepository.savedProfiles.isEmpty)
         XCTAssertFalse(sut.isLoading)
@@ -145,9 +139,9 @@ final class LoginViewModelTests: XCTestCase {
         sut.name = "Alice"
         sut.phoneNumber = "555-1234"
 
-        sut.loginTapped()
-        await waitUntil("error surfaced") { self.sut.showError }
+        await sut.loginTapped()
 
+        XCTAssertTrue(sut.showError)
         XCTAssertEqual(sut.errorMessage, "Permission denied")
         XCTAssertFalse(sut.isLoading)
     }
@@ -161,18 +155,19 @@ final class LoginViewModelTests: XCTestCase {
         sut.name = "Alice"
         sut.phoneNumber = "555-1234"
 
-        sut.loginTapped()
-        await waitUntil("error surfaced") { self.sut.showError }
+        await sut.loginTapped()
 
+        XCTAssertTrue(sut.showError)
         XCTAssertEqual(sut.errorMessage, "Rename failed")
         XCTAssertTrue(friendRepository.savedProfiles.isEmpty)
+        XCTAssertFalse(sut.isLoading)
+        XCTAssertEqual(authRepository.updatedDisplayNames, ["Alice"])
     }
 
     // MARK: - Debug Test Users
 
     func test_loginAsTestUser_signsInWithWhitelistedNumber() async {
-        sut.loginAsTestUser(index: 0)
-        await waitUntil("test user signed in") { !self.friendRepository.savedProfiles.isEmpty }
+        await sut.loginAsTestUser(index: 0)
 
         XCTAssertEqual(authRepository.testUserPhoneNumbers, ["+15550000001"])
         XCTAssertEqual(friendRepository.savedProfiles.first?.displayName, "Test User 1")
@@ -180,15 +175,14 @@ final class LoginViewModelTests: XCTestCase {
     }
 
     func test_loginAsTestUser_usesIndexedNameAndNumber() async {
-        sut.loginAsTestUser(index: 2)
-        await waitUntil("test user signed in") { !self.friendRepository.savedProfiles.isEmpty }
+        await sut.loginAsTestUser(index: 2)
 
         XCTAssertEqual(authRepository.testUserPhoneNumbers, ["+15550000003"])
         XCTAssertEqual(friendRepository.savedProfiles.first?.displayName, "Test User 3")
     }
 
     func test_loginAsTestUser_outOfRangeIndex_doesNothing() async {
-        sut.loginAsTestUser(index: 99)
+        await sut.loginAsTestUser(index: 99)
 
         XCTAssertTrue(authRepository.testUserPhoneNumbers.isEmpty)
         XCTAssertTrue(friendRepository.savedProfiles.isEmpty)
@@ -202,9 +196,9 @@ final class LoginViewModelTests: XCTestCase {
             userInfo: [NSLocalizedDescriptionKey: "Test sign-in blocked"]
         )
 
-        sut.loginAsTestUser(index: 1)
-        await waitUntil("error surfaced") { self.sut.showError }
+        await sut.loginAsTestUser(index: 1)
 
+        XCTAssertTrue(sut.showError)
         XCTAssertEqual(sut.errorMessage, "Test sign-in blocked")
         XCTAssertFalse(sut.isLoading)
     }

@@ -66,7 +66,7 @@ struct LoginView: View {
                 
                 // 3. Sign in with Apple
                 Button(action: {
-                    viewModel.loginTapped()
+                    Task { await viewModel.loginTapped() }
                 }) {
                     HStack(spacing: 10) {
                         if viewModel.isLoading {
