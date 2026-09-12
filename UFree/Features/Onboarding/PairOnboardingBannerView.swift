@@ -26,13 +26,17 @@ struct PairOnboardingBannerView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .allowsTightening(true)
+                        .truncationMode(.tail)
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .truncationMode(.tail)
                 }
-
-                Spacer(minLength: 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: "chevron.up")
                     .font(.caption.weight(.semibold))
@@ -42,11 +46,42 @@ struct PairOnboardingBannerView: View {
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity)
             .background(.bar)
-            .overlay(alignment: .top) {
-                Divider()
-            }
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens first hangout checklist")
+    }
+}
+
+/// Tab-content cue so the system tab bar stays pinned. Pair banner is Who's Free only.
+struct OnboardingBottomCue: View {
+    @ObservedObject var rootViewModel: RootViewModel
+    @ObservedObject var onboardingStore: OnboardingProgressStore
+    var showsPairBanner: Bool
+
+    var body: some View {
+        let friendCount = rootViewModel.friendsViewModel?.friends.count ?? 0
+        if showsPairBanner,
+           rootViewModel.showPairOnboardingBanner,
+           onboardingStore.shouldShowPairOnboardingBanner(friendCount: friendCount) {
+            PairOnboardingBannerView(
+                title: onboardingStore.pairOnboardingBannerTitle(friendCount: friendCount),
+                subtitle: onboardingStore.pairOnboardingBannerSubtitle(friendCount: friendCount),
+                onTap: {
+                    rootViewModel.showPairOnboardingSheet = true
+                }
+            )
+        } else if onboardingStore.shouldShowPostConnectCoach {
+            PostConnectMissionChipView(
+                title: OnboardingProgressStore.postConnectMissionTitle,
+                subtitle: rootViewModel.postConnectMissionSubtitle(store: onboardingStore),
+                onPrimary: {
+                    AnalyticsManager.logMissionChipTapped()
+                    rootViewModel.handlePostConnectMissionTap(store: onboardingStore)
+                },
+                onDismiss: {
+                    rootViewModel.dismissPostConnectCoach(store: onboardingStore)
+                }
+            )
+        }
     }
 }

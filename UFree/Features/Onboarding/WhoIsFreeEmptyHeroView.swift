@@ -8,9 +8,6 @@
 import SwiftUI
 
 struct WhoIsFreeEmptyHeroView: View {
-    /// 0…3 completed onboarding steps for decorative quest dots.
-    var completedSteps: Int = 0
-    var showsQuestDots: Bool = false
     let onInvite: () -> Void
 
     var body: some View {
@@ -58,31 +55,15 @@ struct WhoIsFreeEmptyHeroView: View {
                 .frame(maxWidth: .infinity)
             }
             .ufreePrimaryButton()
-
-            if showsQuestDots {
-                questDots
-            }
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)
     }
-
-    private var questDots: some View {
-        HStack(spacing: 8) {
-            ForEach(0..<3, id: \.self) { index in
-                Circle()
-                    .fill(index < completedSteps ? Color.accentColor : Color.secondary.opacity(0.25))
-                    .frame(width: 8, height: 8)
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(min(completedSteps, 3)) of 3 steps done")
-    }
 }
 
 #Preview {
-    WhoIsFreeEmptyHeroView(completedSteps: 1, showsQuestDots: true, onInvite: {})
+    WhoIsFreeEmptyHeroView(onInvite: {})
         .padding()
         .background(Color(uiColor: .systemGroupedBackground))
 }

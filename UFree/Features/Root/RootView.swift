@@ -174,7 +174,6 @@ struct RootView: View {
 
 struct MainAppView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
-    @Environment(\.verticalSizeClass) var verticalSizeClass
     let authRepository: AuthRepository
     @ObservedObject var rootViewModel: RootViewModel
     let user: User
@@ -194,37 +193,9 @@ struct MainAppView: View {
                 tabBarLayout
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if verticalSizeClass != .compact {
-                if rootViewModel.showPairOnboardingBanner
-                    && rootViewModel.activeTab == .feed
-                    && onboardingStore.shouldShowPairOnboardingBanner(friendCount: friendsViewModel.friends.count) {
-                    PairOnboardingBannerView(
-                        title: onboardingStore.pairOnboardingBannerTitle,
-                        subtitle: onboardingStore.pairOnboardingBannerSubtitle,
-                        onTap: {
-                            rootViewModel.showPairOnboardingSheet = true
-                        }
-                    )
-                } else if onboardingStore.shouldShowPostConnectCoach
-                    && (rootViewModel.activeTab == .feed || rootViewModel.activeTab == .schedule) {
-                    PostConnectMissionChipView(
-                        title: OnboardingProgressStore.postConnectMissionTitle,
-                        subtitle: postConnectMissionSubtitle,
-                        onPrimary: {
-                            AnalyticsManager.logMissionChipTapped()
-                            handlePostConnectMissionTap()
-                        },
-                        onDismiss: {
-                            rootViewModel.dismissPostConnectCoach(store: onboardingStore)
-                        }
-                    )
-                }
-            }
-        }
         .sheet(isPresented: $rootViewModel.showPairOnboardingSheet) {
             PairOnboardingChecklistView(
-                hasInvited: onboardingStore.hasInvitedFriend,
+                hasInvited: !friendsViewModel.friends.isEmpty,
                 hasMarkedFree: onboardingStore.hasMarkedFreeDay,
                 hasHandshake: onboardingStore.hasCompletedFirstHandshake,
                 onInvite: {
@@ -439,22 +410,6 @@ struct MainAppView: View {
         }
     }
 
-    private var postConnectMissionSubtitle: String {
-        if rootViewModel.activeTab == .schedule && !onboardingStore.hasMarkedFreeDay {
-            return OnboardingProgressStore.postConnectMissionMarkFree
-        }
-        if let name = rootViewModel.postConnectFriendName,
-           let friendId = friendsScheduleViewModel.friendId(named: name),
-           let date = friendsScheduleViewModel.nextFreeDate(forFriendId: friendId) {
-            let weekday = date.formatted(.dateTime.weekday(.abbreviated))
-            return OnboardingProgressStore.postConnectNudgeMission(friendName: name, weekday: weekday)
-        }
-        if let name = rootViewModel.postConnectFriendName, !name.isEmpty {
-            return "See when you and \(name) are free — then nudge a day."
-        }
-        return OnboardingProgressStore.postConnectMissionSeeBothFree
-    }
-
     private func refreshWeekendReminders() {
         LocalNotificationScheduler.shared.refresh(friendCount: friendsViewModel.friends.count)
     }
@@ -462,21 +417,6 @@ struct MainAppView: View {
     private func hangoutWeekdayLabel(for dayKey: String) -> String? {
         guard let date = AppNotification.date(from: dayKey) else { return nil }
         return date.formatted(.dateTime.weekday(.wide))
-    }
-
-    private func handlePostConnectMissionTap() {
-        if rootViewModel.activeTab == .schedule && !onboardingStore.hasMarkedFreeDay {
-            rootViewModel.showWeekendCTA = true
-            return
-        }
-
-        rootViewModel.activeTab = .feed
-        if let name = rootViewModel.postConnectFriendName,
-           let friendId = friendsScheduleViewModel.friendId(named: name),
-           let date = friendsScheduleViewModel.nextFreeDate(forFriendId: friendId) {
-            friendsScheduleViewModel.focusDate(date)
-            rootViewModel.missionFocusDate = date
-        }
     }
 
     // MARK: - Layouts

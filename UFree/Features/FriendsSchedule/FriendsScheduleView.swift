@@ -61,8 +61,6 @@ public struct FriendsScheduleView: View {
                     // Keep the hero mounted while loading so large title / layout don't
                     // collapse to a blank screen with a truncated "Who's Free?" title.
                     WhoIsFreeEmptyHeroView(
-                        completedSteps: onboardingStore.pairOnboardingCompletedSteps,
-                        showsQuestDots: onboardingStore.shouldShowPairOnboardingBanner(friendCount: 0),
                         onInvite: {
                             rootViewModel.activeTab = .friends
                         }
@@ -122,6 +120,13 @@ public struct FriendsScheduleView: View {
             guard rootViewModel.activeTab == .feed else { return }
             await viewModel.loadFriendsSchedules(
                 showLoading: viewModel.friendSchedules.isEmpty
+            )
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            OnboardingBottomCue(
+                rootViewModel: rootViewModel,
+                onboardingStore: onboardingStore,
+                showsPairBanner: true
             )
         }
     }

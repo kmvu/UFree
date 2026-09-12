@@ -28,7 +28,10 @@ struct PairOnboardingChecklistView: View {
                     title: "Invite 1 friend",
                     subtitle: "Share your link or show your QR",
                     actionTitle: "Invite",
-                    action: onInvite
+                    action: {
+                        HapticManager.medium()
+                        onInvite()
+                    }
                 )
 
                 checklistRow(
@@ -55,7 +58,14 @@ struct PairOnboardingChecklistView: View {
                     .frame(maxWidth: .infinity)
             }
             .padding(20)
-            .navigationTitle("Get your first hangout going")
+            .safeAreaInset(edge: .top, spacing: 0) {
+                Text("Get your first hangout going")
+                    .font(.title2.weight(.semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .padding(.bottom, 4)
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

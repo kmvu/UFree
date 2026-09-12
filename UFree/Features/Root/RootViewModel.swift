@@ -31,7 +31,7 @@ public final class RootViewModel: ObservableObject {
         case feed
         case friends
     }
-    @Published public var activeTab: Tab = .feed
+    @Published public var activeTab: Tab = .schedule
     @Published public var showWeekendCTA = false
     /// Soft bottom banner on Who's Free (does not auto-present the sheet).
     @Published public var showPairOnboardingBanner = false
@@ -125,6 +125,39 @@ public final class RootViewModel: ObservableObject {
     public func dismissPostConnectCoach(store: OnboardingProgressStore = .shared) {
         store.dismissPostConnectCoach()
         missionFocusDate = nil
+    }
+
+    public func postConnectMissionSubtitle(store: OnboardingProgressStore = .shared) -> String {
+        if activeTab == .schedule && !store.hasMarkedFreeDay {
+            return OnboardingProgressStore.postConnectMissionMarkFree
+        }
+        if let name = postConnectFriendName,
+           let friendsVM = friendsScheduleViewModel,
+           let friendId = friendsVM.friendId(named: name),
+           let date = friendsVM.nextFreeDate(forFriendId: friendId) {
+            let weekday = date.formatted(.dateTime.weekday(.abbreviated))
+            return OnboardingProgressStore.postConnectNudgeMission(friendName: name, weekday: weekday)
+        }
+        if let name = postConnectFriendName, !name.isEmpty {
+            return "See when you and \(name) are free — then nudge a day."
+        }
+        return OnboardingProgressStore.postConnectMissionSeeBothFree
+    }
+
+    public func handlePostConnectMissionTap(store: OnboardingProgressStore = .shared) {
+        if activeTab == .schedule && !store.hasMarkedFreeDay {
+            showWeekendCTA = true
+            return
+        }
+
+        activeTab = .feed
+        if let name = postConnectFriendName,
+           let friendsVM = friendsScheduleViewModel,
+           let friendId = friendsVM.friendId(named: name),
+           let date = friendsVM.nextFreeDate(forFriendId: friendId) {
+            friendsVM.focusDate(date)
+            missionFocusDate = date
+        }
     }
 
     /// Light haptic + brief toast for first-time invite / free-day steps (banner stays; no sheet).

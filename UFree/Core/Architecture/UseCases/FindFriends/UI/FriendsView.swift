@@ -169,7 +169,6 @@ public struct FriendsView: View {
         .buttonStyle(InteractiveButtonStyle())
         .simultaneousGesture(TapGesture().onEnded {
             HapticManager.medium()
-            OnboardingProgressStore.shared.markInvitedFriend()
         })
     }
 

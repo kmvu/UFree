@@ -14,8 +14,8 @@
 		23DD43522F0521AD00432E96 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 23DD43512F0521AD00432E96 /* FirebaseAnalytics */; };
 		23DD43542F0521AD00432E96 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 23DD43532F0521AD00432E96 /* FirebaseAuth */; };
 		23DD43562F0521AD00432E96 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 23DD43552F0521AD00432E96 /* FirebaseFirestore */; };
-		23E8A101302A000100ABCDEF /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 23E8A100302A000100ABCDEF /* FirebaseAppCheck */; };
 		23E4A101302B410100000001 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 234BD076301D9047007C5DC7 /* GoogleService-Info.plist */; };
+		23E8A101302A000100ABCDEF /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 23E8A100302A000100ABCDEF /* FirebaseAppCheck */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */

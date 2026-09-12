@@ -132,11 +132,23 @@ public final class OnboardingProgressStore: ObservableObject {
         [hasInvitedFriend, hasMarkedFreeDay, hasCompletedFirstHandshake].filter(\.self).count
     }
 
+    /// Invite is complete only after someone is actually connected — not after opening Share.
+    public func pairOnboardingCompletedSteps(friendCount: Int) -> Int {
+        let invited = friendCount > 0
+        let handshake = hasCompletedFirstHandshake || friendCount > 0
+        return [invited, hasMarkedFreeDay, handshake].filter(\.self).count
+    }
+
     /// Primary banner line — next incomplete step.
     public var pairOnboardingBannerTitle: String {
-        if !hasInvitedFriend { return "Invite 1 friend to start" }
+        if !hasInvitedFriend { return "Invite a friend" }
         if !hasMarkedFreeDay { return "Mark when you're free" }
         return "Waiting for them to accept"
+    }
+
+    public func pairOnboardingBannerTitle(friendCount: Int) -> String {
+        if friendCount == 0 { return "Invite a friend" }
+        return pairOnboardingBannerTitle
     }
 
     /// Quest-style progress under the banner title.
@@ -150,6 +162,18 @@ public final class OnboardingProgressStore: ObservableObject {
             nextHint = "Next: Wait for accept"
         }
         return "\(pairOnboardingCompletedSteps)/3 done · \(nextHint)"
+    }
+
+    public func pairOnboardingBannerSubtitle(friendCount: Int) -> String {
+        let nextHint: String
+        if friendCount == 0 {
+            nextHint = "Next: Invite a friend"
+        } else if !hasMarkedFreeDay {
+            nextHint = "Next: Mark a free day"
+        } else {
+            nextHint = "Next: Wait for accept"
+        }
+        return "\(pairOnboardingCompletedSteps(friendCount: friendCount))/3 done · \(nextHint)"
     }
 
     public static let inviteStepToastMessage = "1/3 — Invite sent"

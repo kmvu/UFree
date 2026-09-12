@@ -98,7 +98,7 @@ final class OnboardingProgressStoreTests: XCTestCase {
     }
 
     func test_pairOnboardingBannerTitle_tracksNextStep() {
-        XCTAssertEqual(sut.pairOnboardingBannerTitle, "Invite 1 friend to start")
+        XCTAssertEqual(sut.pairOnboardingBannerTitle, "Invite a friend")
         XCTAssertEqual(sut.pairOnboardingCompletedSteps, 0)
         XCTAssertEqual(sut.pairOnboardingBannerSubtitle, "0/3 done · Next: Invite a friend")
 
@@ -106,6 +106,8 @@ final class OnboardingProgressStoreTests: XCTestCase {
         XCTAssertEqual(sut.pairOnboardingBannerTitle, "Mark when you're free")
         XCTAssertEqual(sut.pairOnboardingCompletedSteps, 1)
         XCTAssertEqual(sut.pairOnboardingBannerSubtitle, "1/3 done · Next: Mark a free day")
+        XCTAssertEqual(sut.pairOnboardingBannerTitle(friendCount: 0), "Invite a friend")
+        XCTAssertEqual(sut.pairOnboardingCompletedSteps(friendCount: 0), 0)
 
         sut.markFreeDay()
         XCTAssertEqual(sut.pairOnboardingBannerTitle, "Waiting for them to accept")

@@ -14,6 +14,7 @@ public struct MyScheduleView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: MyScheduleViewModel
     @ObservedObject var rootViewModel: RootViewModel
+    @ObservedObject private var onboardingStore = OnboardingProgressStore.shared
     @State private var isLoaded = false
     @State private var showingSettings = false
     @State private var selectedDayForSheet: DayAvailability?
@@ -42,6 +43,7 @@ public struct MyScheduleView: View {
                         // Light invite hint when still alone (first-hangout coach lives on Who's Free)
                         if rootViewModel.friendsScheduleViewModel?.friendSchedules.isEmpty != false {
                             Button {
+                                HapticManager.medium()
                                 rootViewModel.activeTab = .friends
                             } label: {
                                 Label("Invite a friend to plan together", systemImage: "person.badge.plus")
@@ -125,6 +127,13 @@ public struct MyScheduleView: View {
             if let error = viewModel.errorMessage {
                 Text(error)
             }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            OnboardingBottomCue(
+                rootViewModel: rootViewModel,
+                onboardingStore: onboardingStore,
+                showsPairBanner: false
+            )
         }
     }
 
@@ -232,6 +241,7 @@ public struct MyScheduleView: View {
             }
 
             Button(action: {
+                HapticManager.medium()
                 rootViewModel.activeTab = .friends
             }) {
                 Text("Find Friends")
