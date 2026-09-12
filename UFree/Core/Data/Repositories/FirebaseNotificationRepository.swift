@@ -120,6 +120,26 @@ public class FirebaseNotificationRepository: NotificationRepository {
             .addDocument(data: data)
     }
 
+    public func sendHangoutConfirmed(to userId: String, targetDateString: String?) async throws {
+        let currentUid = try NotificationSenderIdentity.requireSignedInUserId(auth.currentUser?.uid)
+        let currentName = try NotificationSenderIdentity.requireDisplayName(auth.currentUser?.displayName)
+
+        var data: [String: Any] = [
+            "recipientId": userId,
+            "senderId": currentUid,
+            "senderName": currentName,
+            "type": AppNotification.NotificationType.hangoutConfirmed.rawValue,
+            "date": Timestamp(date: Date()),
+            "isRead": false
+        ]
+        if let targetDateString {
+            data["targetDateString"] = targetDateString
+        }
+
+        _ = try await db.collection("users").document(userId).collection("notifications")
+            .addDocument(data: data)
+    }
+
     public func markNudgeResponded(
         _ notification: AppNotification,
         response: AppNotification.NudgeResponse

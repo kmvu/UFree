@@ -17,6 +17,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var isSaveSuccessful: Bool = false
     @Published var isDeleteSuccessful: Bool = false
     @Published var showDeleteConfirmation: Bool = false
+    @Published var weekendRemindersEnabled: Bool = true
 
     private let authRepository: AuthRepository
     private let friendRepository: FriendRepositoryProtocol
@@ -40,6 +41,13 @@ final class SettingsViewModel: ObservableObject {
         if let user = await authRepository.currentUser {
             self.displayName = user.displayName ?? ""
         }
+        weekendRemindersEnabled = OnboardingProgressStore.shared.weekendRemindersEnabled
+    }
+
+    func setWeekendRemindersEnabled(_ enabled: Bool) {
+        weekendRemindersEnabled = enabled
+        OnboardingProgressStore.shared.setWeekendRemindersEnabled(enabled)
+        LocalNotificationScheduler.shared.refreshUsingLastFriendCount()
     }
     
     func saveProfile() async {

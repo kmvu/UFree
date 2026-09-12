@@ -38,13 +38,14 @@ public final class RootViewModel: ObservableObject {
     /// Checklist bottom sheet — opened only when the user taps the banner.
     @Published public var showPairOnboardingSheet = false
     @Published public var celebrationToast: String?
+    @Published public var hangoutPrompt: HangoutConfirmPrompt?
     /// Friend name for post-connect mission chip copy (first / latest accept).
     @Published public var postConnectFriendName: String?
     /// Optional day to focus on Who's Free when the mission chip is tapped.
     @Published public var missionFocusDate: Date?
 
     /// Duration before celebration toast clears (and optional weekend CTA presents).
-    public var celebrationToastDurationNanoseconds: UInt64 = 2_000_000_000
+    public var celebrationToastDurationNanoseconds: UInt64 = 2_500_000_000
     
     // Feature ViewModels for navigation and cross-feature state
     @Published public var friendsScheduleViewModel: FriendsScheduleViewModel?
@@ -154,6 +155,15 @@ public final class RootViewModel: ObservableObject {
                 self?.deepLinkProfileId = userId
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .didReceiveLocalRoute)
+            .compactMap { $0.object as? String }
+            .sink { [weak self] route in
+                if route == LocalNotificationScheduler.routeWhosFree {
+                    self?.activeTab = .feed
+                }
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Auth State Setup
@@ -220,4 +230,18 @@ public final class RootViewModel: ObservableObject {
 // MARK: - Helper for Sheet Identification
 extension String: @retroactive Identifiable {
     public var id: String { self }
+}
+
+public struct HangoutConfirmPrompt: Identifiable, Equatable {
+    public let friendId: String
+    public let friendName: String
+    public let dayKey: String
+
+    public var id: String { "\(friendId)|\(dayKey)" }
+
+    public init(friendId: String, friendName: String, dayKey: String) {
+        self.friendId = friendId
+        self.friendName = friendName
+        self.dayKey = dayKey
+    }
 }

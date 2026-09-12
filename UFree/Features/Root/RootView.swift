@@ -155,11 +155,17 @@ struct RootView: View {
         if let userId, !userId.isEmpty {
             localAvailabilityRepository.bind(userId: userId)
             OnboardingProgressStore.shared.bind(userId: userId)
+            NudgeReplyStore.shared.bind(userId: userId)
+            BondProgressStore.shared.bind(userId: userId)
+            friendsScheduleViewModel.hydratePersistedReplies()
             Task {
                 await compositeAvailabilityRepository.retryPendingSync()
             }
         } else {
             OnboardingProgressStore.shared.bind(userId: nil)
+            NudgeReplyStore.shared.bind(userId: nil)
+            BondProgressStore.shared.bind(userId: nil)
+            LocalNotificationScheduler.shared.cancelAll()
         }
     }
 }
@@ -178,6 +184,7 @@ struct MainAppView: View {
     let friendsViewModel: FriendsViewModel
     @ObservedObject var notificationViewModel: NotificationViewModel
     @ObservedObject private var onboardingStore = OnboardingProgressStore.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -204,7 +211,10 @@ struct MainAppView: View {
                     PostConnectMissionChipView(
                         title: OnboardingProgressStore.postConnectMissionTitle,
                         subtitle: postConnectMissionSubtitle,
-                        onPrimary: { handlePostConnectMissionTap() },
+                        onPrimary: {
+                            AnalyticsManager.logMissionChipTapped()
+                            handlePostConnectMissionTap()
+                        },
                         onDismiss: {
                             rootViewModel.dismissPostConnectCoach(store: onboardingStore)
                         }
@@ -235,6 +245,9 @@ struct MainAppView: View {
                     rootViewModel.showPairOnboardingBanner = false
                 }
             )
+            .onAppear {
+                AnalyticsManager.logOnboardingChecklistShown()
+            }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
             .presentationBackground(.regularMaterial)
@@ -255,6 +268,7 @@ struct MainAppView: View {
                 onMarkWeekendFree: {
                     Task {
                         await scheduleViewModel.markWeekendFree()
+                        AnalyticsManager.logWeekendCTAAccepted()
                         OnboardingProgressStore.shared.consumeWeekendCTA()
                         rootViewModel.showWeekendCTA = false
                         rootViewModel.activeTab = .feed
@@ -262,6 +276,7 @@ struct MainAppView: View {
                     }
                 },
                 onDismiss: {
+                    AnalyticsManager.logWeekendCTADismissed()
                     OnboardingProgressStore.shared.consumeWeekendCTA()
                     rootViewModel.showWeekendCTA = false
                     // Stay on Schedule with a soft next-mission chip.
@@ -271,6 +286,22 @@ struct MainAppView: View {
             )
             .adaptiveContentWidth(AdaptiveLayout.formContentMaxWidth)
             .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $rootViewModel.hangoutPrompt) { prompt in
+            HangoutConfirmSheet(
+                friendName: prompt.friendName,
+                weekdayLabel: hangoutWeekdayLabel(for: prompt.dayKey),
+                onConfirm: {
+                    Task {
+                        await notificationViewModel.confirmHangoutPrompt()
+                    }
+                },
+                onDismiss: {
+                    notificationViewModel.dismissHangoutPrompt()
+                }
+            )
+            .adaptiveContentWidth(AdaptiveLayout.formContentMaxWidth)
+            .presentationDetents([.medium])
         }
         .sheet(isPresented: $notificationViewModel.showNotificationCenter) {
             NotificationCenterView(viewModel: notificationViewModel)
@@ -286,12 +317,7 @@ struct MainAppView: View {
                 }
 
                 if let toast = rootViewModel.celebrationToast {
-                    Text(toast)
-                        .font(.subheadline.bold())
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Capsule())
+                    CelebrationToastCard(message: toast)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
@@ -304,7 +330,10 @@ struct MainAppView: View {
                 "\($0.senderId)-\($0.type.rawValue)-\($0.date.timeIntervalSince1970)"
             }
         )
-        .animation(.easeInOut(duration: 0.25), value: rootViewModel.celebrationToast)
+        .animation(
+            .spring(response: 0.4, dampingFraction: 0.78),
+            value: rootViewModel.celebrationToast
+        )
         .environment(\.notificationViewModel, notificationViewModel)
         .onOpenURL { url in
             handleUniversalLink(url)
@@ -313,7 +342,7 @@ struct MainAppView: View {
             // Seeded Alex friend would otherwise look like a live 0→1 accept and open
             // the weekend CTA sheet, which blocks Who's Free tab switches in XCUITest.
             if TestConfiguration.isRunningUITests {
-                onboardingStore.resetAllProgress()
+                LocalEngagementReset.resetAll()
                 onboardingStore.prepareForUITestingWithSeededFriends()
             }
             wireHandshakeCallback()
@@ -333,9 +362,17 @@ struct MainAppView: View {
                rootViewModel.celebrationToast == nil {
                 rootViewModel.showWeekendCTA = true
             }
+            refreshWeekendReminders()
+            notificationViewModel.presentNextHangoutPromptIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            refreshWeekendReminders()
+            notificationViewModel.presentNextHangoutPromptIfNeeded()
         }
         .onChange(of: friendsViewModel.friends.count) { oldCount, newCount in
             handleFriendsCountChange(from: oldCount, to: newCount)
+            refreshWeekendReminders()
         }
         .onChange(of: onboardingStore.hasInvitedFriend) { wasInvited, isInvited in
             if !wasInvited && isInvited {
@@ -416,6 +453,15 @@ struct MainAppView: View {
             return "See when you and \(name) are free — then nudge a day."
         }
         return OnboardingProgressStore.postConnectMissionSeeBothFree
+    }
+
+    private func refreshWeekendReminders() {
+        LocalNotificationScheduler.shared.refresh(friendCount: friendsViewModel.friends.count)
+    }
+
+    private func hangoutWeekdayLabel(for dayKey: String) -> String? {
+        guard let date = AppNotification.date(from: dayKey) else { return nil }
+        return date.formatted(.dateTime.weekday(.wide))
     }
 
     private func handlePostConnectMissionTap() {

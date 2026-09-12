@@ -197,6 +197,7 @@ struct NotificationRow: View {
         case .nudgeReply: return "checkmark.bubble.fill"
         case .friendRequest: return "person.badge.plus"
         case .friendAccepted: return "person.2.fill"
+        case .hangoutConfirmed: return "sparkles"
         }
     }
 
@@ -206,6 +207,7 @@ struct NotificationRow: View {
         case .nudgeReply: return .green
         case .friendRequest: return .blue
         case .friendAccepted: return .green
+        case .hangoutConfirmed: return .green
         }
     }
 

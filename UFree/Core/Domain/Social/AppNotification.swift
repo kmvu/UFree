@@ -29,6 +29,8 @@ public struct AppNotification: Identifiable, Codable {
         case friendAccepted
         case nudge
         case nudgeReply
+        /// Peer confirmed a hang after an “I’m in” day passed.
+        case hangoutConfirmed
     }
 
     public enum NudgeResponse: String, Codable, CaseIterable {

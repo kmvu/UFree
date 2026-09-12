@@ -165,6 +165,19 @@ final class OnboardingProgressStoreTests: XCTestCase {
         )
     }
 
+    func test_weekendRemindersEnabled_defaultsOnAndPersistsOff() {
+        XCTAssertTrue(sut.weekendRemindersEnabled)
+        sut.bind(userId: "user-a")
+        sut.setWeekendRemindersEnabled(false)
+        XCTAssertFalse(sut.weekendRemindersEnabled)
+
+        sut.bind(userId: "user-b")
+        XCTAssertTrue(sut.weekendRemindersEnabled)
+
+        sut.bind(userId: "user-a")
+        XCTAssertFalse(sut.weekendRemindersEnabled)
+    }
+
     func test_bind_scopesProgressPerUserId() {
         sut.bind(userId: "user-a")
         sut.markInvitedFriend()

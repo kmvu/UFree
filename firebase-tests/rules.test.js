@@ -737,6 +737,35 @@ describe("notification type branches", () => {
     );
   });
 
+  it("allows hangoutConfirmed between mutual friends", async () => {
+    await seedAcceptedFriends();
+    await assertSucceeds(
+      setDoc(doc(authedDb("bob"), "users/alice/notifications/hang1"), {
+        recipientId: "alice",
+        senderId: "bob",
+        senderName: "Bob",
+        type: "hangoutConfirmed",
+        date: new Date(),
+        isRead: false,
+        targetDateString: "2099-01-01",
+      })
+    );
+  });
+
+  it("denies hangoutConfirmed from a stranger", async () => {
+    await seedAliceAndBob();
+    await assertFails(
+      setDoc(doc(authedDb("mallory"), "users/alice/notifications/hang2"), {
+        recipientId: "alice",
+        senderId: "mallory",
+        senderName: "Mallory",
+        type: "hangoutConfirmed",
+        date: new Date(),
+        isRead: false,
+      })
+    );
+  });
+
   it("denies nudgeReply from a stranger", async () => {
     await seedAliceAndBob();
     await assertFails(

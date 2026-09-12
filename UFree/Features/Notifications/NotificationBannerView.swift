@@ -70,6 +70,7 @@ struct NotificationBannerView: View {
         case .nudgeReply: return .green
         case .friendRequest: return .blue
         case .friendAccepted: return .green
+        case .hangoutConfirmed: return .green
         }
     }
 }

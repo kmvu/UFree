@@ -29,6 +29,8 @@ final class FriendsScheduleViewModelBatchNudgeTests: XCTestCase {
             availabilityRepository: mockAvailabilityRepo,
             notificationRepository: mockNotificationRepo
         )
+        BondProgressStore.shared.bind(userId: "FriendsScheduleViewModelBatchNudgeTests")
+        BondProgressStore.shared.resetAll()
         trackForMemoryLeaks(sut)
     }
 

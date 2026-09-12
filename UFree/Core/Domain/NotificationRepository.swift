@@ -18,6 +18,7 @@ public protocol NotificationRepository {
         targetDateString: String?,
         response: AppNotification.NudgeResponse
     ) async throws
+    func sendHangoutConfirmed(to userId: String, targetDateString: String?) async throws
     func markNudgeResponded(_ notification: AppNotification, response: AppNotification.NudgeResponse) async throws
 
     /// Registers/updates the APNs device token for push notifications

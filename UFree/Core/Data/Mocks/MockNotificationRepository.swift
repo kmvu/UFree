@@ -12,6 +12,7 @@ public class MockNotificationRepository: NotificationRepository {
     public var mockNotifications: [AppNotification]
     public var sentNudges: [(userId: String, targetDate: Date?)] = []
     public var sentReplies: [(userId: String, targetDateString: String?, response: AppNotification.NudgeResponse)] = []
+    public var sentHangoutConfirmations: [(userId: String, targetDateString: String?)] = []
     public var userIdsToFailFor: Set<String> = []  // Test hook: cause sendNudge to fail for these user IDs
     public var shouldThrowRateLimit = false
     public var simulatedDelay: UInt64 = 0 // Nanoseconds
@@ -96,6 +97,21 @@ public class MockNotificationRepository: NotificationRepository {
             nudgeResponse: response.rawValue
         )
         mockNotifications.insert(reply, at: 0)
+    }
+
+    public func sendHangoutConfirmed(to userId: String, targetDateString: String?) async throws {
+        _ = try NotificationSenderIdentity.requireDisplayName(senderDisplayName)
+        sentHangoutConfirmations.append((userId, targetDateString))
+        let note = AppNotification(
+            recipientId: userId,
+            senderId: "current_user",
+            senderName: "You",
+            type: .hangoutConfirmed,
+            date: Date(),
+            isRead: false,
+            targetDateString: targetDateString
+        )
+        mockNotifications.insert(note, at: 0)
     }
 
     public func markNudgeResponded(

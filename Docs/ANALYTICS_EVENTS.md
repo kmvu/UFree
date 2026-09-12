@@ -17,5 +17,15 @@ Catalog from `AnalyticsManager` / `AnalyticsEvent`. Firebase Analytics event nam
 | `nudgeReplySent(response:)` | `nudge_reply_sent` | `response`, `timestamp` |
 | `nudgeReplyReceived(response:)` | `nudge_reply_received` | `response`, `timestamp` |
 | `d7Reopen(daysSinceActivity:)` | `d7_reopen` | `days_since_activity`, `timestamp` |
+| `onboardingChecklistShown` | `onboarding_checklist_shown` | `timestamp` |
+| `onboardingStepCompleted(step:)` | `onboarding_step_completed` | `step` (`invite` / `free_day` / `handshake`), `timestamp` |
+| `onboardingChecklistDismissed` | `onboarding_checklist_dismissed` | `timestamp` |
+| `missionChipTapped` | `mission_chip_tapped` | `timestamp` |
+| `weekendCTAAccepted` | `weekend_cta_accepted` | `timestamp` |
+| `weekendCTADismissed` | `weekend_cta_dismissed` | `timestamp` |
+| `localNotificationOpened(kind:)` | `local_notification_opened` | `kind` (`weekend_planning`), `timestamp` |
+| `hangoutConfirmed` | `hangout_confirmed` | `timestamp` |
+| `hangoutConfirmDismissed` | `hangout_confirm_dismissed` | `timestamp` |
+| `bondMilestoneReached(count:)` | `bond_milestone_reached` | `count` (1 / 5 / 10), `timestamp` |
 
 Collection is disabled in DEBUG builds (`UFreeApp` / `AppDelegate`). Prefer `AnalyticsManager.log(...)` over calling Firebase Analytics directly from ViewModels.

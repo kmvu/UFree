@@ -26,10 +26,16 @@ final class FriendsScheduleViewModelTests: XCTestCase {
             availabilityRepository: mockAvailabilityRepo,
             notificationRepository: mockNotificationRepo
         )
+        NudgeReplyStore.shared.bind(userId: "FriendsScheduleViewModelTests")
+        NudgeReplyStore.shared.resetAll()
+        BondProgressStore.shared.bind(userId: "FriendsScheduleViewModelTests")
+        BondProgressStore.shared.resetAll()
         trackForMemoryLeaks(sut)
     }
 
     override func tearDown() async throws {
+        NudgeReplyStore.shared.resetAll()
+        BondProgressStore.shared.resetAll()
         sut = nil
         mockFriendRepo = nil
         mockAvailabilityRepo = nil

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 public struct FriendsScheduleView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -113,6 +114,7 @@ public struct FriendsScheduleView: View {
                 Text(message)
             }
         }
+        .popoverTip(BothFreeTip())
         .refreshable {
             await viewModel.loadFriendsSchedules()
         }
@@ -230,6 +232,7 @@ public struct FriendsScheduleView: View {
                 .disabled(viewModel.isNudging)
                 .padding(.horizontal)
                 .adaptiveContentWidth()
+                .popoverTip(BatchNudgeTip())
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }

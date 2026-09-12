@@ -105,7 +105,8 @@ service cloud.firestore {
         'friendRequest',
         'friendAccepted',
         'nudge',
-        'nudgeReply'
+        'nudgeReply',
+        'hangoutConfirmed'
       ];
     }
 
@@ -200,7 +201,7 @@ service cloud.firestore {
               && hasAcceptedRequest(request.auth.uid, userId)
             )
             || (
-              request.resource.data.type in ['nudge', 'nudgeReply']
+              request.resource.data.type in ['nudge', 'nudgeReply', 'hangoutConfirmed']
               && areMutualFriends(request.auth.uid, userId)
             )
           );

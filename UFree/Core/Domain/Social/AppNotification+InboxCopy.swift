@@ -32,6 +32,11 @@ extension AppNotification {
                 return "\(senderName) \(verb) for \(day)"
             }
             return "\(senderName) \(verb)"
+        case .hangoutConfirmed:
+            if let day {
+                return "\(senderName) marked that you hung out \(day)."
+            }
+            return "\(senderName) marked that you hung out."
         }
     }
 
@@ -56,6 +61,11 @@ extension AppNotification {
             case .busy: return day.map { "Busy for \($0)" } ?? "Is busy"
             case .none: return "Replied to your nudge"
             }
+        case .hangoutConfirmed:
+            if let day {
+                return "You hung out \(day)"
+            }
+            return "You hung out"
         }
     }
 
@@ -65,6 +75,7 @@ extension AppNotification {
         case .nudgeReply: return "checkmark.bubble.fill"
         case .friendRequest: return "person.badge.plus"
         case .friendAccepted: return "person.2.fill"
+        case .hangoutConfirmed: return "sparkles"
         }
     }
 }

@@ -21,6 +21,17 @@ struct SettingsView: View {
                         .disabled(viewModel.isProcessing)
                 }
                 
+                Section(
+                    header: Text("Reminders"),
+                    footer: Text("On-device weekend pings so you remember to check Who’s Free. No server push.")
+                ) {
+                    Toggle("Weekend planning reminder", isOn: Binding(
+                        get: { viewModel.weekendRemindersEnabled },
+                        set: { viewModel.setWeekendRemindersEnabled($0) }
+                    ))
+                    .disabled(viewModel.isProcessing)
+                }
+
                 Section {
                     Button(action: {
                         Task {

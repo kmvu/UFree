@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import TipKit
 
 public struct MyScheduleView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
@@ -98,7 +99,7 @@ public struct MyScheduleView: View {
                             print("⚠️ Failed to wipe local SwiftData: \(error)")
                             #endif
                         }
-                        await OnboardingProgressStore.shared.resetAllProgress()
+                        await LocalEngagementReset.resetAll()
                     }
                 ))
             }
@@ -210,6 +211,7 @@ public struct MyScheduleView: View {
             HapticManager.medium()
             selectedDayForSheet = day
         }
+        .popoverTip(PartialDayWindowTip())
     }
 
     private var emptyStateSection: some View {

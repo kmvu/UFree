@@ -146,6 +146,11 @@ public class NotificationViewModel: ObservableObject {
             handleIncomingNudgeReply(reply)
         }
 
+        let newHangouts = newlyArrivedUnread.filter { $0.type == .hangoutConfirmed }
+        for hangout in newHangouts {
+            handleIncomingHangoutConfirmed(hangout)
+        }
+
         guard let newest = newlyArrivedUnread.max(by: { $0.date < $1.date }) else { return }
         presentIncomingBanner(for: newest)
     }
@@ -423,6 +428,14 @@ public class NotificationViewModel: ObservableObject {
 
             AnalyticsManager.logNudgeReplySent(response: response.rawValue)
             OnboardingProgressStore.shared.recordWeekendActivity()
+            BondProgressStore.shared.incrementNudge(friendId: note.senderId)
+            let dayKey = note.targetDateString ?? AppNotification.dateString(from: Date())
+            NudgeReplyStore.shared.record(
+                friendId: note.senderId,
+                friendName: note.senderName,
+                dayKey: dayKey,
+                response: response
+            )
             HapticManager.success()
         } catch {
             errorMessage = "Couldn't send reply. Try again."
@@ -454,6 +467,88 @@ public class NotificationViewModel: ObservableObject {
         await scheduleVM.updateStatus(for: day).value
     }
     
+    func presentNextHangoutPromptIfNeeded() {
+        guard !TestConfiguration.isRunningUITests else { return }
+        guard let root = rootViewModel else { return }
+        guard root.hangoutPrompt == nil,
+              !root.showWeekendCTA,
+              root.celebrationToast == nil else { return }
+        guard let pending = NudgeReplyStore.shared.pendingHangoutPrompts().first else { return }
+
+        let resolvedName: String
+        if !pending.friendName.isEmpty {
+            resolvedName = pending.friendName
+        } else if let match = root.friendsViewModel?.friends.first(where: { $0.id == pending.friendId }) {
+            resolvedName = match.displayName
+        } else {
+            resolvedName = "your friend"
+        }
+
+        root.hangoutPrompt = HangoutConfirmPrompt(
+            friendId: pending.friendId,
+            friendName: resolvedName,
+            dayKey: pending.dayKey
+        )
+    }
+
+    func confirmHangoutPrompt() async {
+        guard let root = rootViewModel, let prompt = root.hangoutPrompt else { return }
+        NudgeReplyStore.shared.markConfirmed(friendId: prompt.friendId, dayKey: prompt.dayKey)
+        do {
+            try await repository.sendHangoutConfirmed(
+                to: prompt.friendId,
+                targetDateString: prompt.dayKey
+            )
+        } catch {
+            #if DEBUG
+            print("Failed to send hangoutConfirmed: \(error)")
+            #endif
+        }
+
+        let milestone = BondProgressStore.shared.recordHang(friendId: prompt.friendId, dayKey: prompt.dayKey)
+        AnalyticsManager.logHangoutConfirmed()
+        HapticManager.success()
+        root.hangoutPrompt = nil
+        if let milestone {
+            root.presentCelebrationToast(
+                BondProgressStore.milestoneToast(friendName: prompt.friendName, count: milestone)
+            )
+        } else {
+            root.presentCelebrationToast("Hang with \(prompt.friendName) counted.")
+        }
+        presentNextHangoutPromptIfNeeded()
+    }
+
+    func dismissHangoutPrompt() {
+        guard let root = rootViewModel, let prompt = root.hangoutPrompt else { return }
+        NudgeReplyStore.shared.markDismissed(friendId: prompt.friendId, dayKey: prompt.dayKey)
+        AnalyticsManager.logHangoutConfirmDismissed()
+        root.hangoutPrompt = nil
+        presentNextHangoutPromptIfNeeded()
+    }
+
+    func handleIncomingHangoutConfirmed(_ note: AppNotification) {
+        guard note.type == .hangoutConfirmed else { return }
+        let dayKey = note.targetDateString ?? AppNotification.dateString(from: Date())
+        NudgeReplyStore.shared.markConfirmed(friendId: note.senderId, dayKey: dayKey)
+        guard !BondProgressStore.shared.hasRecordedHang(friendId: note.senderId, dayKey: dayKey) else {
+            return
+        }
+        let milestone = BondProgressStore.shared.recordHang(friendId: note.senderId, dayKey: dayKey)
+        if let milestone {
+            rootViewModel?.presentCelebrationToast(
+                BondProgressStore.milestoneToast(friendName: note.senderName, count: milestone)
+            )
+        } else {
+            rootViewModel?.presentCelebrationToast("\(note.senderName) marked a hang with you.")
+        }
+        HapticManager.success()
+        if rootViewModel?.hangoutPrompt?.friendId == note.senderId,
+           rootViewModel?.hangoutPrompt?.dayKey == dayKey {
+            rootViewModel?.hangoutPrompt = nil
+        }
+    }
+
     /// Triggers the system notification permission dialog.
     /// This is called contextually after a user sends a nudge or accepts a friend request.
     public func requestPermissions() {

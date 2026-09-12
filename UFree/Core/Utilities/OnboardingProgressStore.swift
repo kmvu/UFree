@@ -30,6 +30,7 @@ public final class OnboardingProgressStore: ObservableObject {
         static let pendingWeekendCTA = "ufree.onboarding.pendingWeekendCTA"
         static let pendingPostConnectCoach = "ufree.onboarding.pendingPostConnectCoach"
         static let hasDismissedPostConnectCoach = "ufree.onboarding.hasDismissedPostConnectCoach"
+        static let weekendRemindersEnabled = "ufree.engagement.weekendRemindersEnabled"
         static let didMigrateLegacy = "ufree.onboarding.didMigrateLegacy"
     }
 
@@ -46,7 +47,8 @@ public final class OnboardingProgressStore: ObservableObject {
         KeyBase.lastWeekendActivityAt,
         KeyBase.pendingWeekendCTA,
         KeyBase.pendingPostConnectCoach,
-        KeyBase.hasDismissedPostConnectCoach
+        KeyBase.hasDismissedPostConnectCoach,
+        KeyBase.weekendRemindersEnabled
     ]
 
     @Published public private(set) var hasInvitedFriend: Bool
@@ -58,6 +60,8 @@ public final class OnboardingProgressStore: ObservableObject {
     @Published public private(set) var pendingWeekendCTA: Bool
     @Published public private(set) var pendingPostConnectCoach: Bool
     @Published public private(set) var hasDismissedPostConnectCoach: Bool
+    /// Local weekend-planning notifications. Missing key defaults to on.
+    @Published public private(set) var weekendRemindersEnabled: Bool
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -70,6 +74,7 @@ public final class OnboardingProgressStore: ObservableObject {
         self.pendingWeekendCTA = false
         self.pendingPostConnectCoach = false
         self.hasDismissedPostConnectCoach = false
+        self.weekendRemindersEnabled = true
         ensureFirstLaunchStamp()
         reloadPublishedState()
     }
@@ -115,6 +120,12 @@ public final class OnboardingProgressStore: ObservableObject {
     public func dismissPairChecklistPermanently() {
         hasDismissedPairChecklist = true
         defaults.set(true, forKey: scoped(KeyBase.hasDismissedPairChecklist))
+        AnalyticsManager.logOnboardingChecklistDismissed()
+    }
+
+    public func setWeekendRemindersEnabled(_ enabled: Bool) {
+        weekendRemindersEnabled = enabled
+        defaults.set(enabled, forKey: scoped(KeyBase.weekendRemindersEnabled))
     }
 
     public var pairOnboardingCompletedSteps: Int {
@@ -214,6 +225,7 @@ public final class OnboardingProgressStore: ObservableObject {
         guard !hasInvitedFriend else { return false }
         hasInvitedFriend = true
         defaults.set(true, forKey: scoped(KeyBase.hasInvitedFriend))
+        AnalyticsManager.logOnboardingStepCompleted(step: "invite")
         return true
     }
 
@@ -229,6 +241,7 @@ public final class OnboardingProgressStore: ObservableObject {
                 let seconds = Int(Date().timeIntervalSince(launch))
                 AnalyticsManager.logTimeToFirstFreeMark(seconds: seconds)
             }
+            AnalyticsManager.logOnboardingStepCompleted(step: "free_day")
         }
         recordWeekendActivity()
         return isFirst
@@ -243,6 +256,7 @@ public final class OnboardingProgressStore: ObservableObject {
                 let seconds = Int(Date().timeIntervalSince(launch))
                 AnalyticsManager.logTimeToFirstFriend(seconds: seconds)
             }
+            AnalyticsManager.logOnboardingStepCompleted(step: "handshake")
         }
         // Only queue weekend CTA when a free day is still needed.
         if !hasShownWeekendCTA && !hasMarkedFreeDay {
@@ -261,6 +275,7 @@ public final class OnboardingProgressStore: ObservableObject {
 
     public func recordWeekendActivity() {
         defaults.set(Date().timeIntervalSince1970, forKey: scoped(KeyBase.lastWeekendActivityAt))
+        LocalNotificationScheduler.shared.refreshUsingLastFriendCount()
     }
 
     public var lastWeekendActivityAt: Date? {
@@ -311,6 +326,10 @@ public final class OnboardingProgressStore: ObservableObject {
         pendingWeekendCTA = defaults.bool(forKey: scoped(KeyBase.pendingWeekendCTA))
         pendingPostConnectCoach = defaults.bool(forKey: scoped(KeyBase.pendingPostConnectCoach))
         hasDismissedPostConnectCoach = defaults.bool(forKey: scoped(KeyBase.hasDismissedPostConnectCoach))
+        let remindersKey = scoped(KeyBase.weekendRemindersEnabled)
+        weekendRemindersEnabled = defaults.object(forKey: remindersKey) == nil
+            ? true
+            : defaults.bool(forKey: remindersKey)
     }
 
     /// One-time copy of pre-UID keys into the first bound user's namespace.

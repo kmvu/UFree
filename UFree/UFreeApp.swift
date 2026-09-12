@@ -11,6 +11,7 @@ import FirebaseCore
 import FirebaseCrashlytics
 import FirebaseAnalytics
 import UserNotifications
+import TipKit
 
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -68,7 +69,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         let userInfo = response.notification.request.content.userInfo
         
         // Local / future push payloads may carry senderId for deep-link routing.
-        if let senderId = userInfo["senderId"] as? String {
+        if let route = userInfo["route"] as? String {
+            if let kind = userInfo["kind"] as? String {
+                AnalyticsManager.logLocalNotificationOpened(kind: kind)
+            }
+            NotificationCenter.default.post(name: .didReceiveLocalRoute, object: route)
+        } else if let senderId = userInfo["senderId"] as? String {
             NotificationCenter.default.post(
                 name: .didReceiveProfileDeepLink,
                 object: userIdFromSenderId(senderId)
@@ -140,6 +146,8 @@ struct UFreeApp: App {
         } else {
             authRepository = MockAuthRepository()
         }
+
+        UFreeCoachTips.configureIfNeeded()
     }
     
     var body: some Scene {
@@ -158,6 +166,7 @@ struct UFreeApp: App {
 
 extension Notification.Name {
     static let didReceiveProfileDeepLink = Notification.Name("didReceiveProfileDeepLink")
+    static let didReceiveLocalRoute = Notification.Name("didReceiveLocalRoute")
 }
 
 // MARK: - Keyboard Dismissal Helper

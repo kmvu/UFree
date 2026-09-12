@@ -49,6 +49,36 @@ enum AnalyticsEvent {
 
     /// App reopen after prior weekend activity (D7 / Friday habit)
     case d7Reopen(daysSinceActivity: Int)
+
+    /// Pair-onboarding checklist sheet became visible
+    case onboardingChecklistShown
+
+    /// First-time pair-onboarding step completed (`invite` / `free_day` / `handshake`)
+    case onboardingStepCompleted(step: String)
+
+    /// User permanently dismissed the pair-onboarding checklist
+    case onboardingChecklistDismissed
+
+    /// Post-connect mission chip tapped
+    case missionChipTapped
+
+    /// Weekend Sat/Sun CTA accepted
+    case weekendCTAAccepted
+
+    /// Weekend Sat/Sun CTA dismissed
+    case weekendCTADismissed
+
+    /// User opened a scheduled local notification (`weekend_planning`)
+    case localNotificationOpened(kind: String)
+
+    /// User confirmed a hangout happened
+    case hangoutConfirmed
+
+    /// User dismissed the hangout-confirm prompt without confirming
+    case hangoutConfirmDismissed
+
+    /// Per-friend hang milestone (1 / 5 / 10)
+    case bondMilestoneReached(count: Int)
 }
 
 // MARK: - Analytics Manager
@@ -133,6 +163,59 @@ struct AnalyticsManager {
                 "days_since_activity": days,
                 "timestamp": Date().timeIntervalSince1970
             ])
+
+        case .onboardingChecklistShown:
+            Analytics.logEvent("onboarding_checklist_shown", parameters: [
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .onboardingStepCompleted(let step):
+            Analytics.logEvent("onboarding_step_completed", parameters: [
+                "step": step,
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .onboardingChecklistDismissed:
+            Analytics.logEvent("onboarding_checklist_dismissed", parameters: [
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .missionChipTapped:
+            Analytics.logEvent("mission_chip_tapped", parameters: [
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .weekendCTAAccepted:
+            Analytics.logEvent("weekend_cta_accepted", parameters: [
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .weekendCTADismissed:
+            Analytics.logEvent("weekend_cta_dismissed", parameters: [
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .localNotificationOpened(let kind):
+            Analytics.logEvent("local_notification_opened", parameters: [
+                "kind": kind,
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .hangoutConfirmed:
+            Analytics.logEvent("hangout_confirmed", parameters: [
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .hangoutConfirmDismissed:
+            Analytics.logEvent("hangout_confirm_dismissed", parameters: [
+                "timestamp": Date().timeIntervalSince1970
+            ])
+
+        case .bondMilestoneReached(let count):
+            Analytics.logEvent("bond_milestone_reached", parameters: [
+                "count": count,
+                "timestamp": Date().timeIntervalSince1970
+            ])
         }
     }
     
@@ -193,5 +276,45 @@ extension AnalyticsManager {
 
     static func logD7Reopen(daysSinceActivity: Int) {
         AnalyticsManager.log(.d7Reopen(daysSinceActivity: daysSinceActivity))
+    }
+
+    static func logOnboardingChecklistShown() {
+        AnalyticsManager.log(.onboardingChecklistShown)
+    }
+
+    static func logOnboardingStepCompleted(step: String) {
+        AnalyticsManager.log(.onboardingStepCompleted(step: step))
+    }
+
+    static func logOnboardingChecklistDismissed() {
+        AnalyticsManager.log(.onboardingChecklistDismissed)
+    }
+
+    static func logMissionChipTapped() {
+        AnalyticsManager.log(.missionChipTapped)
+    }
+
+    static func logWeekendCTAAccepted() {
+        AnalyticsManager.log(.weekendCTAAccepted)
+    }
+
+    static func logWeekendCTADismissed() {
+        AnalyticsManager.log(.weekendCTADismissed)
+    }
+
+    static func logLocalNotificationOpened(kind: String) {
+        AnalyticsManager.log(.localNotificationOpened(kind: kind))
+    }
+
+    static func logHangoutConfirmed() {
+        AnalyticsManager.log(.hangoutConfirmed)
+    }
+
+    static func logHangoutConfirmDismissed() {
+        AnalyticsManager.log(.hangoutConfirmDismissed)
+    }
+
+    static func logBondMilestoneReached(count: Int) {
+        AnalyticsManager.log(.bondMilestoneReached(count: count))
     }
 }

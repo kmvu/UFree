@@ -26,6 +26,7 @@ High-level collections used by UFree. Rules enforce owner / friend / participant
 │   │                                                             │
 │   └── notifications/{docId}                                     │
 │         type friendRequest|friendAccepted|nudge|nudgeReply      │
+│              |hangoutConfirmed                                  │
 │         read/update/delete: owner · create: signed-in sender    │
 └─────────────────────────────────────────────────────────────────┘
 

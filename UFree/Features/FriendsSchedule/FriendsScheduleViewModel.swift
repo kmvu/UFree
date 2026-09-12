@@ -52,6 +52,7 @@ public final class FriendsScheduleViewModel: ObservableObject {
         
         // Default selectedDate to today
         self.selectedDate = Calendar.current.startOfDay(for: Date())
+        hydratePersistedReplies()
     }
 
     /// Empty `nonisolated` deinit works around a Swift 6.2 / iOS 26.2 XCTest bug where
@@ -116,7 +117,8 @@ public final class FriendsScheduleViewModel: ObservableObject {
         applyNudgeReply(
             from: note.senderId,
             response: response,
-            targetDayKey: note.targetDateString
+            targetDayKey: note.targetDateString,
+            friendName: note.senderName
         )
     }
 
@@ -132,13 +134,23 @@ public final class FriendsScheduleViewModel: ObservableObject {
     public func applyNudgeReply(
         from senderId: String,
         response: AppNotification.NudgeResponse,
-        targetDayKey: String?
+        targetDayKey: String?,
+        friendName: String? = nil
     ) {
         let dayKey = targetDayKey
             ?? selectedDate.map { AppNotification.dateString(from: $0) }
             ?? AppNotification.dateString(from: Date())
 
         nudgeRepliesByFriendDay[nudgeReplyKey(friendId: senderId, dayKey: dayKey)] = response
+        let name = friendName
+            ?? friendSchedules.first(where: { $0.id == senderId })?.displayName
+            ?? ""
+        NudgeReplyStore.shared.record(
+            friendId: senderId,
+            friendName: name,
+            dayKey: dayKey,
+            response: response
+        )
 
         let day = resolveScheduleDate(forDayKey: dayKey)
         focusDate(day)
@@ -199,6 +211,13 @@ public final class FriendsScheduleViewModel: ObservableObject {
         }
         display.userSchedule = schedule
         friendSchedules[index] = display
+    }
+
+    public func hydratePersistedReplies() {
+        for record in NudgeReplyStore.shared.records {
+            guard let response = AppNotification.NudgeResponse(rawValue: record.response) else { continue }
+            nudgeRepliesByFriendDay[nudgeReplyKey(friendId: record.friendId, dayKey: record.dayKey)] = response
+        }
     }
 
     private func reapplyNudgeReplyPatches() {
@@ -277,6 +296,7 @@ public final class FriendsScheduleViewModel: ObservableObject {
     }
     
     public func loadFriendsSchedules(showLoading: Bool = true) async {
+        hydratePersistedReplies()
         if showLoading {
             isLoading = true
         }
@@ -349,6 +369,7 @@ public final class FriendsScheduleViewModel: ObservableObject {
             let day = targetDate ?? selectedDate
             try await notificationRepository.sendNudge(to: userId, targetDate: day)
             AnalyticsManager.logNudgeSent(isBatch: false)
+            BondProgressStore.shared.incrementNudge(friendId: userId)
             OnboardingProgressStore.shared.recordWeekendActivity()
             OnboardingProgressStore.shared.dismissPostConnectCoach()
             HapticManager.success()
@@ -409,6 +430,9 @@ public final class FriendsScheduleViewModel: ObservableObject {
                                 to: friendId,
                                 targetDate: normalizedDate
                             )
+                            await MainActor.run {
+                                BondProgressStore.shared.incrementNudge(friendId: friendId)
+                            }
                             return true  // Success
                         } catch {
                             #if DEBUG

@@ -17,11 +17,17 @@ final class NotificationViewModelTests: XCTestCase {
         super.setUp()
         mockRepository = MockNotificationRepository()
         sut = NotificationViewModel(repository: mockRepository)
+        NudgeReplyStore.shared.bind(userId: "NotificationViewModelTests")
+        NudgeReplyStore.shared.resetAll()
+        BondProgressStore.shared.bind(userId: "NotificationViewModelTests")
+        BondProgressStore.shared.resetAll()
         trackForMemoryLeaks(sut)
     }
     
     override func tearDown() {
         sut.stopListening()
+        NudgeReplyStore.shared.resetAll()
+        BondProgressStore.shared.resetAll()
         sut = nil
         mockRepository = nil
         verifyNoMemoryLeaks()
@@ -289,6 +295,66 @@ final class NotificationViewModelTests: XCTestCase {
         XCTAssertFalse(sut.showNotificationCenter)
         XCTAssertEqual(rootVM.activeTab, .feed)
         XCTAssertEqual(scheduleVM.nudgeReply(forFriendId: "friend1", date: today), .maybe)
+    }
+
+    func test_confirmHangoutPrompt_sendsNotificationAndRecordsHang() async {
+        sut.stopListening()
+        sut = NotificationViewModel(repository: mockRepository, observesSceneLifecycle: false)
+
+        let friendRepo = MockFriendRepository()
+        let availabilityRepo = MockAvailabilityRepository()
+        let rootVM = RootViewModel(authRepository: MockAuthRepository())
+        sut.bind(
+            friendsViewModel: FriendsViewModel(friendRepository: friendRepo),
+            scheduleViewModel: MyScheduleViewModel(
+                updateUseCase: NoopUpdateUseCase(),
+                repository: availabilityRepo
+            ),
+            rootViewModel: rootVM
+        )
+
+        NudgeReplyStore.shared.record(
+            friendId: "friend1",
+            friendName: "Alex",
+            dayKey: "2020-01-01",
+            response: .imIn
+        )
+        rootVM.hangoutPrompt = HangoutConfirmPrompt(
+            friendId: "friend1",
+            friendName: "Alex",
+            dayKey: "2020-01-01"
+        )
+
+        await sut.confirmHangoutPrompt()
+
+        XCTAssertEqual(mockRepository.sentHangoutConfirmations.count, 1)
+        XCTAssertEqual(mockRepository.sentHangoutConfirmations.first?.userId, "friend1")
+        XCTAssertNil(rootVM.hangoutPrompt)
+        XCTAssertEqual(BondProgressStore.shared.hangsConfirmed(for: "friend1"), 1)
+        XCTAssertTrue(NudgeReplyStore.shared.isResolved(friendId: "friend1", dayKey: "2020-01-01"))
+    }
+
+    func test_presentNextHangoutPromptIfNeeded_skipsFutureDays() {
+        sut.stopListening()
+        sut = NotificationViewModel(repository: mockRepository, observesSceneLifecycle: false)
+        let rootVM = RootViewModel(authRepository: MockAuthRepository())
+        sut.bind(
+            friendsViewModel: FriendsViewModel(friendRepository: MockFriendRepository()),
+            scheduleViewModel: MyScheduleViewModel(
+                updateUseCase: NoopUpdateUseCase(),
+                repository: MockAvailabilityRepository()
+            ),
+            rootViewModel: rootVM
+        )
+
+        NudgeReplyStore.shared.record(
+            friendId: "friend1",
+            friendName: "Alex",
+            dayKey: "2099-01-01",
+            response: .imIn
+        )
+        sut.presentNextHangoutPromptIfNeeded()
+        XCTAssertNil(rootVM.hangoutPrompt)
     }
 
     private final class NoopUpdateUseCase: UpdateMyStatusUseCaseProtocol {

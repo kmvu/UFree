@@ -102,6 +102,9 @@ How the app guides a new pair from “connected” to a first real plan:
 - Accepting a request (inbox or Add Friends) fires `FriendsViewModel.onAcceptCompleted` → `RootViewModel.handlePostAccept`.
 - A first connection runs `celebrateFirstConnection` (named toast + haptic), then branches: Schedule + weekend CTA when the user still needs a free day, otherwise Who’s Free with `PostConnectMissionChipView` (the `OnboardingProgressStore` post-connect coach). Subsequent accepts always land on Who’s Free with a named toast.
 - The mission chip clears on dismiss or on the first nudge. The friends list is observed, so the inviter celebrates without a manual refresh.
+- After an “I’m in” day passes, a one-tap sheet asks “Did you hang out?” Confirm writes a mutual-friend `hangoutConfirmed` inbox row, increments a local per-friend hang counter (milestones at 1 / 5 / 10), and never punishes a “Not this time”. Replies persist locally so Who’s Free and this prompt survive relaunch.
+- Thursday/Friday **local** weekend-planning notifications (Settings toggle) route to Who’s Free. No APNs/FCM — Spark-only. Scheduling is skipped in unit/UI tests and when weekend activity is fresh.
+- TipKit coach-marks (long-press time windows, “Both” cells, batch nudge) are one-shot and hidden under `TestConfiguration`.
 
 ## Firebase, links, and observability
 

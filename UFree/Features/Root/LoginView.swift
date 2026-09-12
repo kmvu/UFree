@@ -31,7 +31,7 @@ struct LoginView: View {
                     Text("UFree")
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                     
-                    Text("Sync your free time with friends.")
+                    Text("See when friends are free — then actually hang out.")
                         .font(UFreeType.heroBody)
                         .foregroundStyle(.secondary)
                 }
