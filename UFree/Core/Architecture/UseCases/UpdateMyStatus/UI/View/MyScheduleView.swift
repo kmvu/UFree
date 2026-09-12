@@ -87,23 +87,26 @@ public struct MyScheduleView: View {
                 }
             }
         }
-        .adaptiveSheet(isPresented: $showingSettings) {
+        .adaptiveSheet(isPresented: $showingSettings, detents: [.large]) {
             if let friendRepo = rootViewModel.friendsViewModel?.friendRepository {
-                SettingsView(viewModel: SettingsViewModel(
-                    authRepository: rootViewModel.authRepository,
-                    friendRepository: friendRepo,
-                    wipeLocalData: { [modelContext] in
-                        do {
-                            try modelContext.delete(model: PersistentDayAvailability.self)
-                            try modelContext.save()
-                        } catch {
-                            #if DEBUG
-                            print("⚠️ Failed to wipe local SwiftData: \(error)")
-                            #endif
+                SettingsView(
+                    viewModel: SettingsViewModel(
+                        authRepository: rootViewModel.authRepository,
+                        friendRepository: friendRepo,
+                        wipeLocalData: { [modelContext] in
+                            do {
+                                try modelContext.delete(model: PersistentDayAvailability.self)
+                                try modelContext.save()
+                            } catch {
+                                #if DEBUG
+                                print("⚠️ Failed to wipe local SwiftData: \(error)")
+                                #endif
+                            }
+                            await LocalEngagementReset.resetAll()
                         }
-                        await LocalEngagementReset.resetAll()
-                    }
-                ))
+                    ),
+                    onFinished: { showingSettings = false }
+                )
             }
         }
         .task {

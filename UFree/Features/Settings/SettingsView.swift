@@ -10,6 +10,8 @@ import SwiftUI
 struct SettingsView: View {
     @StateObject var viewModel: SettingsViewModel
     @Environment(\.dismiss) var dismiss
+    var onFinished: (() -> Void)?
+    @FocusState private var nameFieldFocused: Bool
     
     var body: some View {
         NavigationStack {
@@ -19,6 +21,7 @@ struct SettingsView: View {
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.words)
                         .disabled(viewModel.isProcessing)
+                        .focused($nameFieldFocused)
                 }
                 
                 Section(
@@ -34,6 +37,7 @@ struct SettingsView: View {
 
                 Section {
                     Button(action: {
+                        nameFieldFocused = false
                         Task {
                             await viewModel.saveProfile()
                         }
@@ -76,7 +80,12 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
-                        dismiss()
+                        nameFieldFocused = false
+                        if let onFinished {
+                            onFinished()
+                        } else {
+                            dismiss()
+                        }
                     }
                     .disabled(viewModel.isProcessing)
                 }
@@ -103,17 +112,27 @@ struct SettingsView: View {
             }
             .onChange(of: viewModel.isSaveSuccessful) { _, success in
                 if success {
-                    dismiss()
+                    finish()
                 }
             }
             .onChange(of: viewModel.isDeleteSuccessful) { _, success in
                 if success {
-                    dismiss()
+                    finish()
                 }
             }
+            .scrollDismissesKeyboard(.immediately)
             .task {
                 await viewModel.loadInitialData()
             }
+        }
+    }
+
+    private func finish() {
+        nameFieldFocused = false
+        if let onFinished {
+            onFinished()
+        } else {
+            dismiss()
         }
     }
 }

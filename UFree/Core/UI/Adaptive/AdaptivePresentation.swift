@@ -32,6 +32,7 @@ struct AdaptiveSheetModifier<Item: Identifiable, SheetContent: View>: ViewModifi
 /// Bool-driven variant of adaptive sheet/popover presentation.
 struct AdaptiveBoolPresentationModifier<SheetContent: View>: ViewModifier {
     @Binding var isPresented: Bool
+    var detents: Set<PresentationDetent>
     let content: () -> SheetContent
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -46,7 +47,7 @@ struct AdaptiveBoolPresentationModifier<SheetContent: View>: ViewModifier {
             content
                 .sheet(isPresented: $isPresented) {
                     self.content()
-                        .presentationDetents([.medium, .large])
+                        .presentationDetents(detents)
                 }
         }
     }
@@ -85,8 +86,9 @@ extension View {
 
     func adaptiveSheet<SheetContent: View>(
         isPresented: Binding<Bool>,
+        detents: Set<PresentationDetent> = [.medium, .large],
         @ViewBuilder content: @escaping () -> SheetContent
     ) -> some View {
-        modifier(AdaptiveBoolPresentationModifier(isPresented: isPresented, content: content))
+        modifier(AdaptiveBoolPresentationModifier(isPresented: isPresented, detents: detents, content: content))
     }
 }
