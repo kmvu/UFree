@@ -88,7 +88,7 @@ Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet 
 | 47–49 | B / C | Deletion cascade |
 | 50–52 | M | Crashlytics, Analytics, App Check console |
 
-Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B entry: `BVTConnectLiveUITests`. Layer C session 1: `BVTDualSimConnectA` / `BVTDualSimConnectB`.
+Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, request, accept, remove). Layer C session 1: `BVTDualSimConnectA` / `BVTDualSimConnectB`.
 
 ### Measuring Coverage
 

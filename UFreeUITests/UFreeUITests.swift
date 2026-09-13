@@ -80,11 +80,40 @@ extension XCUIApplication {
     }
 
     func searchFriendsPhone(_ number: String) {
-        let search = textFields["friends.searchPhone"]
+        var search = textFields["friends.searchPhone"]
+        if !search.waitForExistence(timeout: 3) {
+            swipeUp()
+            swipeUp()
+            search = firstExisting(
+                textFields["friends.searchPhone"],
+                textFields["Find by Phone Number"]
+            )
+        }
         XCTAssertTrue(search.waitForExistence(timeout: 8), "Expected Find by Phone field")
-        typeIntoField(search, number)
+        search.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        _ = keyboards.firstMatch.waitForExistence(timeout: 3)
+        if keyboards.firstMatch.exists {
+            for character in number {
+                let key = keys[String(character)]
+                if key.exists {
+                    key.tap()
+                }
+            }
+        } else {
+            typeIntoField(search, number)
+        }
         if buttons["arrow.right.circle.fill"].waitForExistence(timeout: 2) {
             buttons["arrow.right.circle.fill"].tap()
+        }
+    }
+
+    func dismissConnectChrome() {
+        _ = descendants(matching: .any)["celebration.toast"].waitForExistence(timeout: 3)
+        let cta = descendants(matching: .any)["weekend.cta"]
+        if cta.waitForExistence(timeout: 8) {
+            let notNow = firstExisting(buttons["Not now"], buttons["weekend.cta.dismiss"])
+            if notNow.exists { notNow.tap() }
+            _ = cta.waitForNonExistence(timeout: 4)
         }
     }
 

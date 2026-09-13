@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import FirebaseAuth
 import FirebaseCore
 import FirebaseCrashlytics
 import FirebaseAnalytics
@@ -28,6 +29,9 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         }
         // Integration tests: point Auth/Firestore at local emulators before any SDK use.
         FirebaseEmulatorBootstrap.connectIfRequested()
+        if TestConfiguration.uiTestResetAuth {
+            try? Auth.auth().signOut()
+        }
 
         // Skip analytics/crashlytics and app launch log in unit test runs to avoid SDK noise
         if !TestConfiguration.isRunningUnitTests {

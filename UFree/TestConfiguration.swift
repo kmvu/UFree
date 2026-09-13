@@ -49,6 +49,11 @@ struct TestConfiguration {
         argumentValue(prefix: "UI_TEST_SCANNED_PROFILE=")
     }
 
+    /// Layer B/C: drop a persisted Firebase Auth session so emulator wipes stay consistent.
+    static var uiTestResetAuth: Bool {
+        ProcessInfo.processInfo.arguments.contains("UI_TEST_RESET_AUTH")
+    }
+
     /// Returns true if any test environment
     static var isTesting: Bool {
         isRunningUnitTests || isRunningUITests || isRunningIntegrationTests
