@@ -26,7 +26,7 @@ bundle exec fastlane tests         # iOS unit suite (iPhone 17 Pro)
 bundle exec fastlane ui_tests      # Layer A hermetic BVT (UI_TESTING_MODE)
 # Emulators need Java 21+ — scripts use .jdk/ when PATH has no java:
 ./Scripts/run_ui_emulator_tests.sh # Layer B emulator UI
-./Scripts/run_dual_sim_bvt.sh      # Layer C two-simulator mailbox
+./Scripts/run_dual_sim_bvt.sh      # Layer C sessions 1–4 (dispatch; not a deploy gate yet)
 ./Scripts/run_integration_tests.sh
 swiftlint lint                     # baseline; CI fails on error-severity only
 ```
