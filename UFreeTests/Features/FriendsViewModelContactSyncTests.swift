@@ -343,6 +343,52 @@ final class FriendsViewModelContactSyncTests: XCTestCase {
         friendRepository.finishFriendsStream()
     }
 
+    func test_acceptRequest_refreshConfirmsThenListenerEmpty_dropsFriend() async {
+        let alice = UserProfile(id: "u1", displayName: "Alice Server")
+        friendRepository.myFriends = [alice]
+        let request = FriendRequest(
+            id: "r1", fromId: "u1", fromName: "Alice", toId: "me", status: .pending, timestamp: Date()
+        )
+        sut.incomingRequests = [request]
+        sut.listenToFriends()
+        await waitUntil("friends listener attached") { true }
+
+        await sut.acceptRequest(request)
+        await waitUntil("accept refresh confirms Alice") {
+            sut.friends.first?.displayName == "Alice Server"
+        }
+
+        friendRepository.emitFriends([])
+        await waitUntil("confirmed friend dropped after server removal") {
+            sut.friends.isEmpty
+        }
+        friendRepository.finishFriendsStream()
+    }
+
+    func test_acceptRequest_confirmedThenRemoved_dropsOptimisticFriend() async {
+        let alice = UserProfile(id: "u1", displayName: "Alice Server")
+        let request = FriendRequest(
+            id: "r1", fromId: "u1", fromName: "Alice", toId: "me", status: .pending, timestamp: Date()
+        )
+        sut.incomingRequests = [request]
+        sut.listenToFriends()
+        await waitUntil("friends listener attached") { true }
+
+        await sut.acceptRequest(request)
+        XCTAssertEqual(sut.friends.first?.displayName, "Alice")
+
+        friendRepository.emitFriends([alice])
+        await waitUntil("server snapshot replaces optimistic Alice") {
+            sut.friends.first?.displayName == "Alice Server"
+        }
+
+        friendRepository.emitFriends([])
+        await waitUntil("confirmed friend dropped after server removal") {
+            sut.friends.isEmpty
+        }
+        friendRepository.finishFriendsStream()
+    }
+
     func test_removeFriend_failure_restoresOriginalList() async {
         let alice = UserProfile(id: "u1", displayName: "Alice")
         friendRepository.myFriends = [alice]

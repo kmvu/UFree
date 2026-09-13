@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Layer C: two simulators + emulator mailbox.
-# Session 1 Connect, session 2 Availability, session 3 Nudge (each pair
-# is self-contained: UI_TEST_RESET_AUTH creates new anonymous UIDs).
+# Sessions 1–4: Connect, Availability, Nudge, Deletion.
+# Each pair is self-contained: UI_TEST_RESET_AUTH creates new anonymous UIDs.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

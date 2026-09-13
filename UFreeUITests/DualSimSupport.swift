@@ -229,6 +229,44 @@ enum DualSimFlow {
     }
 
     @MainActor
+    static func deleteAccountToLogin(_ app: XCUIApplication) {
+        app.dismissBlockingSheets()
+        app.dismissKeyboardIfPresent()
+        app.openScheduleTab()
+        XCTAssertTrue(app.buttons["settings.open"].waitForExistence(timeout: 10), "Settings gear")
+        app.buttons["settings.open"].tap()
+        let delete = app.buttons["settings.deleteAccount"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 8), "BVT-47: Delete Account")
+        delete.tap()
+        let confirm = app.alerts.buttons["Delete"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 6), "Delete confirmation")
+        confirm.tap()
+        XCTAssertTrue(
+            app.textFields["login.name"].waitForExistence(timeout: 20)
+                || app.buttons["login.persona.1"].waitForExistence(timeout: 6),
+            "BVT-47: wipe returns to login"
+        )
+    }
+
+    @MainActor
+    static func assertPeerGone(_ app: XCUIApplication, name: String) {
+        app.dismissBlockingSheets()
+        app.openScheduleTab()
+        app.openFriendsTab()
+        let friend = app.staticTexts[name]
+        XCTAssertTrue(
+            friend.waitForNonExistence(timeout: 20)
+                || !app.staticTexts.matching(NSPredicate(format: "label == %@", name)).firstMatch.exists,
+            "BVT-48: \(name) should leave Friends after delete"
+        )
+        app.openWhosFreeTab()
+        XCTAssertFalse(
+            app.staticTexts[name].waitForExistence(timeout: 4),
+            "BVT-49: \(name) should leave Who's Free after delete"
+        )
+    }
+
+    @MainActor
     static func assertBothCue(_ app: XCUIApplication) {
         app.openWhosFreeTab()
         let today = app.buttons["whosFree.day.\(UITestDates.todayDateString())"]

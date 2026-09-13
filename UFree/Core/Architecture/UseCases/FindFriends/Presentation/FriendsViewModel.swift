@@ -49,6 +49,9 @@ public final class FriendsViewModel: ObservableObject {
     private var handledIncomingRequestKeys = Set<String>()
     /// Friends added optimistically until the friends listener / fetch catches up.
     private var optimisticFriendsById: [String: UserProfile] = [:]
+    /// Friend IDs that a server snapshot has included. Used to drop optimistic
+    /// rows after a later snapshot removes them (account deletion / unfriend).
+    private var serverAcknowledgedFriendIds: Set<String> = []
     /// `nonisolated(unsafe)` so `deinit` can cancel without hopping to the MainActor.
     /// A non-empty `@MainActor deinit` trips a Swift 6.2 / iOS 26.2 XCTest bug
     /// (`swift_task_deinitOnExecutorImpl` → "pointer being freed was not allocated").
@@ -131,8 +134,13 @@ public final class FriendsViewModel: ObservableObject {
 
     private func applyFriendsUpdate(_ latest: [UserProfile]) {
         let latestIds = Set(latest.compactMap(\.id))
+        serverAcknowledgedFriendIds.formUnion(latestIds)
         var merged = latest
         for (id, profile) in optimisticFriendsById where !latestIds.contains(id) {
+            if serverAcknowledgedFriendIds.contains(id) {
+                optimisticFriendsById.removeValue(forKey: id)
+                continue
+            }
             merged.append(profile)
         }
         for id in latestIds {
@@ -459,6 +467,10 @@ public final class FriendsViewModel: ObservableObject {
             onAcceptCompleted?(request.fromName, wasFirstFriend)
 
             requestNotificationPermissions()
+            // Authoritative read so `serverAcknowledgedFriendIds` includes the
+            // new friend. A later empty snapshot (account deletion) can then
+            // drop the optimistic row instead of treating [] as stale.
+            await refreshFriends()
             return true
         } catch {
             handledIncomingRequestKeys.remove(key)

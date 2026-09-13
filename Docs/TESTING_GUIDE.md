@@ -88,7 +88,7 @@ Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet 
 | 47–49 | B / C | Deletion cascade |
 | 50–52 | M | Crashlytics, Analytics, App Check console |
 
-Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, request, accept, remove). Layer C: session 1 `BVTDualSimConnectA` / `BVTDualSimConnectB`; session 2 `BVTDualSimAvailabilityA` / `BVTDualSimAvailabilityB` (handshake, then peer sees a free day and Both); session 3 `BVTDualSimNudgeA` / `BVTDualSimNudgeB` (nudge → inbox I'm in → Who's Free In).
+Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, request, accept, remove). Layer C: session 1 `BVTDualSimConnectA` / `BVTDualSimConnectB`; session 2 `BVTDualSimAvailabilityA` / `BVTDualSimAvailabilityB` (handshake, then peer sees a free day and Both); session 3 `BVTDualSimNudgeA` / `BVTDualSimNudgeB` (nudge → inbox I'm in → Who's Free In); session 4 `BVTDualSimDeletionA` / `BVTDualSimDeletionB` (delete → login, peer leaves Friends / Who's Free).
 
 ### Measuring Coverage
 

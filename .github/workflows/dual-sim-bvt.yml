@@ -45,7 +45,7 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools@13
 
-      - name: Run two-simulator Connect, Availability, and Nudge sessions
+      - name: Run two-simulator Connect, Availability, Nudge, and Deletion sessions
         env:
           FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120
         run: ./Scripts/run_dual_sim_bvt.sh

@@ -60,6 +60,9 @@ public struct FriendsView: View {
         }
         .navigationTitle("Friends")
         .overlay { if viewModel.isLoading { ProgressView() } }
+        .onAppear {
+            Task { await viewModel.refreshFriends() }
+        }
         .task {
             // Warm listeners if this tab is opened before MainAppView.onAppear finishes.
             // Do not stopListening on disappear — MainAppView owns the shared VM lifecycle.

@@ -97,7 +97,9 @@ public struct MyScheduleView: View {
                         authRepository: rootViewModel.authRepository,
                         friendRepository: friendRepo,
                         wipeLocalData: { [modelContext] in
-                            if TestConfiguration.isRunningUITests {
+                            if TestConfiguration.isRunningUITests
+                                || TestConfiguration.isLiveUIAutomation {
+                                // SwiftData `delete(model:)` tears down the XCUITest process.
                                 LocalEngagementReset.resetAll()
                                 return
                             }

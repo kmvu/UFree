@@ -46,3 +46,4 @@ run_pair() {
 run_pair BVTDualSimConnectA BVTDualSimConnectB
 run_pair BVTDualSimAvailabilityA BVTDualSimAvailabilityB
 run_pair BVTDualSimNudgeA BVTDualSimNudgeB
+run_pair BVTDualSimDeletionA BVTDualSimDeletionB

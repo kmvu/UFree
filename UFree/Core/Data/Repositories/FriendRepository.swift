@@ -50,6 +50,7 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
                 return
             }
 
+            let generation = SnapshotGeneration()
             let listener = db.collection("users").document(uid)
                 .addSnapshotListener { [weak self] snapshot, error in
                     if error != nil {
@@ -57,6 +58,7 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
                         return
                     }
 
+                    let token = generation.next()
                     let friendIds = snapshot?.data()?["friendIds"] as? [String] ?? []
                     guard !friendIds.isEmpty else {
                         continuation.yield([])
@@ -67,6 +69,7 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
                         guard let self else { return }
                         do {
                             let friends = try await self.profiles(forFriendIds: friendIds)
+                            guard generation.isCurrent(token) else { return }
                             continuation.yield(friends)
                         } catch {
                             // Keep listening; next snapshot may succeed.
@@ -569,6 +572,26 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         }
         guard user.id != nil else { return nil }
         return user
+    }
+}
+
+/// Increments on each friends snapshot so an in-flight profile fetch cannot
+/// overwrite a newer empty list (account deletion / unfriend).
+private final class SnapshotGeneration: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 0
+
+    func next() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        value += 1
+        return value
+    }
+
+    func isCurrent(_ token: Int) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return token == value
     }
 }
 
