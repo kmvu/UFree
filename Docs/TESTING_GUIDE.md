@@ -66,7 +66,7 @@ Three layers cover the TestFlight BVT IDs. The matrix below is the canonical hom
 | B · Emulator UI | `./Scripts/run_ui_emulator_tests.sh` | No `UI_TESTING_MODE`. `UFREE_INTEGRATION_TESTS=1` + `UI_TEST_PERSONA=1`. Real Firebase repos + production rules. Second user via REST `PeerDriver`. |
 | C · Two UIs | `./Scripts/run_dual_sim_bvt.sh` | Two simulators + localhost mailbox (`Scripts/bvt_mailbox.py`). Nightly / dispatch until green for a week, then main-push. |
 
-Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet (`schedule.sheet.freeAllDay` / `busy` / `afternoon` + `schedule.sheet.save`). Tabs: `tab.schedule` / `tab.whosFree` / `tab.friends`. Bell: `notifications.bell`.
+Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet (`schedule.sheet.freeAllDay` / `busy` / `afternoon` + `schedule.sheet.save`). Tabs: `tab.schedule` / `tab.whosFree` / `tab.friends`. Bell: `notifications.bell`. Layer B/C (`UI_TEST_PERSONA` / `UI_TEST_RESET_AUTH`) keep real Firebase repos; leftover weekend / pair sheets from the simulator install are suppressed so they cannot cover Friends.
 
 **BVT-ID map** (`P` primary, `S` secondary, `I` injected stand-in, `M` manual only):
 
@@ -88,7 +88,7 @@ Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet 
 | 47–49 | B / C | Deletion cascade |
 | 50–52 | M | Crashlytics, Analytics, App Check console |
 
-Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, request, accept, remove). Layer C session 1: `BVTDualSimConnectA` / `BVTDualSimConnectB`.
+Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, request, accept, remove). Layer C: session 1 `BVTDualSimConnectA` / `BVTDualSimConnectB`; session 2 `BVTDualSimAvailabilityA` / `BVTDualSimAvailabilityB` (handshake, then peer sees a free day and Both).
 
 ### Measuring Coverage
 

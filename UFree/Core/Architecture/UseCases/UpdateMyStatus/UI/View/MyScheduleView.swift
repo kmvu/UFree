@@ -15,7 +15,7 @@ public struct MyScheduleView: View {
     @StateObject private var viewModel: MyScheduleViewModel
     @ObservedObject var rootViewModel: RootViewModel
     @ObservedObject private var onboardingStore = OnboardingProgressStore.shared
-    @State private var isLoaded = false
+    @State private var isLoaded = true
     @State private var showingSettings = false
     @State private var selectedDayForSheet: DayAvailability?
 

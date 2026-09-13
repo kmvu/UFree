@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Layer C: two simulators + emulator mailbox.
-# Session 1 (Connect) is the first wired pair.
+# Session 1 Connect, then session 2 Availability (self-contained handshake).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

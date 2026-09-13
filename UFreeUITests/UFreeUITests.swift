@@ -57,7 +57,13 @@ extension XCUIApplication {
             tabBars.buttons["Schedule"]
         )
         XCTAssertTrue(tab.waitForExistence(timeout: 20), "Expected Schedule tab")
-        tab.tap()
+        let deadline = Date().addingTimeInterval(8)
+        while Date() < deadline {
+            if tab.isSelected { return }
+            tab.tap()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.35))
+        }
+        XCTAssertTrue(tab.isSelected, "Schedule tab should stay selected")
     }
 
     func openWhosFreeTab() {
@@ -107,12 +113,25 @@ extension XCUIApplication {
         }
     }
 
+    func dismissBlockingSheets() {
+        let candidates = [
+            buttons["weekend.cta.dismiss"],
+            buttons["hangout.checklist.notNow"],
+            buttons["Not now"]
+        ]
+        if descendants(matching: .any)["weekend.cta"].exists
+            || descendants(matching: .any)["hangout.checklist.sheet"].exists
+            || candidates.contains(where: \.exists) {
+            candidates.first(where: \.exists)?.tap()
+        }
+    }
+
     func dismissConnectChrome() {
         _ = descendants(matching: .any)["celebration.toast"].waitForExistence(timeout: 3)
+        dismissBlockingSheets()
         let cta = descendants(matching: .any)["weekend.cta"]
-        if cta.waitForExistence(timeout: 8) {
-            let notNow = firstExisting(buttons["Not now"], buttons["weekend.cta.dismiss"])
-            if notNow.exists { notNow.tap() }
+        if cta.waitForExistence(timeout: 6) {
+            dismissBlockingSheets()
             _ = cta.waitForNonExistence(timeout: 4)
         }
     }

@@ -319,9 +319,10 @@ struct MainAppView: View {
         .onAppear {
             // Seeded Alex friend would otherwise look like a live 0→1 accept and open
             // the weekend CTA sheet, which blocks Who's Free tab switches in XCUITest.
-            if TestConfiguration.isRunningUITests {
+            if TestConfiguration.isRunningUITests || TestConfiguration.isLiveUIAutomation {
                 LocalEngagementReset.resetAll()
-                if TestConfiguration.uiTestingScenario != .firstConnect {
+                if TestConfiguration.isLiveUIAutomation
+                    || TestConfiguration.uiTestingScenario != .firstConnect {
                     onboardingStore.prepareForUITestingWithSeededFriends()
                 }
             }
@@ -337,7 +338,12 @@ struct MainAppView: View {
             }
             // Present pending weekend CTA only when no celebration toast is active
             // (avoids stacking with first-connection toast).
-            if (!TestConfiguration.isRunningUITests
+            if TestConfiguration.isLiveUIAutomation {
+                // Simulator UserDefaults can migrate leftover pendingWeekendCTA onto
+                // a new anonymous UID and cover Friends / Accept during Layer B/C.
+                rootViewModel.showWeekendCTA = false
+                rootViewModel.showPairOnboardingSheet = false
+            } else if (!TestConfiguration.isRunningUITests
                 || TestConfiguration.uiTestingScenario == .firstConnect),
                onboardingStore.shouldPresentWeekendCTAAfterConnection,
                rootViewModel.celebrationToast == nil {
@@ -374,7 +380,9 @@ struct MainAppView: View {
     }
 
     private func handleFriendsCountChange(from oldCount: Int, to newCount: Int) {
-        if TestConfiguration.isRunningUITests, TestConfiguration.uiTestingScenario != .firstConnect {
+        if TestConfiguration.isLiveUIAutomation
+            || (TestConfiguration.isRunningUITests
+                && TestConfiguration.uiTestingScenario != .firstConnect) {
             syncPairChecklistVisibility()
             return
         }

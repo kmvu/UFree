@@ -54,6 +54,11 @@ struct TestConfiguration {
         ProcessInfo.processInfo.arguments.contains("UI_TEST_RESET_AUTH")
     }
 
+    /// Layer B/C live UI (real Firebase). Not `UI_TESTING_MODE` — do not swap in mocks.
+    static var isLiveUIAutomation: Bool {
+        uiTestPersonaIndex != nil || uiTestResetAuth
+    }
+
     /// Returns true if any test environment
     static var isTesting: Bool {
         isRunningUnitTests || isRunningUITests || isRunningIntegrationTests

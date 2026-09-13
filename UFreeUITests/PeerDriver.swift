@@ -429,7 +429,10 @@ enum EmulatorUILaunch {
 
         let deadline = Date().addingTimeInterval(40)
         while Date() < deadline {
-            if tabs.exists { return }
+            // Do not treat a pre-sign-out tab flash as ready — login must be gone.
+            if tabs.exists && !personaButton.exists {
+                return
+            }
             if !tappedPersona, personaButton.exists, personaButton.isHittable {
                 personaButton.tap()
                 tappedPersona = true
@@ -438,5 +441,6 @@ enum EmulatorUILaunch {
         }
 
         XCTAssertTrue(tabs.waitForExistence(timeout: 8), "Persona \(persona) should reach Schedule")
+        XCTAssertFalse(personaButton.exists, "Persona \(persona) login should be gone")
     }
 }

@@ -1,0 +1,156 @@
+//
+//  DualSimSupport.swift
+//  UFreeUITests
+//
+//  Mailbox + handshake helpers for Layer C two-simulator sessions.
+//
+
+import XCTest
+
+enum MailboxClient {
+    static var baseURL: URL {
+        URL(string: ProcessInfo.processInfo.environment["BVT_MAILBOX_URL"] ?? "http://127.0.0.1:4739")!
+    }
+
+    static func requireMailbox() throws {
+        guard ProcessInfo.processInfo.environment["BVT_MAILBOX_URL"] != nil else {
+            throw XCTSkip("Layer C requires BVT_MAILBOX_URL from Scripts/run_dual_sim_bvt.sh")
+        }
+    }
+
+    static func post(_ key: String, value: Any = true) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent(key))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["value": value])
+        let (_, response) = try await URLSession.shared.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+        XCTAssertEqual(status, 200, "Mailbox POST \(key)")
+    }
+
+    static func waitFor(_ key: String, timeout: TimeInterval = 60) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            var request = URLRequest(url: baseURL.appendingPathComponent(key))
+            request.timeoutInterval = 2
+            if let (data, _) = try? await URLSession.shared.data(for: request),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               isPosted(json["value"]) {
+                return
+            }
+            try await Task.sleep(nanoseconds: 400_000_000)
+        }
+        XCTFail("Timed out waiting for mailbox key \(key)")
+    }
+
+    private static func isPosted(_ value: Any?) -> Bool {
+        guard let value, !(value is NSNull) else { return false }
+        if let flag = value as? Bool { return flag }
+        return true
+    }
+}
+
+enum DualSimFlow {
+    static let persona2Phone = PeerDriver.personaPhones[1]
+    static let persona1Name = PeerDriver.personaNames[0]
+    static let persona2Name = PeerDriver.personaNames[1]
+
+    @MainActor
+    static func launchPersona(_ persona: Int) -> XCUIApplication {
+        let app = EmulatorUILaunch.makeApp(persona: persona)
+        app.launch()
+        EmulatorUILaunch.waitForPersonaReady(app, persona: persona)
+        app.dismissBlockingSheets()
+        app.openFriendsTab()
+        app.dismissBlockingSheets()
+        XCTAssertTrue(
+            app.textFields["friends.searchPhone"].waitForExistence(timeout: 12),
+            "Persona \(persona) Friends tab should be usable before handshake"
+        )
+        return app
+    }
+
+    @MainActor
+    static func invitePersona2(_ app: XCUIApplication) {
+        app.dismissBlockingSheets()
+        app.openFriendsTab()
+        app.searchFriendsPhone(persona2Phone)
+        let named = app.staticTexts[persona2Name]
+        let request = app.buttons["friends.request"]
+        if !request.waitForExistence(timeout: 8) && !named.waitForExistence(timeout: 4) {
+            app.searchFriendsPhone(persona2Phone)
+        }
+        XCTAssertTrue(
+            request.waitForExistence(timeout: 12) || named.waitForExistence(timeout: 4),
+            "Peer A should see \(persona2Name) / Request"
+        )
+        if request.exists {
+            request.tap()
+            _ = request.waitForNonExistence(timeout: 8)
+        }
+    }
+
+    @MainActor
+    static func acceptIncoming(_ app: XCUIApplication) {
+        app.dismissBlockingSheets()
+        app.openFriendsTab()
+        app.dismissBlockingSheets()
+        var accept = app.firstExisting(app.buttons["friends.accept"], app.buttons["Accept"])
+        if !accept.waitForExistence(timeout: 10) {
+            if app.buttons["notifications.bell"].waitForExistence(timeout: 3) {
+                app.buttons["notifications.bell"].tap()
+                accept = app.firstExisting(
+                    app.buttons["notifications.accept"],
+                    app.buttons["friends.accept"],
+                    app.buttons["Accept"]
+                )
+            }
+        }
+        XCTAssertTrue(accept.waitForExistence(timeout: 16), "Peer B should see an incoming request")
+        accept.tap()
+        app.dismissConnectChrome()
+    }
+
+    @MainActor
+    static func markTodayFree(_ app: XCUIApplication) {
+        app.dismissBlockingSheets()
+        app.dismissKeyboardIfPresent()
+        app.openScheduleTab()
+        app.dismissBlockingSheets()
+        app.markDayViaSheet(
+            dateString: UITestDates.todayDateString(),
+            actionIdentifier: "schedule.sheet.freeAllDay"
+        )
+    }
+
+    @MainActor
+    static func assertFriendVisibleOnWhosFree(_ app: XCUIApplication, name: String) {
+        app.openWhosFreeTab()
+        let named = app.staticTexts[name]
+        let today = app.buttons["whosFree.day.\(UITestDates.todayDateString())"]
+        if today.waitForExistence(timeout: 6) {
+            // Re-select today if a previous tap toggled it off.
+            let value = (today.value as? String) ?? ""
+            if value == "0" || value.isEmpty {
+                today.tap()
+            }
+        }
+        XCTAssertTrue(
+            named.waitForExistence(timeout: 15)
+                || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", name)).firstMatch.waitForExistence(timeout: 4),
+            "Who's Free should list \(name) after they mark today free"
+        )
+    }
+
+    @MainActor
+    static func assertBothCue(_ app: XCUIApplication) {
+        app.openWhosFreeTab()
+        let today = app.buttons["whosFree.day.\(UITestDates.todayDateString())"]
+        XCTAssertTrue(today.waitForExistence(timeout: 10), "Today chip")
+        let value = (today.value as? String) ?? ""
+        XCTAssertTrue(
+            value == "Both" || today.label.localizedCaseInsensitiveContains("Both"),
+            "BVT-28: mutual free day shows Both; label=\(today.label) value=\(value)"
+        )
+    }
+}
