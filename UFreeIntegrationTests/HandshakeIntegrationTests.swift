@@ -188,7 +188,7 @@ final class HandshakeIntegrationTests: XCTestCase {
         }
     }
 
-    func test_acceptFriendRequest_alreadyAccepted_fails() async throws {
+    func test_acceptFriendRequest_alreadyAccepted_isIdempotent() async throws {
         let friends = FirebaseFriendRepository()
         let (aliceId, bobId) = try await EmulatorHarness.connectAliceToBob(
             aliceEmail: "alice-twice@test.ufree",
@@ -198,13 +198,10 @@ final class HandshakeIntegrationTests: XCTestCase {
         let requestId = FriendRequest.documentId(fromId: aliceId, toId: bobId)
         let acceptedOptional = try await friends.fetchFriendRequest(id: requestId)
         let accepted = try XCTUnwrap(acceptedOptional)
-        do {
-            try await friends.acceptFriendRequest(accepted)
-            XCTFail("Second accept should fail")
-        } catch {
-            let nsError = error as NSError
-            XCTAssertEqual(nsError.code, 403)
-        }
+        try await friends.acceptFriendRequest(accepted)
+
+        let bobFriends = try await friends.getMyFriends()
+        XCTAssertTrue(bobFriends.contains(where: { $0.id == aliceId }))
     }
 
     func test_observeIncomingRequests_emitsPendingRequest() async throws {

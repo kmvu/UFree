@@ -137,14 +137,8 @@ final class AccountDeletionIntegrationTests: XCTestCase {
         XCTAssertTrue(notesSnap.documents.isEmpty)
 
         let requestId = FriendRequest.documentId(fromId: aliceId, toId: bobId)
-        // Missing friendRequests docs evaluate `resource.data` as null, so get is
-        // denied (PERMISSION_DENIED) rather than returning exists=false.
-        do {
-            let requestSnap = try await db.collection("friendRequests").document(requestId).getDocument()
-            XCTAssertFalse(requestSnap.exists)
-        } catch {
-            XCTAssertEqual((error as NSError).code, FirestoreErrorCode.permissionDenied.rawValue)
-        }
+        let requestSnap = try await db.collection("friendRequests").document(requestId).getDocument()
+        XCTAssertFalse(requestSnap.exists)
 
         let profileSnap = try await db.collection("publicProfiles").document(aliceId).getDocument()
         XCTAssertFalse(profileSnap.exists)

@@ -293,6 +293,16 @@ describe("friendRequests", () => {
     );
   });
 
+  it("allows a signed-in user to get a missing deterministic request id", async () => {
+    await seedAliceAndBob();
+    const snap = await assertSucceeds(
+      getDoc(doc(authedDb("alice"), "friendRequests/bob_carol"))
+    );
+    if (snap.exists()) {
+      throw new Error("expected missing friendRequests/bob_carol");
+    }
+  });
+
   it("denies creating a request to yourself", async () => {
     await seedAliceAndBob();
     await assertFails(

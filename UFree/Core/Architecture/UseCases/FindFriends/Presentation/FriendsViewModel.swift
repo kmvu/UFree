@@ -167,6 +167,11 @@ public final class FriendsViewModel: ObservableObject {
             isLoading = false
             isProcessing = false
         }
+        await refreshFriends()
+    }
+
+    /// Reloads the friends graph without the `isProcessing` tap guard (inbox / handshake catch-up).
+    public func refreshFriends() async {
         do {
             applyFriendsUpdate(try await friendRepository.getMyFriends())
         } catch {
@@ -373,7 +378,18 @@ public final class FriendsViewModel: ObservableObject {
                 }
             }
         } catch {
-            self.errorMessage = "Failed to send friend request: \(error.localizedDescription)"
+            let nsError = error as NSError
+            switch nsError.code {
+            case 409:
+                await refreshFriends()
+                errorMessage = "You're already connected with \(user.displayName)."
+            case 410:
+                errorMessage = "\(user.displayName) already sent you a request. Check Notifications."
+            case 411:
+                errorMessage = "This invite can no longer be resent."
+            default:
+                errorMessage = "Failed to send friend request: \(error.localizedDescription)"
+            }
         }
     }
     
@@ -397,7 +413,7 @@ public final class FriendsViewModel: ObservableObject {
 
         for id in candidateIds {
             if let fetched = try? await friendRepository.fetchFriendRequest(id: id),
-               fetched.status == .pending,
+               (fetched.status == .pending || fetched.status == .accepted),
                fetched.fromId == senderId,
                fetched.toId == recipientId {
                 return fetched

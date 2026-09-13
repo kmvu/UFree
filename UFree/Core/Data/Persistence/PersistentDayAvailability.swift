@@ -43,11 +43,11 @@ final class PersistentDayAvailability {
     var date: Date
     var note: String?
     /// Firebase Auth UID that owns this local row (prevents account-switch leaks).
-    var ownerUserId: String
+    var ownerUserId: String = ""
     /// True until a remote write ack succeeds — blocks stale cloud overwrite.
-    var isPendingSync: Bool
+    var isPendingSync: Bool = false
     /// Wall-clock time of the last local edit (compared to Firestore `updatedAt`).
-    var updatedAt: Date
+    var updatedAt: Date = Date()
 
     @Relationship(deleteRule: .cascade, inverse: \PersistentTimeBlock.day)
     var persistentTimeBlocks: [PersistentTimeBlock] = []

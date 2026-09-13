@@ -183,6 +183,33 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
 
         let currentName = Auth.auth().currentUser?.displayName ?? "UFree User"
         let requestId = Self.friendRequestId(fromId: currentUid, toId: toId)
+        let reverseId = Self.friendRequestId(fromId: toId, toId: currentUid)
+        let existing = try await fetchFriendRequest(id: requestId)
+        let reverse = try await fetchFriendRequest(id: reverseId)
+        if existing?.status == .accepted || reverse?.status == .accepted {
+            throw NSError(
+                domain: "FriendRepository",
+                code: 409,
+                userInfo: [NSLocalizedDescriptionKey: "Already connected"]
+            )
+        }
+        if existing?.status == .pending {
+            return
+        }
+        if reverse?.status == .pending {
+            throw NSError(
+                domain: "FriendRepository",
+                code: 410,
+                userInfo: [NSLocalizedDescriptionKey: "They already sent you a request"]
+            )
+        }
+        if existing?.status == .declined || reverse?.status == .declined {
+            throw NSError(
+                domain: "FriendRepository",
+                code: 411,
+                userInfo: [NSLocalizedDescriptionKey: "This invite can no longer be resent"]
+            )
+        }
 
         let request = FriendRequest(
             id: requestId,
@@ -217,11 +244,28 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
     func pendingFriendRequest(from fromId: String) async throws -> FriendRequest? {
         guard let uid = Auth.auth().currentUser?.uid else { return nil }
         let requestId = Self.friendRequestId(fromId: fromId, toId: uid)
-        return try await fetchFriendRequest(id: requestId)
+        guard let request = try await fetchFriendRequest(id: requestId),
+              request.toId == uid,
+              request.status == .pending else {
+            return nil
+        }
+        return request
     }
 
     func fetchFriendRequest(id: String) async throws -> FriendRequest? {
-        let snapshot = try await db.collection("friendRequests").document(id).getDocument()
+        let snapshot: DocumentSnapshot
+        do {
+            snapshot = try await db.collection("friendRequests").document(id).getDocument()
+        } catch {
+            // Missing docs evaluate `resource.data` as null, so get is PERMISSION_DENIED
+            // rather than exists=false. Treat that as "no request".
+            let nsError = error as NSError
+            if nsError.domain == FirestoreErrorDomain,
+               nsError.code == FirestoreErrorCode.permissionDenied.rawValue {
+                return nil
+            }
+            throw error
+        }
         guard snapshot.exists else { return nil }
         var request = try snapshot.data(as: FriendRequest.self)
         if request.id == nil {
@@ -269,8 +313,16 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
                 userInfo: [NSLocalizedDescriptionKey: "Friend request not found"]
             )
         }
-        guard serverRequest.toId == currentUid,
-              serverRequest.status == .pending else {
+        let toIdMatch = serverRequest.toId == currentUid
+        if toIdMatch, serverRequest.status == .accepted {
+            await markRecipientFriendRequestNotificationsAccepted(
+                toId: serverRequest.toId,
+                fromId: serverRequest.fromId,
+                requestId: requestId
+            )
+            return
+        }
+        guard toIdMatch, serverRequest.status == .pending else {
             throw NSError(
                 domain: "FriendRepository",
                 code: 403,
@@ -306,6 +358,42 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
                 "isRead": false,
                 "relatedRequestId": requestId
             ])
+        await markRecipientFriendRequestNotificationsAccepted(
+            toId: toId,
+            fromId: fromId,
+            requestId: requestId
+        )
+    }
+
+    /// Keeps the recipient inbox from showing Accept after the handshake is done.
+    private func markRecipientFriendRequestNotificationsAccepted(
+        toId: String,
+        fromId: String,
+        requestId: String
+    ) async {
+        let snapshot = try? await db.collection("users").document(toId).collection("notifications")
+            .whereField("type", isEqualTo: AppNotification.NotificationType.friendRequest.rawValue)
+            .getDocuments()
+        guard let documents = snapshot?.documents, !documents.isEmpty else { return }
+
+        let batch = db.batch()
+        var writes = 0
+        for document in documents {
+            let data = document.data()
+            let relatedId = data["relatedRequestId"] as? String
+            let senderId = data["senderId"] as? String
+            guard relatedId == requestId || senderId == fromId else { continue }
+            batch.updateData(
+                [
+                    "type": AppNotification.NotificationType.friendAccepted.rawValue,
+                    "isRead": true
+                ],
+                forDocument: document.reference
+            )
+            writes += 1
+        }
+        guard writes > 0 else { return }
+        try? await batch.commit()
     }
 
     func declineFriendRequest(_ request: FriendRequest) async throws {

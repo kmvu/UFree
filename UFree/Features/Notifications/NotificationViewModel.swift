@@ -130,6 +130,9 @@ public class NotificationViewModel: ObservableObject {
             hasCompletedInitialNotificationSnapshot = true
             notifications = merged
             syncUnreadCount()
+            if merged.contains(where: { $0.type == .friendAccepted }) {
+                handleIncomingFriendAccepted()
+            }
             return
         }
 
@@ -149,6 +152,10 @@ public class NotificationViewModel: ObservableObject {
         let newHangouts = newlyArrivedUnread.filter { $0.type == .hangoutConfirmed }
         for hangout in newHangouts {
             handleIncomingHangoutConfirmed(hangout)
+        }
+
+        if newlyArrivedUnread.contains(where: { $0.type == .friendAccepted }) {
+            handleIncomingFriendAccepted()
         }
 
         guard let newest = newlyArrivedUnread.max(by: { $0.date < $1.date }) else { return }
@@ -193,12 +200,27 @@ public class NotificationViewModel: ObservableObject {
     }
 
     private func mergeHandledFriendRequests(into notes: [AppNotification]) -> [AppNotification] {
-        notes.map { note in
-            guard note.type == .friendRequest,
-                  handledFriendRequestKeys.contains(notificationKey(note)) else {
+        let friendIds = Set((friendsViewModel?.friends ?? []).compactMap(\.id))
+        return notes.map { note in
+            guard note.type == .friendRequest else { return note }
+            let key = notificationKey(note)
+            let alreadyConnected = friendIds.contains(note.senderId)
+            guard handledFriendRequestKeys.contains(key) || alreadyConnected else {
                 return note
             }
+            if alreadyConnected {
+                handledFriendRequestKeys.insert(key)
+            }
             return acceptedCopy(from: note)
+        }
+    }
+
+    /// Sender just learned the handshake completed — refresh the friends graph for Who's Free.
+    func handleIncomingFriendAccepted() {
+        friendsViewModel?.listenToFriends()
+        Task { [weak self] in
+            await self?.friendsViewModel?.refreshFriends()
+            await self?.rootViewModel?.friendsScheduleViewModel?.loadFriendsSchedules()
         }
     }
 

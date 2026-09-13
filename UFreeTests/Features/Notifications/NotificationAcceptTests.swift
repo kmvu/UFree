@@ -228,6 +228,28 @@ final class NotificationAcceptTests: XCTestCase {
         XCTAssertNil(sut.processingNotificationKey)
     }
 
+    func test_applyNotificationsUpdate_alreadyFriend_hidesAccept() {
+        friendsVM.friends = [
+            UserProfile(id: "alice", displayName: "Alice", hashedPhoneNumber: "hash")
+        ]
+        var note = AppNotification(
+            recipientId: "me",
+            senderId: "alice",
+            senderName: "Alice",
+            type: .friendRequest,
+            date: Date(),
+            isRead: false,
+            relatedRequestId: "alice_me"
+        )
+        note.id = "note-alice"
+
+        sut.applyNotificationsUpdate([note])
+
+        XCTAssertEqual(sut.notifications[0].type, .friendAccepted)
+        XCTAssertFalse(sut.isFriendRequestActionable(sut.notifications[0]))
+        XCTAssertTrue(sut.notifications[0].isRead)
+    }
+
     func test_acceptFriendRequest_forgedRelatedRequestId_isRejected() async {
         friendRepo.addIncomingRequest(
             FriendRequest(

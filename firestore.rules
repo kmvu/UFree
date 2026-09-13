@@ -222,7 +222,13 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && requestId == request.resource.data.fromId + '_' + request.resource.data.toId;
 
-      allow read: if isSignedIn()
+      // Missing docs have a null `resource`, so a signed-in existence check must
+      // be allowed — otherwise deterministic reverse-id lookups fail closed.
+      allow get: if isSignedIn()
+        && (resource == null
+            || resource.data.fromId == request.auth.uid
+            || resource.data.toId == request.auth.uid);
+      allow list: if isSignedIn()
         && (resource.data.fromId == request.auth.uid
             || resource.data.toId == request.auth.uid);
 
