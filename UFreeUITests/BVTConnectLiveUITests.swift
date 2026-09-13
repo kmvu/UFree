@@ -159,6 +159,64 @@ final class BVTConnectLiveUITests: XCTestCase {
     }
 
     @MainActor
+    func test_unknownPhone_doesNotLeakAProfile() async throws {
+        let (_, app) = try await launchPersona1()
+        app.openFriendsTab()
+        app.searchFriendsPhone("+15559999999")
+
+        let notFound = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "No user found")
+        ).firstMatch
+        XCTAssertTrue(notFound.waitForExistence(timeout: 10), "BVT-14: unknown number is a generic miss")
+        XCTAssertFalse(
+            app.staticTexts[PeerDriver.personaNames[1]].exists,
+            "BVT-14: a miss must not reveal another member"
+        )
+        XCTAssertFalse(
+            app.staticTexts["+15559999999"].exists,
+            "BVT-14: raw phone numbers stay off the friends list"
+        )
+    }
+
+    @MainActor
+    func test_declineIncomingRequest_removesRow() async throws {
+        let (driver, app) = try await launchPersona1()
+        let peer = try await driver.seedPersona(1)
+        let persona1Uid = try await driver.waitForUid(
+            phoneNumber: PeerDriver.personaPhones[0],
+            readerIdToken: peer.idToken
+        )
+        try await driver.sendFriendRequest(
+            fromId: peer.uid,
+            fromName: peer.displayName,
+            toId: persona1Uid,
+            senderIdToken: peer.idToken
+        )
+
+        app.openFriendsTab()
+        let decline = app.firstExisting(
+            app.buttons["friends.decline"],
+            app.buttons["xmark"]
+        )
+        XCTAssertTrue(decline.waitForExistence(timeout: 12), "BVT-19: Decline")
+        decline.tap()
+        XCTAssertTrue(
+            app.buttons["friends.accept"].waitForNonExistence(timeout: 8),
+            "BVT-19: declined request leaves the incoming list"
+        )
+    }
+
+    @MainActor
+    func test_syncContactsControlExists() async throws {
+        let (_, app) = try await launchPersona1()
+        app.openFriendsTab()
+        XCTAssertTrue(
+            app.buttons["friends.syncContacts"].waitForExistence(timeout: 10),
+            "BVT-21: Sync Contacts is available"
+        )
+    }
+
+    @MainActor
     private func launchPersona1() async throws -> (PeerDriver, XCUIApplication) {
         try await LiveUIFlow.launchFreshPersona1()
     }
