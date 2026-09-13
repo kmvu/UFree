@@ -49,8 +49,10 @@ Verify the machine:
 ```bash
 npm --prefix firebase-tests test    # Firestore rules (needs Java 21+)
 bundle exec fastlane tests          # unit suite (iPhone 17 Pro + coverage)
-bundle exec fastlane ui_tests       # UI happy path (UI_TESTING_MODE)
-./Scripts/run_integration_tests.sh  # optional: Auth+Firestore emulator suite
+bundle exec fastlane ui_tests       # Layer A hermetic BVT (UI_TESTING_MODE)
+./Scripts/run_ui_emulator_tests.sh  # Layer B emulator UI (Auth+Firestore)
+./Scripts/run_dual_sim_bvt.sh       # Layer C two-simulator mailbox (nightly)
+./Scripts/run_integration_tests.sh  # Auth+Firestore emulator repository suite
 ```
 
 See the [testing guide](TESTING_GUIDE.md) for focused test commands and what each suite covers.
@@ -61,8 +63,8 @@ This table is the canonical description of what runs when; other guides link her
 
 | Workflow | Jobs | When |
 |---|---|---|
-| `ci.yml` (Quality Check) | `firestore-rules` (ubuntu) · `unit-tests` (macos-26, Xcode 26.6) · `ui-tests` (macos-26, `UI_TESTING_MODE`) · `lint` (SwiftLint baseline) · `emulator-integration` (Auth+Firestore emulators; **main pushes** always, **PRs** when rules/data/integration paths change) | Push / PR to `main` |
-| `deploy.yml` (TestFlight) | Requires green **push** `ci.yml` on the same SHA with named jobs Firestore Rules, Unit Tests, UI Tests, SwiftLint, Emulator Integration; `main` only; runs `fastlane beta` (tests always on) | Manual dispatch |
+| `ci.yml` (Quality Check) | `firestore-rules` (ubuntu) · `unit-tests` (macos-26, Xcode 26.6) · `ui-tests` (macos-26, Layer A `UI_TESTING_MODE`) · `lint` (SwiftLint baseline) · `emulator-integration` (Auth+Firestore emulators; **main pushes** always, **PRs** when rules/data/integration paths change) · `ui-emulator` (Layer B; **main pushes** always, **PRs** when rules/data/UI-test/social-UI paths change) | Push / PR to `main` |
+| `deploy.yml` (TestFlight) | Requires green **push** `ci.yml` on the same SHA with named jobs Firestore Rules, Unit Tests, UI Tests, SwiftLint, Emulator Integration; `main` only; runs `fastlane beta` (tests always on). **UI Emulator** joins this list after the job is green for a week. Dual-Sim BVT is nightly / dispatch until then. | Manual dispatch |
 | `firebase-deploy.yml` | Rules tests → `firebase deploy --only firestore:rules,firestore:indexes,hosting` | Push to `main` when rules/indexes/`public/` change |
 
 There is no `alpha` / Firebase App Distribution lane. TestFlight is the only distribution path.

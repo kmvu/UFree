@@ -12,6 +12,8 @@ public class MockAvailabilityRepository: AvailabilityRepository {
     private var friendsSchedules: [String: [DayAvailability]]
     /// Incremented on each `getSchedules(for:)` call (test spy).
     public private(set) var getSchedulesCallCount: Int = 0
+    /// When true, `updateMySchedule` throws so UI can show the offline/error path.
+    public var shouldFailUpdates = false
 
     public init() {
         // Pre-populate with some data for the next 7 days
@@ -44,6 +46,13 @@ public class MockAvailabilityRepository: AvailabilityRepository {
     }
 
     public func updateMySchedule(for day: DayAvailability) async throws {
+        if shouldFailUpdates {
+            throw NSError(
+                domain: "MockAvailabilityRepository",
+                code: -1009,
+                userInfo: [NSLocalizedDescriptionKey: "The Internet connection appears to be offline."]
+            )
+        }
         let targetDate = Calendar.current.startOfDay(for: day.date)
         if let index = mySchedule.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: targetDate) }) {
             mySchedule[index] = day

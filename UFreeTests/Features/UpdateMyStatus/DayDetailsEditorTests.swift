@@ -358,6 +358,25 @@ final class DayDetailsEditorTests: XCTestCase {
         XCTAssertEqual(day.note, "Gym day")
     }
 
+    func test_markFreeAllDay_coversMidnightToMidnight() {
+        var editor = makeEditor(freeRanges: [(12, 17)])
+        editor.markFreeAllDay()
+
+        XCTAssertEqual(editor.freeBlocks.count, 1)
+        XCTAssertEqual(editor.freeBlocks.first?.startTime, Calendar.current.startOfDay(for: date))
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: date))
+        XCTAssertEqual(editor.freeBlocks.first?.endTime, endOfDay)
+        XCTAssertEqual(editor.makeUpdatedDay(from: DayAvailability(date: date, timeBlocks: [])).status, .free)
+    }
+
+    func test_markBusyAllDay_persistsAsBusy() {
+        var editor = makeEditor(freeRanges: [(9, 12)])
+        editor.markBusyAllDay()
+
+        XCTAssertTrue(editor.freeBlocks.isEmpty)
+        XCTAssertEqual(editor.makeUpdatedDay(from: DayAvailability(date: date, timeBlocks: [])).status, .busy)
+    }
+
     func test_makeUpdatedDay_morningQuickFill_readsBackAsMorningOnly() {
         var editor = makeEditor(freeRanges: [])
         editor.toggleQuickFill(.morning)

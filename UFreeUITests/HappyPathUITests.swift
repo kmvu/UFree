@@ -13,8 +13,7 @@ final class HappyPathUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        app = XCUIApplication()
-        app.launchArguments = ["UI_TESTING_MODE"]
+        app = UITestLaunch.makeApp()
         app.launch()
     }
 
@@ -24,54 +23,29 @@ final class HappyPathUITests: XCTestCase {
 
     @MainActor
     func test_markSaturdayFree_thenOpenWhosFree() throws {
-        // Prefer accessibility ids (same as UFreeUITests); labels are locale/punctuation fragile.
-        let scheduleTab = firstExisting(
-            app.tabBars.buttons["tab.schedule"],
-            app.tabBars.buttons["Schedule"]
-        )
-        XCTAssertTrue(
-            scheduleTab.waitForExistence(timeout: 10),
-            "Expected Schedule tab after UI_TESTING_MODE bootstrap"
-        )
-        scheduleTab.tap()
+        app.openScheduleTab()
 
-        let saturdayId = "schedule.day.\(Self.saturdayDateStringInNext7Days())"
-        // Prefer the combined button trait; fall back to any element with the id.
-        let saturdayCard = firstExisting(
-            app.buttons[saturdayId],
-            app.descendants(matching: .any).matching(identifier: saturdayId).element(boundBy: 0)
-        )
-        XCTAssertTrue(
-            saturdayCard.waitForExistence(timeout: 5),
-            "Expected Saturday day card \(saturdayId)"
-        )
-        app.tapScheduleDayCard(saturdayCard)
+        let saturdayId = UITestDates.saturdayDateString()
+        app.markDayViaSheet(dateString: saturdayId, actionIdentifier: "schedule.sheet.freeAllDay")
 
+        let saturdayCard = app.dayCard(dateString: saturdayId)
         let freeLabel = NSPredicate(format: "label CONTAINS[c] %@", "Free")
         let becameFree = XCTNSPredicateExpectation(predicate: freeLabel, object: saturdayCard)
         wait(for: [becameFree], timeout: 5)
         XCTAssertTrue(
             saturdayCard.label.localizedCaseInsensitiveContains("Free"),
-            "Saturday card should show free after tap; label was \(saturdayCard.label)"
+            "Saturday card should show free after the day sheet; label was \(saturdayCard.label)"
         )
 
-        let whosFreeTab = firstExisting(
-            app.tabBars.buttons["tab.whosFree"],
-            app.tabBars.buttons["Who's Free?"]
-        )
-        XCTAssertTrue(whosFreeTab.waitForExistence(timeout: 5))
-        whosFreeTab.tap()
+        app.openWhosFreeTab()
 
-        // Large-title nav + scroll root; either proves the feed tab is selected.
-        let whosFreeRoot = app.descendants(matching: .any)
-            .matching(identifier: "whosFree.root")
-            .firstMatch
+        let whosFreeRoot = app.descendants(matching: .any)["whosFree.root"]
         let navTitle = app.navigationBars["Who's Free?"]
         let feedVisible = whosFreeRoot.waitForExistence(timeout: 10)
             || navTitle.waitForExistence(timeout: 2)
         XCTAssertTrue(feedVisible, "Expected Who's Free root after tab switch")
 
-        let alex = firstExisting(
+        let alex = app.firstExisting(
             app.descendants(matching: .any)["whosFree.friend.alex-ui-test"],
             app.staticTexts["Alex"]
         )
@@ -79,25 +53,5 @@ final class HappyPathUITests: XCTestCase {
             alex.waitForExistence(timeout: 10),
             "Seeded friend Alex should appear on Who's Free"
         )
-    }
-
-    private func firstExisting(_ primary: XCUIElement, _ fallback: XCUIElement) -> XCUIElement {
-        if primary.waitForExistence(timeout: 2) { return primary }
-        return fallback
-    }
-
-    /// Matches app day-card ids: UTC `yyyy-MM-dd` for the next Saturday in the upcoming week.
-    private static func saturdayDateStringInNext7Days(from reference: Date = Date()) -> String {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .current
-        let weekday = calendar.component(.weekday, from: reference)
-        let daysUntilSaturday = (7 - weekday + 7) % 7
-        let saturday = calendar.date(byAdding: .day, value: daysUntilSaturday, to: reference)!
-
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter.string(from: saturday)
     }
 }

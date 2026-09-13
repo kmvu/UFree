@@ -73,6 +73,7 @@ public struct MyScheduleView: View {
                     Image(systemName: "gearshape")
                         .font(.body)
                 }
+                .accessibilityIdentifier("settings.open")
                 
                 // Menu with sign out
                 Menu {
@@ -81,10 +82,12 @@ public struct MyScheduleView: View {
                     }) {
                         Label("Sign Out", systemImage: "arrow.left.square")
                     }
+                    .accessibilityIdentifier("settings.signOut")
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .font(.body)
                 }
+                .accessibilityIdentifier("settings.menu")
             }
         }
         .adaptiveSheet(isPresented: $showingSettings, detents: [.large]) {
@@ -94,6 +97,10 @@ public struct MyScheduleView: View {
                         authRepository: rootViewModel.authRepository,
                         friendRepository: friendRepo,
                         wipeLocalData: { [modelContext] in
+                            if TestConfiguration.isRunningUITests {
+                                LocalEngagementReset.resetAll()
+                                return
+                            }
                             do {
                                 try modelContext.delete(model: PersistentDayAvailability.self)
                                 try modelContext.save()
@@ -105,7 +112,11 @@ public struct MyScheduleView: View {
                             await LocalEngagementReset.resetAll()
                         }
                     ),
-                    onFinished: { showingSettings = false }
+                    onFinished: { showingSettings = false },
+                    onAccountDeleted: {
+                        rootViewModel.currentUser = nil
+                        rootViewModel.authPhase = .unauthenticated
+                    }
                 )
             }
         }
@@ -203,13 +214,7 @@ public struct MyScheduleView: View {
                     viewModel.selectedDate = day.date
                 }
                 HapticManager.light()
-                if TestConfiguration.isRunningUITests {
-                    var updated = day
-                    updated.status = .free
-                    _ = viewModel.updateStatus(for: updated)
-                } else {
-                    selectedDayForSheet = day
-                }
+                selectedDayForSheet = day
             }
         )
         // One hittable element for XCUITest — avoid matching child StaticText ("Sat").

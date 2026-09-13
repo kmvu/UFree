@@ -67,9 +67,27 @@ struct DayDetailsBottomSheet: View {
                         .disabled(startTime >= endTime)
                         .listRowBackground(startTime >= endTime ? Color.gray.opacity(0.05) : Color.accentColor.opacity(0.1))
                         .foregroundColor(startTime >= endTime ? .gray : .accentColor)
+                        .accessibilityIdentifier("schedule.sheet.addWindow")
                     }
                     
                     Section(header: Text("Quick Fills")) {
+                        HStack(spacing: 12) {
+                            Button("Free all day") {
+                                withAnimation { editor.markFreeAllDay() }
+                                HapticManager.success()
+                                scrollToWindows(proxy)
+                            }
+                            .accessibilityIdentifier("schedule.sheet.freeAllDay")
+
+                            Button("Busy") {
+                                withAnimation { editor.markBusyAllDay() }
+                                HapticManager.light()
+                                scrollToWindows(proxy)
+                            }
+                            .accessibilityIdentifier("schedule.sheet.busy")
+                        }
+                        .buttonStyle(.bordered)
+
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
                                 QuickFillButton(title: "Morning", icon: "sunrise.fill", color: .orange, isSelected: editor.isQuickFillActive(.morning)) {
@@ -77,12 +95,14 @@ struct DayDetailsBottomSheet: View {
                                     scrollToWindows(proxy)
                                 }
                                 .frame(width: 100)
+                                .accessibilityIdentifier("schedule.sheet.morning")
                                 
                                 QuickFillButton(title: "Afternoon", icon: "sun.max.fill", color: .yellow, isSelected: editor.isQuickFillActive(.afternoon)) {
                                     applyQuickFill(.afternoon)
                                     scrollToWindows(proxy)
                                 }
                                 .frame(width: 100)
+                                .accessibilityIdentifier("schedule.sheet.afternoon")
                                 
                                 QuickFillButton(title: "Evening", icon: "moon.stars.fill", color: .purple, isSelected: editor.isQuickFillActive(.evening)) {
                                     applyQuickFill(.evening)
@@ -125,6 +145,7 @@ struct DayDetailsBottomSheet: View {
             }
             .navigationTitle(day.date.formatted(.dateTime.weekday().day().month()))
             .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier("schedule.sheet")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -134,6 +155,7 @@ struct DayDetailsBottomSheet: View {
                         saveAndDismiss()
                     }
                     .fontWeight(.bold)
+                    .accessibilityIdentifier("schedule.sheet.save")
                 }
             }
         }

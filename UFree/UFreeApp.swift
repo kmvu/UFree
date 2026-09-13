@@ -187,6 +187,7 @@ struct UFreeApp: App {
 extension Notification.Name {
     static let didReceiveProfileDeepLink = Notification.Name("didReceiveProfileDeepLink")
     static let didReceiveLocalRoute = Notification.Name("didReceiveLocalRoute")
+    static let didDeleteAccount = Notification.Name("didDeleteAccount")
 }
 
 private func resetLocalSwiftDataStore(in directory: URL) {

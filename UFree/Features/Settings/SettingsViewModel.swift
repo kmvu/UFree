@@ -17,6 +17,9 @@ final class SettingsViewModel: ObservableObject {
     @Published var isSaveSuccessful: Bool = false
     @Published var isDeleteSuccessful: Bool = false
     @Published var showDeleteConfirmation: Bool = false
+    /// Set by the confirmation alert so deletion runs in a view `.task`, not an
+    /// alert-scoped `Task` that iOS cancels as the dialog dismisses.
+    @Published var deletionConfirmed: Bool = false
     @Published var weekendRemindersEnabled: Bool = true
 
     private let authRepository: AuthRepository
@@ -91,12 +94,14 @@ final class SettingsViewModel: ObservableObject {
         isProcessing = true
         errorMessage = nil
         showDeleteConfirmation = false
+        deletionConfirmed = false
 
         do {
             let user = await authRepository.currentUser
             #if DEBUG
             // DEBUG simulator personas are anonymous (no SiwA). Skip Apple re-auth.
-            if user?.isAnonymous != true {
+            // Hermetic UI tests use a non-anonymous mock user and have no Apple sheet.
+            if user?.isAnonymous != true, !TestConfiguration.isRunningUITests {
                 try await authRepository.reauthenticateWithApple()
             }
             #else
@@ -106,6 +111,7 @@ final class SettingsViewModel: ObservableObject {
 
             try await friendRepository.deleteAccountData()
             try await authRepository.deleteAccount()
+            NotificationCenter.default.post(name: .didDeleteAccount, object: nil)
             await wipeLocalData()
 
             HapticManager.success()

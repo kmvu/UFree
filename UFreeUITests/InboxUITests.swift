@@ -13,7 +13,7 @@ final class InboxUITests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        app = UITestLaunch.makeApp()
+        app = UITestLaunch.makeApp(scenario: "unreadInbox")
         app.launch()
     }
 
@@ -75,6 +75,48 @@ final class InboxUITests: XCTestCase {
             replied.waitForExistence(timeout: 5),
             "Nudge reply should stamp the inbox row"
         )
+    }
+
+    @MainActor
+    func test_bellBadge_showsUnreadCount() throws {
+        let scheduleTab = firstExisting(
+            app.tabBars.buttons["tab.schedule"],
+            app.tabBars.buttons["Schedule"]
+        )
+        XCTAssertTrue(scheduleTab.waitForExistence(timeout: 20))
+        scheduleTab.tap()
+
+        let bell = app.buttons["notifications.bell"]
+        XCTAssertTrue(bell.waitForExistence(timeout: 5), "BVT-40: notification bell")
+        let value = (bell.value as? String) ?? ""
+        XCTAssertTrue(
+            value.contains("unread") || value.contains("2") || value.contains("1"),
+            "BVT-40: unread badge is exposed; value=\(value)"
+        )
+    }
+
+    @MainActor
+    func test_replyMaybe_stampsInbox() throws {
+        openNotificationCenter()
+
+        let maybe = app.buttons["notifications.reply.maybe"]
+        XCTAssertTrue(maybe.waitForExistence(timeout: 5), "BVT-34: Maybe reply")
+        maybe.tap()
+
+        let replied = app.staticTexts["You replied: Maybe"]
+        XCTAssertTrue(replied.waitForExistence(timeout: 5), "BVT-34: Maybe stamps the row")
+    }
+
+    @MainActor
+    func test_replyBusy_stampsInbox() throws {
+        openNotificationCenter()
+
+        let busy = app.buttons["notifications.reply.busy"]
+        XCTAssertTrue(busy.waitForExistence(timeout: 5), "BVT-35: Busy reply")
+        busy.tap()
+
+        let replied = app.staticTexts["You replied: Busy"]
+        XCTAssertTrue(replied.waitForExistence(timeout: 5), "BVT-35: Busy stamps the row")
     }
 
     private func openNotificationCenter() {

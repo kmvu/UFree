@@ -23,8 +23,10 @@ This is the concise, repository-specific checklist for contributors and coding a
 ```bash
 npm --prefix firebase-tests test   # Firestore rules (needs Java 21+)
 bundle exec fastlane tests         # iOS unit suite (iPhone 17 Pro)
-bundle exec fastlane ui_tests      # UI happy path (UI_TESTING_MODE)
-# Emulators need Java 21+ — script uses .jdk/ when PATH has no java:
+bundle exec fastlane ui_tests      # Layer A hermetic BVT (UI_TESTING_MODE)
+# Emulators need Java 21+ — scripts use .jdk/ when PATH has no java:
+./Scripts/run_ui_emulator_tests.sh # Layer B emulator UI
+./Scripts/run_dual_sim_bvt.sh      # Layer C two-simulator mailbox
 ./Scripts/run_integration_tests.sh
 swiftlint lint                     # baseline; CI fails on error-severity only
 ```

@@ -68,7 +68,14 @@ struct RootView: View {
         let notificationVM = NotificationViewModel(repository: notificationRepo)
         let rootVM = RootViewModel(authRepository: authRepository)
 
-        if TestConfiguration.isRunningUITests {
+        if TestConfiguration.isRunningUITests, TestConfiguration.uiTestingScenario == .login {
+            rootVM.authPhase = .unauthenticated
+        } else if TestConfiguration.isRunningUITests,
+                  (authRepository as? MockAuthRepository)?.isSignedIn == false {
+            // Account deletion / sign-out already cleared the mock. Do not
+            // resurrect a session if SwiftUI reconstructs RootView.
+            rootVM.authPhase = .unauthenticated
+        } else if TestConfiguration.isRunningUITests {
             // Deterministic authenticated entry for XCUITest (avoid AsyncStream attach races).
             let uiUser = User(
                 id: UITestingBootstrap.uiTestUserId,
@@ -314,7 +321,9 @@ struct MainAppView: View {
             // the weekend CTA sheet, which blocks Who's Free tab switches in XCUITest.
             if TestConfiguration.isRunningUITests {
                 LocalEngagementReset.resetAll()
-                onboardingStore.prepareForUITestingWithSeededFriends()
+                if TestConfiguration.uiTestingScenario != .firstConnect {
+                    onboardingStore.prepareForUITestingWithSeededFriends()
+                }
             }
             wireHandshakeCallback()
             friendsViewModel.listenToRequests()
@@ -328,7 +337,8 @@ struct MainAppView: View {
             }
             // Present pending weekend CTA only when no celebration toast is active
             // (avoids stacking with first-connection toast).
-            if !TestConfiguration.isRunningUITests,
+            if (!TestConfiguration.isRunningUITests
+                || TestConfiguration.uiTestingScenario == .firstConnect),
                onboardingStore.shouldPresentWeekendCTAAfterConnection,
                rootViewModel.celebrationToast == nil {
                 rootViewModel.showWeekendCTA = true
@@ -353,7 +363,9 @@ struct MainAppView: View {
             }
         }
         .onChange(of: onboardingStore.hasMarkedFreeDay) { wasMarked, isMarked in
-            if !TestConfiguration.isRunningUITests, !wasMarked && isMarked {
+            if (!TestConfiguration.isRunningUITests
+                || TestConfiguration.uiTestingScenario == .firstConnect),
+               !wasMarked && isMarked {
                 rootViewModel.presentOnboardingStepFeedback(
                     OnboardingProgressStore.freeDayStepToastMessage
                 )
@@ -362,7 +374,7 @@ struct MainAppView: View {
     }
 
     private func handleFriendsCountChange(from oldCount: Int, to newCount: Int) {
-        if TestConfiguration.isRunningUITests {
+        if TestConfiguration.isRunningUITests, TestConfiguration.uiTestingScenario != .firstConnect {
             syncPairChecklistVisibility()
             return
         }

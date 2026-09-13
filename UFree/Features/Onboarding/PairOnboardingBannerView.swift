@@ -48,6 +48,7 @@ struct PairOnboardingBannerView: View {
             .background(.bar)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("hangout.checklist.banner")
         .accessibilityHint("Opens first hangout checklist")
     }
 }

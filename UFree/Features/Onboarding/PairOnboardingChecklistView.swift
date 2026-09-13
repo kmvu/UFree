@@ -56,6 +56,7 @@ struct PairOnboardingChecklistView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("hangout.checklist.dontShow")
             }
             .padding(20)
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -67,9 +68,11 @@ struct PairOnboardingChecklistView: View {
                     .padding(.bottom, 4)
             }
             .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier("hangout.checklist.sheet")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Not now", action: onNotNow)
+                        .accessibilityIdentifier("hangout.checklist.notNow")
                 }
             }
         }

@@ -81,7 +81,7 @@ public final class MockFriendRepository: FriendRepositoryProtocol {
     }
     
     public func removeFriend(userId: String) async throws {
-        // Mock: no-op
+        myFriends.removeAll { $0.id == userId }
     }
     
     public func sendFriendRequest(to user: UserProfile) async throws {

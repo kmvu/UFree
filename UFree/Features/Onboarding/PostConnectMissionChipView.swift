@@ -61,6 +61,7 @@ struct PostConnectMissionChipView: View {
             Divider()
         }
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("mission.chip")
         .accessibilityHint("Continues your next hangout step")
     }
 }

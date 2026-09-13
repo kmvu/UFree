@@ -13,6 +13,8 @@ public class MockAuthRepository: AuthRepository {
     /// Touched from `nonisolated deinit`, so it cannot be MainActor-isolated storage.
     nonisolated(unsafe) private let authStateContinuation: AsyncStream<User?>.Continuation
     
+    public var isSignedIn: Bool { user != nil }
+
     public init(user: User? = nil) {
         self.user = user
         
@@ -25,10 +27,8 @@ public class MockAuthRepository: AuthRepository {
         self.authStateStream = stream
         self.authStateContinuation = continuation
         
-        // Emit initial state (nonisolated, so safe to use continuation)
-        if let user = user {
-            continuation.yield(user)
-        }
+        // Emit initial state, including nil so UI tests can start on the login screen.
+        continuation.yield(user)
     }
 
     /// Finish the stream and avoid a MainActor-isolated deinit path that aborts under

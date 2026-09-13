@@ -74,6 +74,7 @@ public struct FriendsScheduleView: View {
                         }
                     }
                     .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("whosFree.empty")
                 } else if isRegularWidth {
                     friendsMatrixSection
                 } else {
@@ -237,6 +238,7 @@ public struct FriendsScheduleView: View {
                 .disabled(viewModel.isNudging)
                 .padding(.horizontal)
                 .adaptiveContentWidth()
+                .accessibilityIdentifier("whosFree.nudgeAll")
                 .popoverTip(BatchNudgeTip())
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -362,6 +364,7 @@ private struct FriendScheduleRow: View {
                 }
                 .disabled(viewModel.isNudging)
                 .opacity(viewModel.isNudging ? 0.5 : 1.0)
+                .accessibilityIdentifier("whosFree.nudge.\(display.id)")
             }
 
             ScrollView(.horizontal, showsIndicators: false) {

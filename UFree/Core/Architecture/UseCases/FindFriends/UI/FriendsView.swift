@@ -66,6 +66,9 @@ public struct FriendsView: View {
             viewModel.listenToRequests()
             viewModel.listenToFriends()
             await viewModel.loadFriends()
+            if let scanned = TestConfiguration.uiTestScannedProfileId {
+                await viewModel.handleScannedCode(scanned)
+            }
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -206,6 +209,7 @@ public struct FriendsView: View {
                             }
                             .ufreeCompactButton(tint: .green)
                             .disabled(viewModel.hasActiveRequestAction)
+                            .accessibilityIdentifier("friends.accept")
 
                             Button(role: .destructive) {
                                 Task { await viewModel.declineRequest(request) }
@@ -218,6 +222,7 @@ public struct FriendsView: View {
                                 }
                             }
                             .ufreeCompactButton(prominent: false, tint: .secondary)
+                            .accessibilityIdentifier("friends.decline")
                             .disabled(viewModel.hasActiveRequestAction)
                         }
                     }
@@ -266,6 +271,7 @@ public struct FriendsView: View {
                         .focused($isSearchFocused)
                         .onSubmit { Task { await viewModel.performPhoneSearch() } }
                         .disabled(viewModel.isSearching)
+                        .accessibilityIdentifier("friends.searchPhone")
                     
                     if !viewModel.searchText.isEmpty {
                         Button(action: {
@@ -301,6 +307,7 @@ public struct FriendsView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .ufreeSecondaryButton()
+                    .accessibilityIdentifier("friends.syncContacts")
                 } else {
                     ForEach(viewModel.discoveredUsers) { user in
                         friendRow(for: user, isDiscovered: true, source: "contact_sync")
@@ -359,6 +366,7 @@ public struct FriendsView: View {
                     }
                     .ufreeCompactButton(tint: .green)
                     .disabled(viewModel.isProcessing)
+                    .accessibilityIdentifier("friends.request")
                 }
             } else {
                 removeFriendButton(for: user)
@@ -376,6 +384,7 @@ public struct FriendsView: View {
         }
         .ufreeCompactButton(prominent: false, tint: .red)
         .disabled(viewModel.isProcessing)
+        .accessibilityIdentifier("friends.remove")
         .accessibilityHint("Removes \(user.displayName) from your trusted circle")
     }
 }

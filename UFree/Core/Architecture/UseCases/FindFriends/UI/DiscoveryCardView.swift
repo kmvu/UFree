@@ -118,6 +118,7 @@ struct DiscoveryCardView: View {
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
                     .padding(.top, 12)
+                    .accessibilityIdentifier("friends.qr.show")
 
                 Spacer(minLength: 16)
 
@@ -127,8 +128,9 @@ struct DiscoveryCardView: View {
                         viewModel.showQRScanner = true
                         viewModel.showMyQRCard = false
                     } label: {
-                        Text("Scan a Friend's Code")
-                            .font(.subheadline).bold()
+                    Text("Scan a Friend's Code")
+                        .font(.subheadline).bold()
+                        .accessibilityIdentifier("friends.qr.scan")
                             .padding(.vertical, 10)
                             .padding(.horizontal, 24)
                             .background(.ultraThinMaterial)

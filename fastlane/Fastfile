@@ -85,6 +85,26 @@ platform :ios do
     puts "✅ UI tests passed"
   end
 
+  desc "Emulator-backed UI tests (Layer B). Requires Auth+Firestore emulators."
+  lane :ui_emulator_tests do
+    ENV["UFREE_INTEGRATION_TESTS"] = "1"
+    puts "🔌 Running emulator UI tests on iPhone 17 Pro..."
+    run_tests(
+      project: "UFree.xcodeproj",
+      scheme: "UFreeUITests",
+      destination: "platform=iOS Simulator,name=iPhone 17 Pro",
+      clean: false,
+      fail_build: true,
+      code_coverage: false,
+      output_directory: "fastlane/test_results/ui_emulator",
+      result_bundle: true,
+      derived_data_path: "./fastlane/builds/DerivedDataUIEmulator",
+      only_testing: ["UFreeUITests/BVTConnectLiveUITests"],
+      xcargs: "CODE_SIGN_IDENTITY='-' CODE_SIGN_STYLE=Automatic AD_HOC_CODE_SIGNING_ALLOWED=YES ENTITLEMENTS_ALLOWED=NO PROVISIONING_PROFILE_SPECIFIER='' -skipPackagePluginValidation -clonedSourcePackagesDirPath ./fastlane/spm_cache ONLY_ACTIVE_ARCH=YES"
+    )
+    puts "✅ Emulator UI tests passed"
+  end
+
   desc "Emulator integration: Auth+Firestore against local emulators (requires emulators running)"
   lane :integration_tests do
     puts "🔌 Running UFreeIntegrationTests (Auth :9099, Firestore :8080)..."

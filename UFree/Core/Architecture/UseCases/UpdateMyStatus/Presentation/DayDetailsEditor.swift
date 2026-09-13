@@ -113,6 +113,18 @@ struct DayDetailsEditor: Equatable {
         blocks.removeAll { $0.id == id }
     }
 
+    /// One free window covering midnight-to-midnight.
+    mutating func markFreeAllDay() {
+        let startOfDay = calendar.startOfDay(for: date)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? date
+        blocks = [TimeBlock(startTime: startOfDay, endTime: endOfDay, status: .free)]
+    }
+
+    /// Clears free windows so `makeUpdatedDay` persists a full-day busy timeline.
+    mutating func markBusyAllDay() {
+        blocks = []
+    }
+
     // MARK: - Saving
 
     /// Rebuilds a full-day timeline by padding the gaps between free windows with

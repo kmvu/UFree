@@ -34,6 +34,7 @@ struct WeekendFreePromptView: View {
                     .frame(maxWidth: .infinity)
             }
             .ufreePrimaryButton()
+            .accessibilityIdentifier("weekend.cta.confirm")
 
             Button("Not now", action: onDismiss)
                 .font(UFreeType.ctaLabel)
@@ -41,5 +42,6 @@ struct WeekendFreePromptView: View {
                 .frame(minHeight: 44)
         }
         .padding(24)
+        .accessibilityIdentifier("weekend.cta")
     }
 }

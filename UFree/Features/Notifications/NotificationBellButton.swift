@@ -52,6 +52,7 @@ private struct NotificationBellButtonContent: View {
         }
         .accessibilityIdentifier("notifications.bell")
         .accessibilityLabel("Notifications")
+        .accessibilityValue(viewModel.unreadCount > 0 ? "\(viewModel.unreadCount) unread" : "None")
     }
 
     private var badgeLabel: String {

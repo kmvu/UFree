@@ -82,6 +82,8 @@ struct DayFilterButtonView: View {
             )
         }
         .buttonStyle(NoInteractionButtonStyle())
+        .accessibilityIdentifier("whosFree.day.\(DateFormatter.yyyyMMdd.string(from: date))")
+        .accessibilityValue(isMutualFree && freeCount > 0 ? "Both" : "\(freeCount)")
     }
 }
 

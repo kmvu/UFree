@@ -11,6 +11,9 @@ struct SettingsView: View {
     @StateObject var viewModel: SettingsViewModel
     @Environment(\.dismiss) var dismiss
     var onFinished: (() -> Void)?
+    /// Called after a successful wipe so the root session can drop immediately
+    /// (auth-stream attach can lag behind `deleteAccount()`).
+    var onAccountDeleted: (() -> Void)?
     @FocusState private var nameFieldFocused: Bool
     
     var body: some View {
@@ -73,10 +76,12 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(viewModel.isProcessing)
+                    .accessibilityIdentifier("settings.deleteAccount")
                 }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier("settings.root")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
@@ -103,12 +108,14 @@ struct SettingsView: View {
             .alert("Delete Account?", isPresented: $viewModel.showDeleteConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {
-                    Task {
-                        await viewModel.deleteAccount()
-                    }
+                    viewModel.deletionConfirmed = true
                 }
             } message: {
                 Text("This permanently removes your account and cloud data. You will need to Sign in with Apple to confirm.")
+            }
+            .task(id: viewModel.deletionConfirmed) {
+                guard viewModel.deletionConfirmed else { return }
+                await viewModel.deleteAccount()
             }
             .onChange(of: viewModel.isSaveSuccessful) { _, success in
                 if success {
@@ -117,6 +124,7 @@ struct SettingsView: View {
             }
             .onChange(of: viewModel.isDeleteSuccessful) { _, success in
                 if success {
+                    onAccountDeleted?()
                     finish()
                 }
             }

@@ -1,0 +1,51 @@
+name: Dual-Sim BVT
+
+on:
+  workflow_dispatch:
+  # Promote to a nightly cron after a week of green dispatch runs:
+  # schedule:
+  #   - cron: "0 6 * * *"
+
+env:
+  XCODE_VERSION: "26.6"
+
+jobs:
+  dual-sim:
+    name: Dual-Sim BVT
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Restore GoogleService-Info.plist
+        run: |
+          if [ -z "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" ]; then
+            echo "::error::Missing GOOGLE_SERVICE_INFO_PLIST secret"
+            exit 1
+          fi
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}" | base64 --decode > ./GoogleService-Info.plist
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@13
+
+      - name: Run two-simulator Connect session
+        env:
+          FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120
+        run: ./Scripts/run_dual_sim_bvt.sh

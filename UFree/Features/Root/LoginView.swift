@@ -47,6 +47,7 @@ struct LoginView: View {
                         .cornerRadius(12)
                         .focused($isNameFocused)
                         .submitLabel(.next)
+                        .accessibilityIdentifier("login.name")
                     
                     TextField("Phone Number (optional)", text: $viewModel.phoneNumber)
                         .keyboardType(.phonePad)
@@ -55,6 +56,7 @@ struct LoginView: View {
                         .padding()
                         .background(Color(UIColor.secondarySystemGroupedBackground))
                         .cornerRadius(12)
+                        .accessibilityIdentifier("login.phone")
                     
                     Text("Sign in with Apple is your account. Phone is optional so friends can find you — we store a one-way hash, not your number. Someone else could claim the same hash first until phone verification ships.")
                         .font(.caption)
@@ -88,6 +90,7 @@ struct LoginView: View {
                 .disabled(viewModel.isLoading || viewModel.name.trimmingCharacters(in: .whitespaces).isEmpty)
                 .opacity(viewModel.name.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
                 .padding(.horizontal)
+                .accessibilityIdentifier("login.siwa")
                 
                 Spacer()
                 Spacer()
@@ -113,6 +116,7 @@ struct LoginView: View {
                             }
                         }
                         .ufreeCompactButton(prominent: false)
+                        .accessibilityIdentifier("login.persona.1")
                         
                         Button("User 2") {
                             Task {
@@ -120,6 +124,7 @@ struct LoginView: View {
                             }
                         }
                         .ufreeCompactButton(prominent: false)
+                        .accessibilityIdentifier("login.persona.2")
                         
                         Button("User 3") {
                             Task {
@@ -127,6 +132,7 @@ struct LoginView: View {
                             }
                         }
                         .ufreeCompactButton(prominent: false)
+                        .accessibilityIdentifier("login.persona.3")
                     }
                 }
                 .padding()
@@ -149,6 +155,13 @@ struct LoginView: View {
             // on the iOS 26.2 simulator that path corrupts allocator state.
             guard !viewModel.showError else { return }
             isNameFocused = true
+        }
+        .task {
+            #if DEBUG
+            if let index = TestConfiguration.uiTestPersonaIndex {
+                await viewModel.loginAsTestUser(index: index)
+            }
+            #endif
         }
     }
 }

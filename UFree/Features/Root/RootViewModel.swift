@@ -197,6 +197,14 @@ public final class RootViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .didDeleteAccount)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.currentUser = nil
+                self?.authPhase = .unauthenticated
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - Auth State Setup

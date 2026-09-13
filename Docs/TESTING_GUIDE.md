@@ -56,15 +56,39 @@ firebase emulators:exec --only auth,firestore --project ufree-313a2 \
 
 Or in Xcode: start emulators, select the `UFreeIntegrationTests` scheme, then run tests. When CI runs this suite is defined in the [engineering guide CI/CD map](ENGINEERING_GUIDE.md#cicd-map).
 
-### UI tests (`UI_TESTING_MODE`)
+### UI tests (BVT automation)
 
-Launch argument `UI_TESTING_MODE` wires mock auth (signed-in **UI Tester**), local SwiftData + mock remote availability, a seeded friend **Alex** (Saturday free), a pending request from **Casey**, and inbox notes (request + Alex nudge). Day cards expose `schedule.day.yyyy-MM-dd` (UTC); tabs use `tab.schedule` / `tab.whosFree` / `tab.friends`. The notification bell is `notifications.bell`.
+Three layers cover the TestFlight BVT IDs. The matrix below is the canonical home; do not fork a second BVT document.
 
-```bash
-bundle exec fastlane ui_tests
-```
+| Layer | How to run | What it is |
+|---|---|---|
+| A · Hermetic | `bundle exec fastlane ui_tests` | `UI_TESTING_MODE` + `UI_TESTING_SCENARIO=` (`default`, `login`, `empty`, `firstConnect`, `partialDay`, `batchNudge`, `busyUnknown`, `unreadInbox`, `offline`). Mock repos, in-memory SwiftData. PR gate. |
+| B · Emulator UI | `./Scripts/run_ui_emulator_tests.sh` | No `UI_TESTING_MODE`. `UFREE_INTEGRATION_TESTS=1` + `UI_TEST_PERSONA=1`. Real Firebase repos + production rules. Second user via REST `PeerDriver`. |
+| C · Two UIs | `./Scripts/run_dual_sim_bvt.sh` | Two simulators + localhost mailbox (`Scripts/bvt_mailbox.py`). Nightly / dispatch until green for a week, then main-push. |
 
-Happy path: `UFreeUITests/HappyPathUITests.swift`. Inbox accept / nudge-reply: `UFreeUITests/InboxUITests.swift`.
+Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet (`schedule.sheet.freeAllDay` / `busy` / `afternoon` + `schedule.sheet.save`). Tabs: `tab.schedule` / `tab.whosFree` / `tab.friends`. Bell: `notifications.bell`.
+
+**BVT-ID map** (`P` primary, `S` secondary, `I` injected stand-in, `M` manual only):
+
+| IDs | Primary layer | Notes |
+|---|---|---|
+| 01, 02, 04, 06 | A | Login chrome, name gate, cold start, sign-out |
+| 03 | M | Sign in with Apple |
+| 05, 07–09, 11 | A | Offline cold start (mock), day sheet, banner |
+| 10 | B / C | Peer sees the write; A covers mock remote failure |
+| 12–16, 19–21 | A + B; C for both UIs | Phone search, request, leak, accept, remove, decline/resend |
+| 17 | I (B/C) + M camera | `UI_TEST_SCANNED_PROFILE=` |
+| 18 | B / C | `XCUIApplication` opens `https://ufree.app/profile/{uid}` |
+| 22–26 | A (`firstConnect` / `empty`); C for both toasts | Coach, checklist |
+| 27–32 | A + B; C live toggle | Who's Free, badges, Both, partial, empty |
+| 33–39 | A + B; C round-trip | Nudge / replies / rapid-tap / offline toast |
+| 40–43 | A; C badge + inbox accept | Notification center |
+| 44–45 | A | iPad skips unless pad; landscape on iPhone |
+| 46 | A mock cancel + M Apple sheet | |
+| 47–49 | B / C | Deletion cascade |
+| 50–52 | M | Crashlytics, Analytics, App Check console |
+
+Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B entry: `BVTConnectLiveUITests`. Layer C session 1: `BVTDualSimConnectA` / `BVTDualSimConnectB`.
 
 ### Measuring Coverage
 
