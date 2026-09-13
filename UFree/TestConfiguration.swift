@@ -49,6 +49,11 @@ struct TestConfiguration {
         argumentValue(prefix: "UI_TEST_SCANNED_PROFILE=")
     }
 
+    /// Injected Universal Link from `UI_TEST_OPEN_URL=` (Simulator associated domains are unreliable).
+    static var uiTestOpenURL: String? {
+        argumentValue(prefix: "UI_TEST_OPEN_URL=")
+    }
+
     /// Layer B/C: drop a persisted Firebase Auth session so emulator wipes stay consistent.
     static var uiTestResetAuth: Bool {
         ProcessInfo.processInfo.arguments.contains("UI_TEST_RESET_AUTH")

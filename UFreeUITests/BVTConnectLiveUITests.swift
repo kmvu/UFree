@@ -160,12 +160,6 @@ final class BVTConnectLiveUITests: XCTestCase {
 
     @MainActor
     private func launchPersona1() async throws -> (PeerDriver, XCUIApplication) {
-        try EmulatorUILaunch.requireEmulator()
-        let driver = PeerDriver()
-        try await driver.resetEmulatorData()
-        let app = EmulatorUILaunch.makeApp(persona: 1)
-        app.launch()
-        EmulatorUILaunch.waitForPersonaReady(app, persona: 1)
-        return (driver, app)
+        try await LiveUIFlow.launchFreshPersona1()
     }
 }

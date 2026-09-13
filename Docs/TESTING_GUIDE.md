@@ -78,7 +78,7 @@ Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet 
 | 10 | B / C | Peer sees the write; A covers mock remote failure |
 | 12–16, 19–21 | A + B; C for both UIs | Phone search, request, leak, accept, remove, decline/resend |
 | 17 | I (B/C) + M camera | `UI_TEST_SCANNED_PROFILE=` |
-| 18 | B / C | `XCUIApplication` opens `https://ufree.app/profile/{uid}` |
+| 18 | B / C | `XCUIApplication.open` plus `UI_TEST_OPEN_URL=` (Simulator associated domains are unreliable) |
 | 22–26 | A (`firstConnect` / `empty`); C for both toasts | Coach, checklist |
 | 27–32 | A + B; C live toggle | Who's Free, badges, Both, partial, empty |
 | 33–39 | A + B; C round-trip | Nudge / replies / rapid-tap / offline toast |
@@ -88,7 +88,7 @@ Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet 
 | 47–49 | B / C | Deletion cascade |
 | 50–52 | M | Crashlytics, Analytics, App Check console |
 
-Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, request, accept, remove). Layer C: session 1 `BVTDualSimConnectA` / `BVTDualSimConnectB` (handshake, both see the peer on Friends); session 2 `BVTDualSimAvailabilityA` / `BVTDualSimAvailabilityB` (handshake, then peer sees a free day and Both); session 3 `BVTDualSimNudgeA` / `BVTDualSimNudgeB` (nudge → inbox I'm in → Who's Free In); session 4 `BVTDualSimDeletionA` / `BVTDualSimDeletionB` (delete → login, peer leaves Friends / Who's Free).
+Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, request, accept, remove); `BVTAvailabilityLiveUITests` (peer free day + Both); `BVTNudgeLiveUITests` (nudge → REST I'm in); `BVTDeletionLiveUITests` (peer wipe leaves Friends / Who's Free); `BVTDiscoveryLiveUITests` (`UI_TEST_SCANNED_PROFILE=` and `UI_TEST_OPEN_URL=` / `app.open`). Layer C: session 1 `BVTDualSimConnectA` / `BVTDualSimConnectB` (handshake, both see the peer on Friends); session 2 `BVTDualSimAvailabilityA` / `BVTDualSimAvailabilityB` (handshake, then peer sees a free day and Both); session 3 `BVTDualSimNudgeA` / `BVTDualSimNudgeB` (nudge → inbox I'm in → Who's Free In); session 4 `BVTDualSimDeletionA` / `BVTDualSimDeletionB` (delete → login, peer leaves Friends / Who's Free).
 
 ### Measuring Coverage
 

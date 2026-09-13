@@ -249,6 +249,110 @@ struct PeerDriver {
         )
     }
 
+    // MARK: - Availability / inbox / wipe
+
+    func markDayFree(uid: String, idToken: String, dateString: String) async throws {
+        try await patchDocument(
+            path: "users/\(uid)/availability/\(dateString)",
+            idToken: idToken,
+            fields: [
+                "id": stringValue(UUID().uuidString),
+                "dateString": stringValue(dateString),
+                "status": integerValue(1),
+                "timeBlocks": ["arrayValue": ["values": []]],
+                "updatedAt": timestampNow()
+            ]
+        )
+    }
+
+    func sendNudge(
+        to recipientId: String,
+        from senderId: String,
+        fromName: String,
+        targetDateString: String,
+        idToken: String
+    ) async throws {
+        try await createDocument(
+            parentPath: "users/\(recipientId)/notifications",
+            idToken: idToken,
+            fields: [
+                "recipientId": stringValue(recipientId),
+                "senderId": stringValue(senderId),
+                "senderName": stringValue(fromName),
+                "type": stringValue("nudge"),
+                "date": timestampNow(),
+                "isRead": ["booleanValue": false],
+                "targetDateString": stringValue(targetDateString)
+            ]
+        )
+    }
+
+    func sendNudgeReply(
+        to recipientId: String,
+        from senderId: String,
+        fromName: String,
+        targetDateString: String,
+        response: String = "imIn",
+        idToken: String
+    ) async throws {
+        try await createDocument(
+            parentPath: "users/\(recipientId)/notifications",
+            idToken: idToken,
+            fields: [
+                "recipientId": stringValue(recipientId),
+                "senderId": stringValue(senderId),
+                "senderName": stringValue(fromName),
+                "type": stringValue("nudgeReply"),
+                "date": timestampNow(),
+                "isRead": ["booleanValue": false],
+                "nudgeResponse": stringValue(response),
+                "targetDateString": stringValue(targetDateString)
+            ]
+        )
+    }
+
+    func documentExists(path: String, idToken: String) async throws -> Bool {
+        do {
+            _ = try await stringField(path: path, name: "fromId", idToken: idToken)
+            return true
+        } catch PeerDriverError.http(let status, _) where status == 404 {
+            return false
+        } catch PeerDriverError.unexpectedResponse {
+            return true
+        }
+    }
+
+    func waitForDocument(path: String, idToken: String, timeout: TimeInterval = 12) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if (try? await documentExists(path: path, idToken: idToken)) == true {
+                return
+            }
+            try await Task.sleep(nanoseconds: 400_000_000)
+        }
+        throw PeerDriverError.unexpectedResponse("timeout waiting for \(path)")
+    }
+
+    /// Peer wipes their own user tree and removes their UID from each listed friend.
+    func wipeAccount(uid: String, idToken: String, removeFromUserIds: [String]) async throws {
+        for friendId in removeFromUserIds {
+            try await commit(
+                writes: [[
+                    "transform": [
+                        "document": documentName("users/\(friendId)"),
+                        "fieldTransforms": [[
+                            "fieldPath": "friendIds",
+                            "removeAllFromArray": ["values": [stringValue(uid)]]
+                        ]]
+                    ]
+                ]],
+                idToken: idToken
+            )
+        }
+        try await deleteDocument(path: "publicProfiles/\(uid)", idToken: idToken)
+        try await deleteDocument(path: "users/\(uid)", idToken: idToken)
+    }
+
     enum PeerDriverError: Error, CustomStringConvertible {
         case unexpectedResponse(String)
         case http(Int, String)
@@ -267,8 +371,30 @@ struct PeerDriver {
         "projects/\(projectId)/databases/(default)/documents/\(path)"
     }
 
+    private func timestampNow() -> [String: String] {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return ["timestampValue": formatter.string(from: Date())]
+    }
+
     private func stringValue(_ value: String) -> [String: String] {
         ["stringValue": value]
+    }
+
+    private func integerValue(_ value: Int) -> [String: String] {
+        ["integerValue": "\(value)"]
+    }
+
+    private func deleteDocument(path: String, idToken: String) async throws {
+        var request = URLRequest(url: URL(string: "\(documentsURL)/\(path)")!)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(idToken)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 12
+        do {
+            try await send(request)
+        } catch PeerDriverError.http(let status, _) where status == 404 {
+            return
+        }
     }
 
     private func patchDocument(
@@ -405,12 +531,12 @@ enum PeerPhoneHash {
 }
 
 enum EmulatorUILaunch {
-    static func makeApp(persona: Int = 1) -> XCUIApplication {
+    static func makeApp(persona: Int = 1, extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [
             "UI_TEST_PERSONA=\(persona)",
             "UI_TEST_RESET_AUTH"
-        ]
+        ] + extraArguments
         app.launchEnvironment = ["UFREE_INTEGRATION_TESTS": "1"]
         return app
     }

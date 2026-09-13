@@ -240,6 +240,8 @@ struct MainAppView: View {
             .padding()
             .adaptiveContentWidth(AdaptiveLayout.formContentMaxWidth)
             .presentationDetents([.medium, .large])
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("deepLink.profile")
         }
         .sheet(isPresented: $rootViewModel.showWeekendCTA) {
             WeekendFreePromptView(
@@ -333,6 +335,11 @@ struct MainAppView: View {
             // `listenToNotifications` finishes immediately with no uid — restart now.
             notificationViewModel.startListening()
             onboardingStore.trackReopenIfNeeded()
+            if rootViewModel.deepLinkProfileId == nil,
+               let raw = TestConfiguration.uiTestOpenURL,
+               let url = URL(string: raw) {
+                handleUniversalLink(url)
+            }
             Task {
                 if friendsViewModel.friends.isEmpty {
                     await friendsViewModel.loadFriends()
@@ -631,6 +638,7 @@ struct ProfileResolutionView: View {
                 }
                 .ufreePrimaryButton(isEnabled: !friendsViewModel.isProcessing)
                 .disabled(friendsViewModel.isProcessing)
+                .accessibilityIdentifier("deepLink.sendRequest")
             } else {
                 Image(systemName: "person.fill.questionmark")
                     .font(.system(size: 40))
