@@ -143,6 +143,92 @@ enum DualSimFlow {
     }
 
     @MainActor
+    static func selectTodayChip(_ app: XCUIApplication) {
+        app.openWhosFreeTab()
+        let today = app.buttons["whosFree.day.\(UITestDates.todayDateString())"]
+        XCTAssertTrue(today.waitForExistence(timeout: 10), "Today chip")
+        let value = (today.value as? String) ?? ""
+        if value == "0" || value.isEmpty {
+            today.tap()
+        }
+    }
+
+    @MainActor
+    static func nudgePeerOnToday(_ app: XCUIApplication, name: String) {
+        selectTodayChip(app)
+        XCTAssertTrue(
+            app.staticTexts[name].waitForExistence(timeout: 12)
+                || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", name)).firstMatch.waitForExistence(timeout: 4),
+            "Who's Free should list \(name) before nudge"
+        )
+        let nudge = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "whosFree.nudge.")
+        ).firstMatch
+        XCTAssertTrue(nudge.waitForExistence(timeout: 8), "BVT-33: day-scoped wave nudge")
+        nudge.tap()
+    }
+
+    @MainActor
+    static func openInbox(_ app: XCUIApplication) {
+        app.dismissBlockingSheets()
+        let bell = app.buttons["notifications.bell"]
+        XCTAssertTrue(bell.waitForExistence(timeout: 10), "BVT-40: notification bell")
+        let badgeDeadline = Date().addingTimeInterval(10)
+        var badge = (bell.value as? String) ?? ""
+        while Date() < badgeDeadline {
+            badge = (bell.value as? String) ?? ""
+            if badge.localizedCaseInsensitiveContains("unread")
+                || badge.contains("1")
+                || badge.contains("2")
+                || badge.contains("3") {
+                break
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        }
+        bell.tap()
+        let inbox = app.descendants(matching: .any)["notifications.root"]
+        XCTAssertTrue(
+            inbox.waitForExistence(timeout: 8)
+                || app.navigationBars["Notifications"].waitForExistence(timeout: 3),
+            "BVT-41: notification center"
+        )
+    }
+
+    @MainActor
+    static func replyImInFromInbox(_ app: XCUIApplication) {
+        openInbox(app)
+        let imIn = app.buttons["notifications.reply.imIn"].firstMatch
+        XCTAssertTrue(imIn.waitForExistence(timeout: 12), "BVT-33: I'm in on the live nudge")
+        imIn.tap()
+        let stamped = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "You replied: I'm in")
+        ).firstMatch
+        XCTAssertTrue(stamped.waitForExistence(timeout: 8), "BVT-36: inbox stamps I'm in")
+    }
+
+    @MainActor
+    static func assertInReplyOnWhosFree(_ app: XCUIApplication, name: String) {
+        app.dismissBlockingSheets()
+        selectTodayChip(app)
+        let caption = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "In for")
+        ).firstMatch
+        let pill = app.staticTexts["In"]
+        if caption.waitForExistence(timeout: 8) || pill.waitForExistence(timeout: 4) {
+            return
+        }
+        openInbox(app)
+        let inboxCopy = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "is in")
+        ).firstMatch
+        XCTAssertTrue(
+            inboxCopy.waitForExistence(timeout: 10)
+                || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", name)).firstMatch.waitForExistence(timeout: 4),
+            "BVT-36: \(name)'s I'm in should land on Who's Free or the inbox"
+        )
+    }
+
+    @MainActor
     static func assertBothCue(_ app: XCUIApplication) {
         app.openWhosFreeTab()
         let today = app.buttons["whosFree.day.\(UITestDates.todayDateString())"]

@@ -456,12 +456,14 @@ private struct FriendScheduleMatrixRow: View {
             }
             .disabled(isNudging)
             .opacity(isNudging ? 0.5 : 1.0)
+            .accessibilityIdentifier("whosFree.nudge.\(display.id)")
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(12)
         .padding(.bottom, 8)
+        .accessibilityIdentifier("whosFree.friend.\(display.id)")
     }
 }
 

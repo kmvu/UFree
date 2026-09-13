@@ -329,6 +329,9 @@ struct MainAppView: View {
             wireHandshakeCallback()
             friendsViewModel.listenToRequests()
             friendsViewModel.listenToFriends()
+            // RootView builds the VM while signed out (`UI_TEST_RESET_AUTH` / Login).
+            // `listenToNotifications` finishes immediately with no uid — restart now.
+            notificationViewModel.startListening()
             onboardingStore.trackReopenIfNeeded()
             Task {
                 if friendsViewModel.friends.isEmpty {
