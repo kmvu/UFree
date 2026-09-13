@@ -50,7 +50,7 @@ bundle exec fastlane sync_certs   # refresh or create signing material when need
 ## TestFlight release checklist
 
 1. Confirm the [release gate](#release-gate-testflight) is satisfied for the intended commit.
-2. Complete the [manual smoke test](TESTING_GUIDE.md#3-manual-release-smoke-test), including two-user flows when social behavior changed.
+2. Run Layer A + B, and Layer C when the live handshake, Who’s Free, nudge, or deletion path changed. Then complete the leftover [manual smoke](TESTING_GUIDE.md#3-manual-release-smoke-test) (Sign in with Apple, camera QR, Apple re-auth, consoles).
 3. Verify the marketing version in Xcode if it needs to change; Fastlane only increments the build number.
 4. Trigger **Deploy to TestFlight** in GitHub Actions, or run `bundle exec fastlane beta` with the required local credentials.
 5. Wait for Apple to process the build, then complete any TestFlight approval and tester-group actions in App Store Connect.
@@ -63,8 +63,8 @@ Do not promise that a TestFlight upload immediately reaches external testers: Ap
 ### Before recruiting people
 
 1. Complete the [founder launch checklist](#founder-launch-checklist-spark) above: rules and indexes deployed, Sign in with Apple enabled, App Check debug tokens registered before enforcement, push confirmed off.
-2. Validate the flow on two debug simulators using the debug test-user controls (User 1 / 2 / 3 — anonymous Auth; SiwA is the device/TestFlight path). Keep both apps foregrounded — background push is Phase 7.
-3. Confirm Settings → Delete Account completes on a SiwA account (re-auth sheet → cloud wipe including peers’ friendIds → signed out).
+2. Run `./Scripts/run_dual_sim_bvt.sh` (sessions 1–3 cover connect → free → Both → nudge → I’m in). Optionally walk the same loop on two debug simulators with User 1 / 2 / 3 (anonymous Auth; SiwA is the device/TestFlight path). Keep both apps foregrounded — background push is Phase 7.
+3. Confirm Settings → Delete Account completes on a SiwA account (re-auth sheet → cloud wipe including peers’ friendIds → signed out). Layer C session 4 covers the DEBUG-persona wipe, not the Apple sheet.
 4. Build and distribute through TestFlight only after the uncoached flow works.
 
 ### Recruiting and measuring

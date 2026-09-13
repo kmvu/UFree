@@ -13,6 +13,7 @@ This is a compact record of completed milestones. It explains how the project ar
 | 6–6.5 | Production foundations | Universal links, analytics, Crashlytics integration, availability heatmap, and batch nudging |
 | 7–8 | Reliability and test maturity | Deterministic async testing, test helpers, concurrency hardening, and broader rendering coverage |
 | 9 | Dyad retention loop | Pair-first onboarding, partial availability truth, day-specific nudge replies, and TestFlight pilot focus |
+| 10 | BVT automation | Three-layer UI: hermetic PR gate, emulator UI + PeerDriver, two-simulator mailbox. Live connect / Who’s Free / nudge / deletion walks. |
 
 ## Key decisions that still apply
 
@@ -21,6 +22,7 @@ This is a compact record of completed milestones. It explains how the project ar
 - **Testable boundaries:** repository protocols and injected dependencies make Firebase-independent tests possible.
 - **Reliable interaction:** user-triggered async work must prevent accidental duplicate actions.
 - **Pilot before expansion:** prove repeat weekend use with friend pairs before adding group chat, shared calendars, or calendar import.
+- **Three-layer BVT:** hermetic mocks for chrome, emulator UI for rules and listeners, two foreground UIs only when both sides must act.
 
 ## Historical notes
 

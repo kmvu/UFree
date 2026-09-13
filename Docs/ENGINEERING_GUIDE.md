@@ -20,7 +20,7 @@ SwiftUI view → View model → Composite repository → SwiftData (immediate)
 | App features | `UFree/Features/` | Root flow, schedule, friends, notifications, onboarding, and settings |
 | Use cases | `UFree/Core/Architecture/UseCases/` | Feature-specific presentation and UI code |
 | Shared utilities | `UFree/Core/Utilities/` | Analytics, crypto, haptics, onboarding state, and task scheduling |
-| Tests | `UFreeTests/` | Unit, integration-style repository, and SwiftUI rendering tests |
+| Tests | `UFreeTests/`, `UFreeIntegrationTests/`, `UFreeUITests/` | Unit, emulator repository, and BVT UI (hermetic / emulator / dual-sim) |
 
 ### Key technical choices
 
@@ -143,6 +143,6 @@ How the app guides a new pair from “connected” to a first real plan:
 ## Before opening a pull request
 
 1. Run the smallest relevant tests, then the full suite for behavior changes.
-2. Run the manual smoke checks if the change affects a social, authentication, deep-link, or release flow.
+2. For social, rules, or data-layer changes: Layer B (`./Scripts/run_ui_emulator_tests.sh`). For handshake / Who’s Free / nudge / deletion two-UI behavior: Layer C (`./Scripts/run_dual_sim_bvt.sh`). Remaining manual: Sign in with Apple, camera QR, Apple re-auth, consoles — see [TESTING_GUIDE.md](TESTING_GUIDE.md).
 3. Do not include secrets, generated build artifacts, or local Firebase configuration.
 4. Update the relevant current guide only when the product behavior, setup, or operating process changes.

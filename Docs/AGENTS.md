@@ -31,7 +31,7 @@ bundle exec fastlane ui_tests      # Layer A hermetic BVT (UI_TESTING_MODE)
 swiftlint lint                     # baseline; CI fails on error-severity only
 ```
 
-CI runs **Firestore Rules**, **Unit Tests**, **UI Tests**, and **SwiftLint** on every push/PR to `main`, plus **Emulator Integration** on main pushes and on PRs touching rules, data-layer, or integration-test paths; the TestFlight deploy gate needs all five green on a main push. Exact jobs, triggers, and toolchain pins live in the [engineering guide CI/CD map](ENGINEERING_GUIDE.md#cicd-map). Run the smallest relevant test first when practical. Rules or discovery/handshake changes must keep the emulator suite green. Follow the manual smoke checks in [TESTING_GUIDE.md](TESTING_GUIDE.md) when changing social, authentication, deep-link, or release behavior.
+CI runs **Firestore Rules**, **Unit Tests**, **UI Tests** (Layer A), and **SwiftLint** on every push/PR to `main`, plus **Emulator Integration** and **UI Emulator** (Layer B) on every main push (and on PRs when the relevant paths change). Dual-Sim (Layer C) is dispatch-only. The TestFlight deploy gate still name-checks the original five jobs until UI Emulator and Dual-Sim each stay green for a week. Exact jobs, triggers, and toolchain pins live in the [engineering guide CI/CD map](ENGINEERING_GUIDE.md#cicd-map). Run the smallest relevant test first when practical. Rules or discovery/handshake changes must keep the emulator and Layer B suites green. Follow the remaining manual checks in [TESTING_GUIDE.md](TESTING_GUIDE.md) (Sign in with Apple, camera QR, Apple re-auth, consoles) when those paths change.
 
 ## Security
 

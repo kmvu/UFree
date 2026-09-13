@@ -45,6 +45,15 @@ xcrun simctl list devices available
 
 The test lane expects the `UFreeUnitTests` scheme and an iPhone 17 Pro simulator. If a test hangs, stop the process, run the smallest failing test, and inspect asynchronous tasks or mocked streams before retrying the full suite.
 
+### Layer B / C UI automation
+
+| Symptom | First action |
+|---|---|
+| Dual-sim `waitFor` never sees a posted value | `firebase emulators:exec` strips env. Pass both `BVT_MAILBOX_URL` and `TEST_RUNNER_BVT_MAILBOX_URL`. Prefer `./Scripts/run_dual_sim_bvt.sh`. |
+| xcodebuild picks the wrong simulator | Duplicate device names exist. Set `DUAL_SIM_A` / `DUAL_SIM_B` to UDIDs from `xcrun simctl list devices available`. |
+| Profile-link Layer B never creates a request | Do not call `XCUIApplication.open`. Use `UI_TEST_OPEN_URL=` so the process is not relaunched under `UI_TEST_RESET_AUTH`. |
+| Java / emulator fail locally | Scripts use the repo `.jdk/` when `java` is missing. Or export `JAVA_HOME` to a JDK 21 install. |
+
 ## Signing and TestFlight
 
 Verify local credentials without printing their values:

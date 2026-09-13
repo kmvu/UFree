@@ -63,10 +63,18 @@ Three layers cover the TestFlight BVT IDs. The matrix below is the canonical hom
 | Layer | How to run | What it is |
 |---|---|---|
 | A · Hermetic | `bundle exec fastlane ui_tests` | `UI_TESTING_MODE` + `UI_TESTING_SCENARIO=` (`default`, `login`, `empty`, `firstConnect`, `partialDay`, `batchNudge`, `busyUnknown`, `unreadInbox`, `offline`). Mock repos, in-memory SwiftData. PR gate. |
-| B · Emulator UI | `./Scripts/run_ui_emulator_tests.sh` | No `UI_TESTING_MODE`. `UFREE_INTEGRATION_TESTS=1` + `UI_TEST_PERSONA=1`. Real Firebase repos + production rules. Second user via REST `PeerDriver`. |
-| C · Two UIs | `./Scripts/run_dual_sim_bvt.sh` | Two simulators + localhost mailbox (`Scripts/bvt_mailbox.py`). Nightly / dispatch until green for a week, then main-push. |
+| B · Emulator UI | `./Scripts/run_ui_emulator_tests.sh` | No `UI_TESTING_MODE`. `UFREE_INTEGRATION_TESTS=1` + `UI_TEST_PERSONA=1`. Real Firebase repos + production rules. Second user via REST `PeerDriver`. CI: every main push; PRs when rules / data / social UI paths change. Not a TestFlight name-check until green for a week. |
+| C · Two UIs | `./Scripts/run_dual_sim_bvt.sh` | Two simulators + localhost mailbox (`Scripts/bvt_mailbox.py`). Sessions 1–4: connect, availability, nudge, deletion. **Dispatch only** (`dual-sim-bvt.yml`). Uncomment nightly and add to `deploy.yml` after a week of green dispatch runs. |
 
 Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet (`schedule.sheet.freeAllDay` / `busy` / `afternoon` + `schedule.sheet.save`). Tabs: `tab.schedule` / `tab.whosFree` / `tab.friends`. Bell: `notifications.bell`. Layer B/C (`UI_TEST_PERSONA` / `UI_TEST_RESET_AUTH`) keep real Firebase repos; leftover weekend / pair sheets from the simulator install are suppressed so they cannot cover Friends.
+
+**Launch contract**
+
+- Layer A: `UI_TESTING_MODE` + `UI_TESTING_SCENARIO=`. Mocks only.
+- Layer B/C: `UI_TEST_PERSONA=1|2|3`, `UI_TEST_RESET_AUTH`, `UFREE_INTEGRATION_TESTS=1`. Do **not** set `UI_TESTING_MODE` — that swaps mocks.
+- Layer C mailbox: set both `BVT_MAILBOX_URL` and `TEST_RUNNER_BVT_MAILBOX_URL`. `firebase emulators:exec` otherwise strips the env and `waitFor` never sees a post. The dual-sim script sets both.
+- DEBUG phones: `+15550000001`…`03` (Test User 1/2/3). Who's Free shows the next 5 days. Day keys are UTC `yyyy-MM-dd`.
+- Profile links: `UI_TEST_OPEN_URL=` only. `XCUIApplication.open` relaunches the process; with `UI_TEST_RESET_AUTH` that creates a new UID and the request never lands.
 
 **BVT-ID map** (`P` primary, `S` secondary, `I` injected stand-in, `M` manual only):
 
@@ -76,19 +84,19 @@ Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet 
 | 03 | M | Sign in with Apple |
 | 05, 07–09, 11 | A | Offline cold start (mock), day sheet, banner |
 | 10 | B / C | Peer sees the write; A covers mock remote failure |
-| 12–16, 19–21 | A + B; C for both UIs | Phone search, request, leak, accept, remove, decline/resend |
-| 17 | I (B/C) + M camera | `UI_TEST_SCANNED_PROFILE=` |
-| 18 | B / C | `XCUIApplication.open` plus `UI_TEST_OPEN_URL=` (Simulator associated domains are unreliable) |
-| 22–26 | A (`firstConnect` / `empty`); C for both toasts | Coach, checklist |
+| 12–16, 19–21 | A + B; C for both UIs | Phone search, request, leak, accept, remove, decline. C session 1 is the live accept handshake. Decline/resend on two UIs is optional. |
+| 17 | I (B) + M camera | `UI_TEST_SCANNED_PROFILE=` injects a scan. Real camera stays manual. |
+| 18 | I (B) | `UI_TEST_OPEN_URL=` only. Simulator associated domains are unreliable; do not use `app.open`. |
+| 22–26 | A (`firstConnect` / `empty`) | Coach, checklist |
 | 27–32 | A + B; C live toggle | Who's Free, badges, Both, partial, empty |
 | 33–39 | A + B; C round-trip | Nudge / replies / rapid-tap / offline toast |
 | 40–43 | A; C badge + inbox accept | Notification center |
 | 44–45 | A | iPad skips unless pad; landscape on iPhone |
-| 46 | A mock cancel + M Apple sheet | |
+| 46 | A mock cancel + M Apple sheet | Real Sign in with Apple re-auth stays manual |
 | 47–49 | B / C | Deletion cascade |
 | 50–52 | M | Crashlytics, Analytics, App Check console |
 
-Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, leak, request, accept, remove, decline, Sync Contacts); `BVTAvailabilityLiveUITests` (peer free day + Both); `BVTNudgeLiveUITests` (nudge → REST I'm in); `BVTDeletionLiveUITests` (peer wipe leaves Friends / Who's Free); `BVTDiscoveryLiveUITests` (`UI_TEST_SCANNED_PROFILE=` and `UI_TEST_OPEN_URL=` / `app.open`). Layer C: session 1 `BVTDualSimConnectA` / `BVTDualSimConnectB` (handshake, both see the peer on Friends); session 2 `BVTDualSimAvailabilityA` / `BVTDualSimAvailabilityB` (handshake, then peer sees a free day and Both); session 3 `BVTDualSimNudgeA` / `BVTDualSimNudgeB` (nudge → inbox I'm in → Who's Free In); session 4 `BVTDualSimDeletionA` / `BVTDualSimDeletionB` (delete → login, peer leaves Friends / Who's Free).
+Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, leak, request, accept, remove, decline, Sync Contacts); `BVTAvailabilityLiveUITests` (peer free day + Both); `BVTNudgeLiveUITests` (nudge → REST I'm in); `BVTDeletionLiveUITests` (peer wipe leaves Friends / Who's Free); `BVTDiscoveryLiveUITests` (`UI_TEST_SCANNED_PROFILE=` and `UI_TEST_OPEN_URL=`). Layer C: session 1 `BVTDualSimConnectA` / `BVTDualSimConnectB` (handshake, both see the peer on Friends); session 2 `BVTDualSimAvailabilityA` / `BVTDualSimAvailabilityB` (handshake, then peer sees a free day and Both); session 3 `BVTDualSimNudgeA` / `BVTDualSimNudgeB` (nudge → inbox I'm in → Who's Free In); session 4 `BVTDualSimDeletionA` / `BVTDualSimDeletionB` (delete → login, peer leaves Friends / Who's Free). Default simulators: `DUAL_SIM_A=iPhone 17 Pro`, `DUAL_SIM_B=iPhone 17` (set UDIDs when names collide).
 
 ### Measuring Coverage
 
@@ -186,7 +194,7 @@ Accept friend requests on each side until all three are connected (or the dyads 
 
 ## 3. Manual release smoke test
 
-Run these manually before any release to validate end-to-end stability.
+Layer A + B + C now cover the two-user product loop (connect, mark free, Both, nudge, reply, deletion) on simulators. Run those first. Use this table for Apple / camera / console leftovers, and for a human walk when you want to see the product rather than prove the handshake.
 
 | # | Scenario | Steps | Expected Result |
 |---|---|---|---|
@@ -222,7 +230,7 @@ Unit tests under `UFreeTests/` mirror the source layout (`Auth/`, `Domain/`, `Da
 
 ## 5. Two-person pilot smoke
 
-Run this with two TestFlight users or two debug simulators before recruiting pilot participants:
+Prefer `./Scripts/run_dual_sim_bvt.sh` (sessions 1–3 walk connect → free → Both → nudge → I’m in). Use two TestFlight users or two debug simulators when you need a human walk, a real camera, or Sign in with Apple:
 
 1. A shares a link or QR code; B sends or accepts the connection request.
 2. Both mark a weekend day free (e.g. Saturday).
@@ -237,14 +245,12 @@ For the actual recruiting, success threshold, and foreground-only limitation, us
 
 ## 6. Sign-off checklist
 
-- [ ] All unit tests pass (`UFreeUnitTests` scheme).
-- [ ] Friend requests sync across accounts under 3s.
-- [ ] Notification badges clear correctly on read.
-- [ ] QR code scanning works between devices.
-- [ ] Rapid-tap protection prevents duplicate nudges.
-- [ ] Cold start preserves user authentication.
-- [ ] App remains stable in Airplane mode.
-- [ ] Two-person pilot smoke passes when a social flow changed.
+- [ ] Unit tests pass (`bundle exec fastlane tests`).
+- [ ] Layer A hermetic BVT passes (`bundle exec fastlane ui_tests`).
+- [ ] Layer B emulator UI passes (`./Scripts/run_ui_emulator_tests.sh`) when rules, data, or social UI changed.
+- [ ] Layer C two-simulator BVT passes (`./Scripts/run_dual_sim_bvt.sh`) when the live handshake, Who’s Free, nudge, or deletion path changed.
+- [ ] Remaining manual: Sign in with Apple (BVT-03), camera QR (BVT-17), Apple re-auth sheet on delete (BVT-46), Crashlytics / Analytics / App Check consoles (BVT-50–52).
+- [ ] Human two-person smoke (section 5) when recruiting, or when the SiwA / camera / Safari path changed.
 - [ ] Three-platform loop (iPhone + iPad + Mac Designed for iPad) when cross-device social behavior changed.
-- [ ] Large-screen smoke (row 11) when layout or navigation chrome changed.
+- [ ] Large-screen smoke (section 3 row 11) when layout or navigation chrome changed.
 - [ ] The TestFlight release checklist in the operations guide is complete.
