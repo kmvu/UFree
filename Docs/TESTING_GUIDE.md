@@ -64,7 +64,21 @@ Three layers cover the TestFlight BVT IDs. The matrix below is the canonical hom
 |---|---|---|
 | A · Hermetic | `bundle exec fastlane ui_tests` | `UI_TESTING_MODE` + `UI_TESTING_SCENARIO=` (`default`, `login`, `empty`, `firstConnect`, `partialDay`, `batchNudge`, `busyUnknown`, `unreadInbox`, `offline`). Mock repos, in-memory SwiftData. PR gate. |
 | B · Emulator UI | `./Scripts/run_ui_emulator_tests.sh` | No `UI_TESTING_MODE`. `UFREE_INTEGRATION_TESTS=1` + `UI_TEST_PERSONA=1`. Real Firebase repos + production rules. Second user via REST `PeerDriver`. CI: every main push; PRs when rules / data / social UI paths change. Not a TestFlight name-check until green for a week. |
-| C · Two UIs | `./Scripts/run_dual_sim_bvt.sh` | Two simulators + localhost mailbox (`Scripts/bvt_mailbox.py`). Sessions 1–4: connect, availability, nudge, deletion. **Dispatch only** (`dual-sim-bvt.yml`). Uncomment nightly and add to `deploy.yml` after a week of green dispatch runs. |
+| C · Two UIs | `./Scripts/run_dual_sim_bvt.sh` | Two simulators + localhost mailbox (`Scripts/bvt_mailbox.py`). Sessions 1–4: connect, availability, nudge, deletion. **Dispatch only** (`dual-sim-bvt.yml`). Uncomment nightly and add to `deploy.yml` after a week of green **GitHub** dispatch runs. |
+
+**Plan (as of 16 Sep 2026)**
+
+Automatable BVT IDs are implemented. Local Layer C (sessions 1–4) is green. What is left is gate promotion, not more product walks.
+
+| Done | Next | Stays manual |
+|---|---|---|
+| Layer A PR gate | Push the Layer C harness to `origin`, then **workflow_dispatch** Dual-Sim until it is green for a week | Sign in with Apple (03) |
+| Layer B live connect / Who’s Free / nudge / deletion / discovery / leak / decline / Sync Contacts | Uncomment Dual-Sim nightly after that week | Real camera QR (17); injected scan is Layer B |
+| Layer C sessions 1–4 locally | Add **UI Emulator** to `deploy.yml` after a week of green `ui-emulator` on main | Apple re-auth sheet (46) |
+| | Then add **Dual-Sim** to `deploy.yml` | Crashlytics / Analytics / App Check consoles (50–52) |
+| | Optional, not blocking: two-UI decline / remove / QR, live batch-nudge | Background push (Phase 7) |
+
+Do not add Dual-Sim to the TestFlight name-check on the strength of a local run alone.
 
 Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet (`schedule.sheet.freeAllDay` / `busy` / `afternoon` + `schedule.sheet.save`). Tabs: `tab.schedule` / `tab.whosFree` / `tab.friends`. Bell: `notifications.bell`. Layer B/C (`UI_TEST_PERSONA` / `UI_TEST_RESET_AUTH`) keep real Firebase repos; leftover weekend / pair sheets from the simulator install are suppressed so they cannot cover Friends.
 

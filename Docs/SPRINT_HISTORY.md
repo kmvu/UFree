@@ -13,7 +13,7 @@ This is a compact record of completed milestones. It explains how the project ar
 | 6–6.5 | Production foundations | Universal links, analytics, Crashlytics integration, availability heatmap, and batch nudging |
 | 7–8 | Reliability and test maturity | Deterministic async testing, test helpers, concurrency hardening, and broader rendering coverage |
 | 9 | Dyad retention loop | Pair-first onboarding, partial availability truth, day-specific nudge replies, and TestFlight pilot focus |
-| 10 | BVT automation | Three-layer UI: hermetic PR gate, emulator UI + PeerDriver, two-simulator mailbox. Live connect / Who’s Free / nudge / deletion walks. |
+| 10 | BVT automation | Three-layer UI: hermetic PR gate, emulator UI + PeerDriver, two-simulator mailbox. Live connect / Who’s Free / nudge / deletion. Layer C sessions 1–4 green locally (16 Sep 2026); GitHub Dual-Sim stays dispatch-only until a week of green runs. |
 
 ## Key decisions that still apply
 

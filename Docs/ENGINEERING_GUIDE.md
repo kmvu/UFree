@@ -81,7 +81,7 @@ This table is the canonical description of what runs when; other guides link her
 |---|---|---|
 | `ci.yml` (Quality Check) | `firestore-rules` (ubuntu) · `unit-tests` (macos-26, Xcode 26.6) · `ui-tests` (macos-26, Layer A `UI_TESTING_MODE`) · `lint` (SwiftLint baseline) · `emulator-integration` (Auth+Firestore emulators; **main pushes** always, **PRs** when rules/data/integration paths change) · `ui-emulator` (Layer B; **main pushes** always, **PRs** when rules/data/UI-test/social-UI paths change) | Push / PR to `main` |
 | `deploy.yml` (TestFlight) | Requires green **push** `ci.yml` on the same SHA with named jobs Firestore Rules, Unit Tests, UI Tests, SwiftLint, Emulator Integration; `main` only; runs `fastlane beta` (tests always on). **UI Emulator** joins this list after the job is green for a week. Dual-Sim BVT stays off this name-check until `dual-sim-bvt.yml` is green for a week. | Manual dispatch |
-| `dual-sim-bvt.yml` | Layer C sessions 1–4 (Connect, Availability, Nudge, Deletion) on two simulators + Auth/Firestore emulators + `Scripts/bvt_mailbox.py` | `workflow_dispatch` only; uncomment the nightly cron after a week of green dispatch runs |
+| `dual-sim-bvt.yml` | Layer C sessions 1–4 (Connect, Availability, Nudge, Deletion) on two simulators + Auth/Firestore emulators + `Scripts/bvt_mailbox.py`. Locally green 16 Sep 2026. | `workflow_dispatch` only; uncomment the nightly cron after a week of green **GitHub** dispatch runs |
 | `firebase-deploy.yml` | Rules tests → `firebase deploy --only firestore:rules,firestore:indexes,hosting` | Push to `main` when rules/indexes/`public/` change |
 
 There is no `alpha` / Firebase App Distribution lane. TestFlight is the only distribution path.
