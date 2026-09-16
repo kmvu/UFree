@@ -16,7 +16,6 @@ final class BVTDualSimDeletionB: XCTestCase {
 
     @MainActor
     func test_acceptor_losesDeletedPeer() async throws {
-        try await MailboxClient.waitFor("readyA", timeout: 60)
         let app = DualSimFlow.launchPersona(2)
         try await MailboxClient.post("readyB")
 

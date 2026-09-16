@@ -18,7 +18,7 @@ final class BVTDualSimAvailabilityA: XCTestCase {
     func test_inviter_connects_marksFree_andSeesBoth() async throws {
         let app = DualSimFlow.launchPersona(1)
         try await MailboxClient.post("readyA")
-        try await MailboxClient.waitFor("readyB", timeout: 60)
+        try await MailboxClient.waitFor("readyB", timeout: 120)
 
         DualSimFlow.invitePersona2(app)
         try await MailboxClient.post("requested")
@@ -27,7 +27,7 @@ final class BVTDualSimAvailabilityA: XCTestCase {
 
         DualSimFlow.markTodayFree(app)
         try await MailboxClient.post("markedFree")
-        try await MailboxClient.waitFor("peerSeesFree", timeout: 60)
+        try await MailboxClient.waitFor("peerSeesFree", timeout: 90)
         try await MailboxClient.waitFor("peerMarkedFree", timeout: 60)
 
         DualSimFlow.assertBothCue(app)

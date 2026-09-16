@@ -16,7 +16,6 @@ final class BVTDualSimAvailabilityB: XCTestCase {
 
     @MainActor
     func test_acceptor_seesPeerFreeDay_thenMarksToday() async throws {
-        try await MailboxClient.waitFor("readyA", timeout: 60)
         let app = DualSimFlow.launchPersona(2)
         try await MailboxClient.post("readyB")
 

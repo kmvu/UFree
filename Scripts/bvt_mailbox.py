@@ -50,6 +50,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    ThreadingHTTPServer.allow_reuse_address = True
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"BVT mailbox listening on 127.0.0.1:{PORT}", flush=True)
     server.serve_forever()

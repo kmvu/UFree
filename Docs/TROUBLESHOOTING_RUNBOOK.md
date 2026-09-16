@@ -50,9 +50,14 @@ The test lane expects the `UFreeUnitTests` scheme and an iPhone 17 Pro simulator
 | Symptom | First action |
 |---|---|
 | Dual-sim `waitFor` never sees a posted value | `firebase emulators:exec` strips env. Pass both `BVT_MAILBOX_URL` and `TEST_RUNNER_BVT_MAILBOX_URL`. Prefer `./Scripts/run_dual_sim_bvt.sh`. |
+| `bvt_mailbox.py` / “Address already in use” | Port 4739 still has a mailbox from a previous run (or a crashed one). The script now reuses a healthy listener or replaces a leftover `bvt_mailbox.py`. To clear it by hand: `pkill -f bvt_mailbox.py`. |
+| Dual-sim times out on `readyA` while B polls | Two `xcodebuild test` jobs sharing default DerivedData serialize. The harness now builds once and uses `test-without-building` plus `~/Library/Caches/UFreeBVT`. Re-run `./Scripts/run_dual_sim_bvt.sh`. |
+| Dual-sim “Test crashed with signal kill” / Diagnostics permission | Do not keep result bundles in `/tmp` (macOS blocks deleting simulator diagnostics). The harness now writes under `~/Library/Caches/UFreeBVT` with `-collect-test-diagnostics never`. |
+| Dual-sim session 2+ never shows Accept | Auth/Firestore persist for the emulator process. Session 1 already claimed `+15550000001` / `02`. The harness now DELETEs emulator data before each pair. |
+| Dual-sim times out on `peerSeesFree` | A’s save is local-first; B’s Who’s Free load can miss the write. The test now retries the tab. Do not tap a day chip whose value is `0` — that is the free count and toggles today off. |
 | xcodebuild picks the wrong simulator | Duplicate device names exist. Set `DUAL_SIM_A` / `DUAL_SIM_B` to UDIDs from `xcrun simctl list devices available`. |
 | Profile-link Layer B never creates a request | Do not call `XCUIApplication.open`. Use `UI_TEST_OPEN_URL=` so the process is not relaunched under `UI_TEST_RESET_AUTH`. |
-| Java / emulator fail locally | Scripts use the repo `.jdk/` when `java` is missing. Or export `JAVA_HOME` to a JDK 21 install. |
+| `java -version` / “Unable to locate a Java Runtime” | macOS `/usr/bin/java` is a stub. Re-run via `./Scripts/run_ui_emulator_tests.sh` or `./Scripts/run_dual_sim_bvt.sh` (they pick up `.jdk/`). Do not call `firebase emulators:exec` from a bare terminal unless `JAVA_HOME` points at a real JDK. |
 
 ## Signing and TestFlight
 

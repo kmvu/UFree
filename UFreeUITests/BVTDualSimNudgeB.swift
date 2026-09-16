@@ -16,7 +16,6 @@ final class BVTDualSimNudgeB: XCTestCase {
 
     @MainActor
     func test_acceptor_repliesImIn_fromInbox() async throws {
-        try await MailboxClient.waitFor("readyA", timeout: 60)
         let app = DualSimFlow.launchPersona(2)
         try await MailboxClient.post("readyB")
 

@@ -28,7 +28,7 @@ enum MailboxClient {
         XCTAssertEqual(status, 200, "Mailbox POST \(key)")
     }
 
-    static func waitFor(_ key: String, timeout: TimeInterval = 60) async throws {
+    static func waitFor(_ key: String, timeout: TimeInterval = 90) async throws {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             var request = URLRequest(url: baseURL.appendingPathComponent(key))
@@ -40,7 +40,12 @@ enum MailboxClient {
             }
             try await Task.sleep(nanoseconds: 400_000_000)
         }
-        XCTFail("Timed out waiting for mailbox key \(key)")
+        throw MailboxTimeout(key: key)
+    }
+
+    struct MailboxTimeout: Error, LocalizedError {
+        let key: String
+        var errorDescription: String? { "Timed out waiting for mailbox key \(key)" }
     }
 
     private static func isPosted(_ value: Any?) -> Bool {
@@ -60,14 +65,34 @@ enum DualSimFlow {
         let app = EmulatorUILaunch.makeApp(persona: persona)
         app.launch()
         EmulatorUILaunch.waitForPersonaReady(app, persona: persona)
-        app.dismissBlockingSheets()
+        dismissSheetsUntilClear(app)
         app.openFriendsTab()
-        app.dismissBlockingSheets()
+        dismissSheetsUntilClear(app)
+        var search = app.textFields["friends.searchPhone"]
+        if !search.waitForExistence(timeout: 3) {
+            app.swipeUp()
+            app.swipeUp()
+            search = app.firstExisting(
+                app.textFields["friends.searchPhone"],
+                app.textFields["Find by Phone Number"]
+            )
+        }
         XCTAssertTrue(
-            app.textFields["friends.searchPhone"].waitForExistence(timeout: 12),
+            search.waitForExistence(timeout: 12),
             "Persona \(persona) Friends tab should be usable before handshake"
         )
         return app
+    }
+
+    @MainActor
+    static func dismissSheetsUntilClear(_ app: XCUIApplication, attempts: Int = 5) {
+        for _ in 0..<attempts {
+            app.dismissBlockingSheets()
+            let blocked = app.descendants(matching: .any)["weekend.cta"].exists
+                || app.descendants(matching: .any)["hangout.checklist.sheet"].exists
+            if !blocked { return }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.25))
+        }
     }
 
     @MainActor
@@ -106,6 +131,12 @@ enum DualSimFlow {
                 )
             }
         }
+        if !accept.waitForExistence(timeout: 4) {
+            app.openScheduleTab()
+            app.openFriendsTab()
+            app.dismissBlockingSheets()
+            accept = app.firstExisting(app.buttons["friends.accept"], app.buttons["Accept"])
+        }
         XCTAssertTrue(accept.waitForExistence(timeout: 16), "Peer B should see an incoming request")
         accept.tap()
         app.dismissConnectChrome()
@@ -125,21 +156,35 @@ enum DualSimFlow {
 
     @MainActor
     static func assertFriendVisibleOnWhosFree(_ app: XCUIApplication, name: String) {
-        app.openWhosFreeTab()
-        let named = app.staticTexts[name]
-        let today = app.buttons["whosFree.day.\(UITestDates.todayDateString())"]
-        if today.waitForExistence(timeout: 6) {
-            // Re-select today if a previous tap toggled it off.
-            let value = (today.value as? String) ?? ""
-            if value == "0" || value.isEmpty {
-                today.tap()
+        // Save on A returns as soon as SwiftData writes; Firestore may still be
+        // in flight. Who's Free is a one-shot load, so bounce the tab until the
+        // peer appears. Do not tap a chip whose value is "0" — that is freeCount,
+        // and toggleDate would deselect today.
+        let deadline = Date().addingTimeInterval(35)
+        while Date() < deadline {
+            dismissSheetsUntilClear(app)
+            app.openWhosFreeTab()
+            focusTodayChipIfNeeded(app)
+            let named = app.staticTexts[name]
+            let fuzzy = app.staticTexts.matching(
+                NSPredicate(format: "label CONTAINS[c] %@", name)
+            ).firstMatch
+            if named.waitForExistence(timeout: 2) || fuzzy.waitForExistence(timeout: 1) {
+                return
             }
+            app.openScheduleTab()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
         }
-        XCTAssertTrue(
-            named.waitForExistence(timeout: 15)
-                || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", name)).firstMatch.waitForExistence(timeout: 4),
-            "Who's Free should list \(name) after they mark today free"
-        )
+        XCTFail("Who's Free should list \(name) after they mark today free")
+    }
+
+    @MainActor
+    static func focusTodayChipIfNeeded(_ app: XCUIApplication) {
+        let today = app.buttons["whosFree.day.\(UITestDates.todayDateString())"]
+        guard today.waitForExistence(timeout: 3) else { return }
+        if !today.isSelected {
+            today.tap()
+        }
     }
 
     @MainActor
@@ -147,10 +192,7 @@ enum DualSimFlow {
         app.openWhosFreeTab()
         let today = app.buttons["whosFree.day.\(UITestDates.todayDateString())"]
         XCTAssertTrue(today.waitForExistence(timeout: 10), "Today chip")
-        let value = (today.value as? String) ?? ""
-        if value == "0" || value.isEmpty {
-            today.tap()
-        }
+        focusTodayChipIfNeeded(app)
     }
 
     @MainActor
@@ -269,6 +311,7 @@ enum DualSimFlow {
     @MainActor
     static func assertBothCue(_ app: XCUIApplication) {
         app.openWhosFreeTab()
+        focusTodayChipIfNeeded(app)
         let today = app.buttons["whosFree.day.\(UITestDates.todayDateString())"]
         XCTAssertTrue(today.waitForExistence(timeout: 10), "Today chip")
         let value = (today.value as? String) ?? ""

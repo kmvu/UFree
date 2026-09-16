@@ -11,17 +11,40 @@ SIM_A="${DUAL_SIM_A:-iPhone 17 Pro}"
 SIM_B="${DUAL_SIM_B:-iPhone 17}"
 MAILBOX_PORT="${BVT_MAILBOX_PORT:-4739}"
 
-if ! command -v java >/dev/null 2>&1; then
-  if compgen -G "$ROOT/.jdk/jdk-*/Contents/Home" > /dev/null; then
-    JAVA_HOME="$(echo "$ROOT"/.jdk/jdk-*/Contents/Home | awk '{print $1}')"
-    export JAVA_HOME
-    export PATH="$JAVA_HOME/bin:$PATH"
+# shellcheck source=Scripts/_ensure_java.sh
+source "$ROOT/Scripts/_ensure_java.sh"
+
+mailbox_health() {
+  curl -fsS --max-time 1 "http://127.0.0.1:${MAILBOX_PORT}/health" >/dev/null 2>&1
+}
+
+MAILBOX_PID=""
+if mailbox_health; then
+  echo "▶ Reusing BVT mailbox already listening on 127.0.0.1:${MAILBOX_PORT}"
+else
+  if lsof -nP -iTCP:"${MAILBOX_PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
+    if pgrep -f "bvt_mailbox.py ${MAILBOX_PORT}" >/dev/null 2>&1; then
+      echo "▶ Replacing leftover BVT mailbox on port ${MAILBOX_PORT}"
+      pkill -f "bvt_mailbox.py ${MAILBOX_PORT}" || true
+      sleep 0.4
+    else
+      echo "✖ Port ${MAILBOX_PORT} is in use by something other than bvt_mailbox.py" >&2
+      lsof -nP -iTCP:"${MAILBOX_PORT}" -sTCP:LISTEN >&2 || true
+      exit 1
+    fi
+  fi
+  python3 "$ROOT/Scripts/bvt_mailbox.py" "$MAILBOX_PORT" &
+  MAILBOX_PID=$!
+  trap 'kill "$MAILBOX_PID" 2>/dev/null || true' EXIT
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    mailbox_health && break
+    sleep 0.2
+  done
+  if ! mailbox_health; then
+    echo "✖ BVT mailbox did not start on 127.0.0.1:${MAILBOX_PORT}" >&2
+    exit 1
   fi
 fi
-
-python3 "$ROOT/Scripts/bvt_mailbox.py" "$MAILBOX_PORT" &
-MAILBOX_PID=$!
-trap 'kill "$MAILBOX_PID" 2>/dev/null || true' EXIT
 
 export UFREE_INTEGRATION_TESTS=1
 export BVT_MAILBOX_URL="http://127.0.0.1:${MAILBOX_PORT}"

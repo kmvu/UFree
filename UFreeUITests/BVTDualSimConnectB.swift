@@ -16,7 +16,6 @@ final class BVTDualSimConnectB: XCTestCase {
 
     @MainActor
     func test_acceptor_acceptsAndSeesInviter() async throws {
-        try await MailboxClient.waitFor("readyA", timeout: 60)
         let app = DualSimFlow.launchPersona(2)
         try await MailboxClient.post("readyB")
 

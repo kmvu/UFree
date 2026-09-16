@@ -57,6 +57,22 @@ bundle exec fastlane ui_tests       # Layer A hermetic BVT (UI_TESTING_MODE)
 
 See the [testing guide](TESTING_GUIDE.md) for focused test commands and what each suite covers.
 
+### Scripts
+
+Run the `run_*` wrappers from the repo root. Names starting with `_` are sourced or exec’d by those wrappers — do not invoke them directly.
+
+| Script | What it does |
+|---|---|
+| `run_integration_tests.sh` | Java 21 + Auth/Firestore emulators, then Fastlane `integration_tests` (real Firebase repositories). |
+| `run_ui_emulator_tests.sh` | Layer B: same emulators, then Fastlane `ui_emulator_tests` (one simulator, `PeerDriver` as the second user). |
+| `run_dual_sim_bvt.sh` | Layer C: mailbox on port 4739, two simulators, emulators, then `_dual_sim_xcodebuild.sh`. Env: `DUAL_SIM_A` / `DUAL_SIM_B` (names or UDIDs), `DUAL_SIM_ONLY=connect` (or `availability` / `nudge` / `deletion`), `BVT_MAILBOX_PORT`. Artifacts: `~/Library/Caches/UFreeBVT`. |
+| `_ensure_java.sh` | Shared by the three wrappers. Treats macOS `/usr/bin/java` as missing; prefers repo `.jdk/`. |
+| `_dual_sim_xcodebuild.sh` | Build-for-testing once, then parallel `test-without-building` with separate xcresults and `-collect-test-diagnostics never`. Clears Auth + Firestore between pairs so DEBUG phone hashes are not still owned by the previous session. |
+| `bvt_mailbox.py` | Tiny HTTP board so the two UI tests can wait on keys (`readyB`, `requested`, …). Layer C resets it per pair. |
+| `count_tests.sh` | Prints the live `func test_` count under `UFreeTests/` (do not hardcode that number in docs). |
+| `upload_dsyms.sh` | Optional Crashlytics dSYM upload via the SPM `Crashlytics/run` helper. Release/TestFlight already uploads dSYMs through Fastlane; this is a local fallback. |
+| `generate_feature.sh` | **Deprecated.** Exits 1. It targeted a UIKit layout this repo does not use. |
+
 ### CI/CD map
 
 This table is the canonical description of what runs when; other guides link here instead of restating jobs and triggers.
@@ -139,6 +155,7 @@ How the app guides a new pair from “connected” to a first real plan:
 | App lifecycle or navigation | `Features/Root/` and `UFreeApp.swift` |
 | Firestore access | `firestore.rules` and `firestore.indexes.json` |
 | Build or TestFlight automation | `fastlane/Fastfile` and `.github/workflows/` |
+| Local test / emulator wrappers | `Scripts/` — inventory in [Scripts](#scripts) |
 
 ## Before opening a pull request
 

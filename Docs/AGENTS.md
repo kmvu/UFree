@@ -24,12 +24,14 @@ This is the concise, repository-specific checklist for contributors and coding a
 npm --prefix firebase-tests test   # Firestore rules (needs Java 21+)
 bundle exec fastlane tests         # iOS unit suite (iPhone 17 Pro)
 bundle exec fastlane ui_tests      # Layer A hermetic BVT (UI_TESTING_MODE)
-# Emulators need Java 21+ — scripts use .jdk/ when PATH has no java:
+# Emulators need Java 21+ — scripts use .jdk/ when `java -version` fails (macOS stub):
 ./Scripts/run_ui_emulator_tests.sh # Layer B emulator UI
 ./Scripts/run_dual_sim_bvt.sh      # Layer C sessions 1–4 (dispatch; not a deploy gate yet)
 ./Scripts/run_integration_tests.sh
 swiftlint lint                     # baseline; CI fails on error-severity only
 ```
+
+Script inventory (including `_` helpers and deprecated `generate_feature.sh`) lives in the [engineering guide Scripts section](ENGINEERING_GUIDE.md#scripts).
 
 CI runs **Firestore Rules**, **Unit Tests**, **UI Tests** (Layer A), and **SwiftLint** on every push/PR to `main`, plus **Emulator Integration** and **UI Emulator** (Layer B) on every main push (and on PRs when the relevant paths change). Dual-Sim (Layer C) is dispatch-only. The TestFlight deploy gate still name-checks the original five jobs until UI Emulator and Dual-Sim each stay green for a week. Exact jobs, triggers, and toolchain pins live in the [engineering guide CI/CD map](ENGINEERING_GUIDE.md#cicd-map). Run the smallest relevant test first when practical. Rules or discovery/handshake changes must keep the emulator and Layer B suites green. Follow the remaining manual checks in [TESTING_GUIDE.md](TESTING_GUIDE.md) (Sign in with Apple, camera QR, Apple re-auth, consoles) when those paths change.
 

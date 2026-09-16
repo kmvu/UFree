@@ -44,7 +44,7 @@ Press `⌘ + U` with the `UFreeUnitTests` scheme selected.
 Requires Java 21+, Firebase CLI, and `GoogleService-Info.plist`. The scheme sets `UFREE_INTEGRATION_TESTS=1` so the host app connects SDKs to emulators after `FirebaseApp.configure()`.
 
 ```bash
-# Preferred — picks up the repo-local JDK under .jdk/ when system Java is missing:
+# Preferred — picks up the repo-local JDK under .jdk/ when `java -version` fails (macOS stub):
 ./Scripts/run_integration_tests.sh
 
 # Or manually:
@@ -72,7 +72,7 @@ Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet 
 
 - Layer A: `UI_TESTING_MODE` + `UI_TESTING_SCENARIO=`. Mocks only.
 - Layer B/C: `UI_TEST_PERSONA=1|2|3`, `UI_TEST_RESET_AUTH`, `UFREE_INTEGRATION_TESTS=1`. Do **not** set `UI_TESTING_MODE` — that swaps mocks.
-- Layer C mailbox: set both `BVT_MAILBOX_URL` and `TEST_RUNNER_BVT_MAILBOX_URL`. `firebase emulators:exec` otherwise strips the env and `waitFor` never sees a post. The dual-sim script sets both.
+- Layer C mailbox: set both `BVT_MAILBOX_URL` and `TEST_RUNNER_BVT_MAILBOX_URL`. `firebase emulators:exec` otherwise strips the env and `waitFor` never sees a post. The dual-sim script sets both. It builds once into `~/Library/Caches/UFreeBVT/derived`, then runs both sides with `test-without-building` and separate result bundles under `~/Library/Caches/UFreeBVT/results`. Each pair wipes Auth + Firestore so `phoneDirectory` first-writer-wins claims from session 1 cannot steal session 2’s Find by Phone.
 - DEBUG phones: `+15550000001`…`03` (Test User 1/2/3). Who's Free shows the next 5 days. Day keys are UTC `yyyy-MM-dd`.
 - Profile links: `UI_TEST_OPEN_URL=` only. `XCUIApplication.open` relaunches the process; with `UI_TEST_RESET_AUTH` that creates a new UID and the request never lands.
 
@@ -96,7 +96,7 @@ Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet 
 | 47–49 | B / C | Deletion cascade |
 | 50–52 | M | Crashlytics, Analytics, App Check console |
 
-Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, leak, request, accept, remove, decline, Sync Contacts); `BVTAvailabilityLiveUITests` (peer free day + Both); `BVTNudgeLiveUITests` (nudge → REST I'm in); `BVTDeletionLiveUITests` (peer wipe leaves Friends / Who's Free); `BVTDiscoveryLiveUITests` (`UI_TEST_SCANNED_PROFILE=` and `UI_TEST_OPEN_URL=`). Layer C: session 1 `BVTDualSimConnectA` / `BVTDualSimConnectB` (handshake, both see the peer on Friends); session 2 `BVTDualSimAvailabilityA` / `BVTDualSimAvailabilityB` (handshake, then peer sees a free day and Both); session 3 `BVTDualSimNudgeA` / `BVTDualSimNudgeB` (nudge → inbox I'm in → Who's Free In); session 4 `BVTDualSimDeletionA` / `BVTDualSimDeletionB` (delete → login, peer leaves Friends / Who's Free). Default simulators: `DUAL_SIM_A=iPhone 17 Pro`, `DUAL_SIM_B=iPhone 17` (set UDIDs when names collide).
+Hermetic files live under `UFreeUITests/BVT*.swift` plus `HappyPathUITests.swift` and `InboxUITests.swift`. Layer B: `BVTConnectLiveUITests` (persona login, Find by Phone, leak, request, accept, remove, decline, Sync Contacts); `BVTAvailabilityLiveUITests` (peer free day + Both); `BVTNudgeLiveUITests` (nudge → REST I'm in); `BVTDeletionLiveUITests` (peer wipe leaves Friends / Who's Free); `BVTDiscoveryLiveUITests` (`UI_TEST_SCANNED_PROFILE=` and `UI_TEST_OPEN_URL=`). Layer C: session 1 `BVTDualSimConnectA` / `BVTDualSimConnectB` (handshake, both see the peer on Friends); session 2 `BVTDualSimAvailabilityA` / `BVTDualSimAvailabilityB` (handshake, then peer sees a free day and Both); session 3 `BVTDualSimNudgeA` / `BVTDualSimNudgeB` (nudge → inbox I'm in → Who's Free In); session 4 `BVTDualSimDeletionA` / `BVTDualSimDeletionB` (delete → login, peer leaves Friends / Who's Free). Default simulators: `DUAL_SIM_A=iPhone 17 Pro`, `DUAL_SIM_B=iPhone 17` (set UDIDs when names collide). `DUAL_SIM_ONLY=connect|availability|nudge|deletion` runs one pair.
 
 ### Measuring Coverage
 
@@ -215,7 +215,7 @@ Layer A + B + C now cover the two-user product loop (connect, mark free, Both, n
 
 ## 4. Test organization
 
-Unit tests under `UFreeTests/` mirror the source layout (`Auth/`, `Domain/`, `Data/`, `Features/`, `Core/`), so find a test by its subject's path rather than a hardcoded inventory. Emulator suites live in `UFreeIntegrationTests/`, XCUITest flows in `UFreeUITests/`, and Firestore rules tests in `firebase-tests/`. Count methods live with `./Scripts/count_tests.sh`.
+Unit tests under `UFreeTests/` mirror the source layout (`Auth/`, `Domain/`, `Data/`, `Features/`, `Core/`), so find a test by its subject's path rather than a hardcoded inventory. Emulator suites live in `UFreeIntegrationTests/`, XCUITest flows in `UFreeUITests/`, and Firestore rules tests in `firebase-tests/`. Count methods live with `./Scripts/count_tests.sh`. The wrappers in `Scripts/` (`run_integration_tests.sh`, `run_ui_emulator_tests.sh`, `run_dual_sim_bvt.sh`, plus `_` helpers) are listed in the [engineering guide Scripts section](ENGINEERING_GUIDE.md#scripts).
 
 ### Shared test helpers (`UFreeTests/Helpers/`)
 

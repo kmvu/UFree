@@ -23,6 +23,22 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 Pre-flight Check: Run unit tests (iPhone 17 Pro) with coverage
 
+### ios ui_tests
+
+```sh
+[bundle exec] fastlane ios ui_tests
+```
+
+UI tests: Happy-path under UI_TESTING_MODE (iPhone 17 Pro)
+
+### ios ui_emulator_tests
+
+```sh
+[bundle exec] fastlane ios ui_emulator_tests
+```
+
+Emulator-backed UI tests (Layer B). Requires Auth+Firestore emulators.
+
 ### ios integration_tests
 
 ```sh
