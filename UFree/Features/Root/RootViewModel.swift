@@ -58,6 +58,9 @@ public final class RootViewModel: ObservableObject {
     nonisolated(unsafe) private var authStateTask: Task<Void, Never>?
     nonisolated(unsafe) private var celebrationDismissTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
+    /// Bumped on every explicit sign-in / sign-out / delete so a lagged
+    /// `authState` emission cannot overwrite a newer local assignment.
+    private var authEpoch = 0
     
     public init(authRepository: AuthRepository) {
         self.authRepository = authRepository
@@ -201,8 +204,7 @@ public final class RootViewModel: ObservableObject {
         NotificationCenter.default.publisher(for: .didDeleteAccount)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.currentUser = nil
-                self?.authPhase = .unauthenticated
+                self?.commitAuthUser(nil)
             }
             .store(in: &cancellables)
     }
@@ -212,19 +214,28 @@ public final class RootViewModel: ObservableObject {
     private func setupAuthStateListener() {
         authStateTask = Task { [weak self] in
             guard let authRepository = self?.authRepository else { return }
-            for await user in authRepository.authState {
+            for await _ in authRepository.authState {
                 guard let self else { return }
-                self.currentUser = user
+                // Re-read after the await so a buffered init-nil / sign-in
+                // value cannot win over a sign-in or sign-out that committed
+                // while this task was suspended.
+                let epoch = self.authEpoch
+                let latest = await authRepository.currentUser
+                guard epoch == self.authEpoch else { continue }
+                self.applyAuthUser(latest)
                 self.isSigningIn = false
-                
-                // Update authPhase based on whether user exists
-                if user != nil {
-                    self.authPhase = .authenticated
-                } else {
-                    self.authPhase = .unauthenticated
-                }
             }
         }
+    }
+
+    private func commitAuthUser(_ user: User?) {
+        authEpoch += 1
+        applyAuthUser(user)
+    }
+
+    private func applyAuthUser(_ user: User?) {
+        currentUser = user
+        authPhase = user != nil ? .authenticated : .unauthenticated
     }
     
     // MARK: - Actions
@@ -237,7 +248,7 @@ public final class RootViewModel: ObservableObject {
             
             do {
                 let user = try await authRepository.signInAnonymously()
-                self.currentUser = user
+                self.commitAuthUser(user)
             } catch {
                 self.errorMessage = error.localizedDescription
             }
@@ -251,11 +262,9 @@ public final class RootViewModel: ObservableObject {
         return Task {
             do {
                 try await authRepository.signOut()
-                // Clear immediately for UI; auth-state stream also emits nil.
-                // Repositories use bufferingNewest(1) so a lagged sign-in emission
-                // cannot resurrect currentUser after this.
-                self.currentUser = nil
-                self.authPhase = .unauthenticated
+                // Clear immediately for UI. A lagged auth-state emission is
+                // ignored once `authEpoch` moves.
+                self.commitAuthUser(nil)
             } catch {
                 self.errorMessage = error.localizedDescription
             }

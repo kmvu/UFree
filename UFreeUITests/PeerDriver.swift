@@ -552,16 +552,28 @@ enum EmulatorUILaunch {
         let tabs = app.tabBars.buttons["tab.schedule"]
         let personaButton = app.buttons["login.persona.\(persona)"]
         var tappedPersona = false
+        let started = Date()
+        let deadline = started.addingTimeInterval(45)
 
-        let deadline = Date().addingTimeInterval(40)
         while Date() < deadline {
             // Do not treat a pre-sign-out tab flash as ready — login must be gone.
             if tabs.exists && !personaButton.exists {
                 return
             }
-            if !tappedPersona, personaButton.exists, personaButton.isHittable {
-                personaButton.tap()
-                tappedPersona = true
+            app.dismissKeyboardIfPresent()
+            // `UI_TEST_PERSONA` auto-logs in. A fallback tap must not query
+            // `isHittable` or call `tap()` — both throw "Activation point invalid"
+            // when the name-field keyboard covers `login.persona.*`.
+            let keyboardUp = app.keyboards.firstMatch.exists
+            if !tappedPersona,
+               !keyboardUp,
+               Date().timeIntervalSince(started) > 12,
+               personaButton.exists {
+                let frame = personaButton.frame
+                if frame.width > 8, frame.height > 8 {
+                    personaButton.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                    tappedPersona = true
+                }
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }

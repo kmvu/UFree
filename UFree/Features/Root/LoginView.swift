@@ -154,6 +154,11 @@ struct LoginView: View {
             // rejects the second presentation ("while a presentation is in progress") and
             // on the iOS 26.2 simulator that path corrupts allocator state.
             guard !viewModel.showError else { return }
+            #if DEBUG
+            // Layer B/C auto-login: a focused name field raises the keyboard over the
+            // persona buttons and XCTest then fails hittability on `login.persona.*`.
+            if TestConfiguration.uiTestPersonaIndex != nil { return }
+            #endif
             isNameFocused = true
         }
         .task {

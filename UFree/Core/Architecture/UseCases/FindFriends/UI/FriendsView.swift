@@ -224,8 +224,9 @@ public struct FriendsView: View {
                                     Image(systemName: "xmark")
                                 }
                             }
-                            .ufreeCompactButton(prominent: false, tint: .secondary)
                             .accessibilityIdentifier("friends.decline")
+                            .accessibilityLabel("Decline")
+                            .ufreeCompactButton(prominent: false, tint: .secondary)
                             .disabled(viewModel.hasActiveRequestAction)
                         }
                     }

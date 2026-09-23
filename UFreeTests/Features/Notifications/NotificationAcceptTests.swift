@@ -123,9 +123,11 @@ final class NotificationAcceptTests: XCTestCase {
     }
 
     func test_acceptFriendRequest_subsequentFriend_navigatesToFeed() async {
-        friendsVM.friends = [
-            UserProfile(id: "existing", displayName: "Existing", hashedPhoneNumber: "hash")
-        ]
+        let existing = UserProfile(id: "existing", displayName: "Existing", hashedPhoneNumber: "hash")
+        // Seed the repo too: `acceptRequest` finishes with `refreshFriends()`,
+        // which replaces the in-memory list from `getMyFriends()`.
+        friendRepo.addFriend(existing)
+        friendsVM.friends = [existing]
         let rootVM = RootViewModel(authRepository: MockAuthRepository())
         friendsVM.onAcceptCompleted = { friendName, wasFirstFriend in
             rootVM.handlePostAccept(friendName: friendName, wasFirstFriend: wasFirstFriend)

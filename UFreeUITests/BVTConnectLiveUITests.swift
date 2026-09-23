@@ -55,8 +55,10 @@ final class BVTConnectLiveUITests: XCTestCase {
         app.searchFriendsPhone(peer.phoneNumber)
         let request = app.buttons["friends.request"]
         XCTAssertTrue(request.waitForExistence(timeout: 10), "BVT-13: Request")
-        request.tap()
-        if request.exists { request.tap() }
+        request.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        if request.exists {
+            request.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
 
         try await driver.acceptFriendRequest(
             fromId: persona1Uid,
@@ -92,13 +94,13 @@ final class BVTConnectLiveUITests: XCTestCase {
             senderIdToken: peer.idToken
         )
 
-        app.openFriendsTab()
+        LiveUIFlow.waitForIncomingHandshakeRow(app, peerName: peer.displayName)
         let accept = app.firstExisting(
             app.buttons["friends.accept"],
             app.buttons["Accept"]
         )
-        XCTAssertTrue(accept.waitForExistence(timeout: 12), "BVT-15: incoming request from \(peer.displayName)")
-        accept.tap()
+        XCTAssertTrue(accept.waitForExistence(timeout: 8), "BVT-15: incoming request from \(peer.displayName)")
+        accept.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         app.dismissConnectChrome()
         app.openFriendsTab()
 
@@ -128,13 +130,13 @@ final class BVTConnectLiveUITests: XCTestCase {
             senderIdToken: peer.idToken
         )
 
-        app.openFriendsTab()
+        LiveUIFlow.waitForIncomingHandshakeRow(app, peerName: peer.displayName)
         let accept = app.firstExisting(
             app.buttons["friends.accept"],
             app.buttons["Accept"]
         )
-        XCTAssertTrue(accept.waitForExistence(timeout: 12))
-        accept.tap()
+        XCTAssertTrue(accept.waitForExistence(timeout: 8))
+        accept.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         app.dismissConnectChrome()
         app.openFriendsTab()
 
@@ -193,13 +195,14 @@ final class BVTConnectLiveUITests: XCTestCase {
             senderIdToken: peer.idToken
         )
 
-        app.openFriendsTab()
+        LiveUIFlow.waitForIncomingHandshakeRow(app, peerName: peer.displayName)
+        app.swipeUp()
         let decline = app.firstExisting(
             app.buttons["friends.decline"],
-            app.buttons["xmark"]
+            app.buttons["Decline"]
         )
-        XCTAssertTrue(decline.waitForExistence(timeout: 12), "BVT-19: Decline")
-        decline.tap()
+        XCTAssertTrue(decline.waitForExistence(timeout: 8), "BVT-19: Decline")
+        decline.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertTrue(
             app.buttons["friends.accept"].waitForNonExistence(timeout: 8),
             "BVT-19: declined request leaves the incoming list"

@@ -50,13 +50,13 @@ enum LiveUIFlow {
             senderIdToken: peer.idToken
         )
 
-        app.openFriendsTab()
+        waitForIncomingHandshakeRow(app, peerName: peer.displayName)
         let accept = app.firstExisting(
             app.buttons["friends.accept"],
             app.buttons["Accept"]
         )
-        XCTAssertTrue(accept.waitForExistence(timeout: 16), "Incoming request from \(peer.displayName)")
-        accept.tap()
+        XCTAssertTrue(accept.waitForExistence(timeout: 8), "Incoming request from \(peer.displayName)")
+        accept.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         app.dismissConnectChrome()
         app.openFriendsTab()
         XCTAssertTrue(
@@ -65,5 +65,39 @@ enum LiveUIFlow {
             "\(peer.displayName) should be in Friends after accept"
         )
         return (peer, persona1Uid)
+    }
+
+    /// Incoming requests sit below the discovery card; Firestore can lag on CI.
+    /// Bounce Friends and scroll until Accept / Decline / the peer name is in the tree.
+    @MainActor
+    static func waitForIncomingHandshakeRow(_ app: XCUIApplication, peerName: String) {
+        app.dismissBlockingSheets()
+        app.openFriendsTab()
+        let deadline = Date().addingTimeInterval(22)
+        while Date() < deadline {
+            app.dismissBlockingSheets()
+            if incomingHandshakeRowVisible(app) {
+                return
+            }
+            app.swipeUp()
+            if incomingHandshakeRowVisible(app) {
+                return
+            }
+            app.openScheduleTab()
+            app.openFriendsTab()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.35))
+        }
+        XCTAssertTrue(
+            incomingHandshakeRowVisible(app),
+            "Incoming request from \(peerName) should appear on Friends"
+        )
+    }
+
+    @MainActor
+    private static func incomingHandshakeRowVisible(_ app: XCUIApplication) -> Bool {
+        app.buttons["friends.accept"].exists
+            || app.buttons["friends.decline"].exists
+            || app.buttons["Accept"].exists
+            || app.buttons["Decline"].exists
     }
 }

@@ -44,8 +44,10 @@ final class RootViewModelTests: XCTestCase {
     
     func test_signInAnonymously_setsCurrentUser() async throws {
         await viewModel.signInAnonymously().value
-        
-        XCTAssertNotNil(viewModel.currentUser)
+        await waitUntil("sign-in sets currentUser") {
+            self.viewModel.currentUser != nil
+        }
+
         XCTAssertTrue(viewModel.currentUser?.isAnonymous ?? false)
     }
     
@@ -82,7 +84,9 @@ final class RootViewModelTests: XCTestCase {
     
     func test_signOut_clearsCurrentUser() async throws {
         await viewModel.signInAnonymously().value
-        XCTAssertNotNil(viewModel.currentUser)
+        await waitUntil("sign-in sets currentUser") {
+            self.viewModel.currentUser != nil
+        }
 
         await viewModel.signOut().value
 
