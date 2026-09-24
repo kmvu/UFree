@@ -329,11 +329,15 @@ struct MainAppView: View {
                 }
             }
             wireHandshakeCallback()
-            friendsViewModel.listenToRequests()
-            friendsViewModel.listenToFriends()
-            // RootView builds the VM while signed out (`UI_TEST_RESET_AUTH` / Login).
-            // `listenToNotifications` finishes immediately with no uid — restart now.
-            notificationViewModel.startListening()
+            // Integration tests own their listeners. Host watches block the
+            // emulator's document-clear endpoint (NSURLError -1001).
+            if !TestConfiguration.isRunningIntegrationTests {
+                friendsViewModel.listenToRequests()
+                friendsViewModel.listenToFriends()
+                // RootView builds the VM while signed out (`UI_TEST_RESET_AUTH` / Login).
+                // `listenToNotifications` finishes immediately with no uid — restart now.
+                notificationViewModel.startListening()
+            }
             onboardingStore.trackReopenIfNeeded()
             if rootViewModel.deepLinkProfileId == nil,
                let raw = TestConfiguration.uiTestOpenURL,

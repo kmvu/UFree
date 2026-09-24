@@ -58,8 +58,11 @@ public class NotificationViewModel: ObservableObject {
         // Setup lifecycle observers for Hybrid Listener strategy
         setupLifecycleObservers(observesSceneLifecycle: observesSceneLifecycle)
         
-        // Start listening if initialized in foreground
-        startListening()
+        // Integration tests attach their own listeners. A host watch here
+        // keeps the Firestore emulator clear endpoint from answering.
+        if !TestConfiguration.isRunningIntegrationTests {
+            startListening()
+        }
     }
 
     public func bind(

@@ -52,8 +52,8 @@ enum EmulatorHarness {
         )!
 
         do {
-            try await clearHTTPWithRetry(url: firestoreClear)
-            try await clearHTTPWithRetry(url: authClear)
+            try await clearHTTPWithRetry(url: firestoreClear, firestore: db)
+            try await clearHTTPWithRetry(url: authClear, firestore: nil)
         } catch {
             try? await Firestore.firestore().enableNetwork()
             throw error
@@ -92,10 +92,15 @@ enum EmulatorHarness {
         }
     }
 
-    private static func clearHTTPWithRetry(url: URL, attempts: Int = 4) async throws {
+    private static func clearHTTPWithRetry(url: URL, firestore: Firestore?, attempts: Int = 4) async throws {
         var lastError: Error?
         for attempt in 1...attempts {
             do {
+                // Drop watch streams before each try. An open listen makes the
+                // emulator clear DELETE sit until the client timeout.
+                if let firestore {
+                    try? await firestore.disableNetwork()
+                }
                 try await clearHTTP(url: url)
                 return
             } catch {
