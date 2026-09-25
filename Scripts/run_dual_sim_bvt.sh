@@ -18,7 +18,14 @@ mailbox_health() {
   curl -fsS --max-time 1 "http://127.0.0.1:${MAILBOX_PORT}/health" >/dev/null 2>&1
 }
 
+# GitHub's macOS image firewall drops inbound connections to python.org's
+# Python. curl then waits out --max-time instead of getting "connection refused".
+if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ -x /usr/libexec/ApplicationFirewall/socketfilterfw ]]; then
+  sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate off || true
+fi
+
 MAILBOX_PID=""
+MAILBOX_LOG="${TMPDIR:-/tmp}/ufree-bvt-mailbox.log"
 if mailbox_health; then
   echo "▶ Reusing BVT mailbox already listening on 127.0.0.1:${MAILBOX_PORT}"
 else
@@ -33,7 +40,8 @@ else
       exit 1
     fi
   fi
-  python3 "$ROOT/Scripts/bvt_mailbox.py" "$MAILBOX_PORT" &
+  : >"$MAILBOX_LOG"
+  python3 -u "$ROOT/Scripts/bvt_mailbox.py" "$MAILBOX_PORT" >>"$MAILBOX_LOG" 2>&1 &
   MAILBOX_PID=$!
   trap 'kill "$MAILBOX_PID" 2>/dev/null || true' EXIT
   for _ in 1 2 3 4 5 6 7 8 9 10; do
@@ -42,6 +50,10 @@ else
   done
   if ! mailbox_health; then
     echo "✖ BVT mailbox did not start on 127.0.0.1:${MAILBOX_PORT}" >&2
+    if [[ -s "$MAILBOX_LOG" ]]; then
+      echo "----- mailbox log -----" >&2
+      cat "$MAILBOX_LOG" >&2
+    fi
     exit 1
   fi
 fi
