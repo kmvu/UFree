@@ -18,10 +18,12 @@ mailbox_health() {
   curl -fsS --max-time 1 "http://127.0.0.1:${MAILBOX_PORT}/health" >/dev/null 2>&1
 }
 
-# GitHub's macOS image firewall drops inbound connections to python.org's
-# Python. curl then waits out --max-time instead of getting "connection refused".
+# GitHub's macOS image drops inbound connections until a local-network
+# permission dialog is accepted. That dialog never appears in CI, so listen()
+# hangs with an empty log and curl burns --max-time. Root is exempt.
 if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ -x /usr/libexec/ApplicationFirewall/socketfilterfw ]]; then
-  sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate off || true
+  sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate off
+  sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode off || true
 fi
 
 MAILBOX_PID=""
@@ -41,7 +43,11 @@ else
     fi
   fi
   : >"$MAILBOX_LOG"
-  python3 -u "$ROOT/Scripts/bvt_mailbox.py" "$MAILBOX_PORT" >>"$MAILBOX_LOG" 2>&1 &
+  mailbox_cmd=(python3 -u "$ROOT/Scripts/bvt_mailbox.py" "$MAILBOX_PORT")
+  if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+    mailbox_cmd=(sudo "${mailbox_cmd[@]}")
+  fi
+  "${mailbox_cmd[@]}" >>"$MAILBOX_LOG" 2>&1 &
   MAILBOX_PID=$!
   trap 'kill "$MAILBOX_PID" 2>/dev/null || true' EXIT
   for _ in 1 2 3 4 5 6 7 8 9 10; do
@@ -50,10 +56,13 @@ else
   done
   if ! mailbox_health; then
     echo "✖ BVT mailbox did not start on 127.0.0.1:${MAILBOX_PORT}" >&2
+    echo "----- mailbox log -----" >&2
     if [[ -s "$MAILBOX_LOG" ]]; then
-      echo "----- mailbox log -----" >&2
       cat "$MAILBOX_LOG" >&2
+    else
+      echo "(empty)" >&2
     fi
+    curl -v --max-time 1 "http://127.0.0.1:${MAILBOX_PORT}/health" >&2 || true
     exit 1
   fi
 fi
