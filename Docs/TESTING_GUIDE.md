@@ -64,18 +64,18 @@ Three layers cover the TestFlight BVT IDs. The matrix below is the canonical hom
 |---|---|---|
 | A · Hermetic | `bundle exec fastlane ui_tests` | `UI_TESTING_MODE` + `UI_TESTING_SCENARIO=` (`default`, `login`, `empty`, `firstConnect`, `partialDay`, `batchNudge`, `busyUnknown`, `unreadInbox`, `offline`). Mock repos, in-memory SwiftData. PR gate. |
 | B · Emulator UI | `./Scripts/run_ui_emulator_tests.sh` | No `UI_TESTING_MODE`. `UFREE_INTEGRATION_TESTS=1` + `UI_TEST_PERSONA=1`. Real Firebase repos + production rules. Second user via REST `PeerDriver`. CI: every main push; PRs when rules / data / social UI paths change. Not a TestFlight name-check until green for a week. |
-| C · Two UIs | `./Scripts/run_dual_sim_bvt.sh` | Two simulators + localhost mailbox (`Scripts/bvt_mailbox.py`). Sessions 1–4: connect, availability, nudge, deletion. **Dispatch only** (`dual-sim-bvt.yml`). Uncomment nightly and add to `deploy.yml` after a week of green **GitHub** dispatch runs. |
+| C · Two UIs | `./Scripts/run_dual_sim_bvt.sh` | Two simulators + localhost mailbox (`Scripts/bvt_mailbox.py`). Sessions 1–4: connect, availability, nudge, deletion. **Dispatch only** (`dual-sim-bvt.yml`). A failed run uploads `~/Library/Caches/UFreeBVT/results` as `dual-sim-xcresults`. Uncomment nightly and add to `deploy.yml` after a week of green **GitHub** dispatch runs. |
 
-**Plan (as of 16 Sep 2026)**
+**Plan (as of 4 Oct 2026)**
 
-Automatable BVT IDs are implemented. Local Layer C (sessions 1–4) is green. What is left is gate promotion, not more product walks.
+Who's Free updates from a listener while the tab is open. Live UI checks use `LiveExpectation.expectLive` and must not switch tabs to wait for a peer's write. Handshake edges (409 / 410 / 411, duplicate pending, concurrent accept, remove-then-reinvite, accept after delete, missing request get) and nudge edges (non-friend, reply after delete) live in the emulator integration suite. Layer C is still dispatch-only until GitHub runs are green for a week. Failed Dual-Sim runs upload xcresult bundles.
 
 | Done | Next | Stays manual |
 |---|---|---|
-| Layer A PR gate | Push the Layer C harness to `origin`, then **workflow_dispatch** Dual-Sim until it is green for a week | Sign in with Apple (03) |
-| Layer B live connect / Who’s Free / nudge / deletion / discovery / leak / decline / Sync Contacts | Uncomment Dual-Sim nightly after that week | Real camera QR (17); injected scan is Layer B |
+| Layer A PR gate | **workflow_dispatch** Dual-Sim until it is green for a week | Sign in with Apple (03) |
+| Layer B live connect / Who’s Free / nudge / deletion / discovery / leak / decline / Sync Contacts, including live updates without tab bouncing | Uncomment Dual-Sim nightly after that week | Real camera QR (17); injected scan is Layer B |
 | Layer C sessions 1–4 locally | Add **UI Emulator** to `deploy.yml` after a week of green `ui-emulator` on main | Apple re-auth sheet (46) |
-| | Then add **Dual-Sim** to `deploy.yml` | Crashlytics / Analytics / App Check consoles (50–52) |
+| Integration handshake and nudge edge cases | Then add **Dual-Sim** to `deploy.yml` | Crashlytics / Analytics / App Check consoles (50–52) |
 | | Optional, not blocking: two-UI decline / remove / QR, live batch-nudge | Background push (Phase 7) |
 
 Do not add Dual-Sim to the TestFlight name-check on the strength of a local run alone.
@@ -97,7 +97,7 @@ Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet 
 | 01, 02, 04, 06 | A | Login chrome, name gate, cold start, sign-out |
 | 03 | M | Sign in with Apple |
 | 05, 07–09, 11 | A | Offline cold start (mock), day sheet, banner |
-| 10 | B / C | Peer sees the write; A covers mock remote failure |
+| 10 | B / C | Peer write must appear while Who's Free stays open (`expectLive`). A covers mock remote failure |
 | 12–16, 19–21 | A + B; C for both UIs | Phone search, request, leak, accept, remove, decline. C session 1 is the live accept handshake. Decline/resend on two UIs is optional. |
 | 17 | I (B) + M camera | `UI_TEST_SCANNED_PROFILE=` injects a scan. Real camera stays manual. |
 | 18 | I (B) | `UI_TEST_OPEN_URL=` only. Simulator associated domains are unreliable; do not use `app.open`. |

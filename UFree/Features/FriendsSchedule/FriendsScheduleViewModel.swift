@@ -7,6 +7,9 @@
 
 import Foundation
 import Combine
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @MainActor
 public final class FriendsScheduleViewModel: ObservableObject {
@@ -22,6 +25,14 @@ public final class FriendsScheduleViewModel: ObservableObject {
     private let friendRepository: FriendRepositoryProtocol
     private let availabilityRepository: AvailabilityRepository
     private let notificationRepository: NotificationRepository
+
+    /// Coalesce snapshot bursts before rewriting the grid.
+    var scheduleObservationDebounceNanoseconds: UInt64 = 300_000_000
+    private var wantsScheduleObservation = false
+    private var observedFriendIds: [String] = []
+    nonisolated(unsafe) private var scheduleListenTask: Task<Void, Never>?
+    nonisolated(unsafe) private var scheduleDebounceTask: Task<Void, Never>?
+    nonisolated(unsafe) private var lifecycleCancellables = Set<AnyCancellable>()
 
     /// Display model combining friend info with their schedule
     public struct FriendScheduleDisplay: Identifiable {
@@ -44,7 +55,9 @@ public final class FriendsScheduleViewModel: ObservableObject {
     public init(
         friendRepository: FriendRepositoryProtocol,
         availabilityRepository: AvailabilityRepository,
-        notificationRepository: NotificationRepository
+        notificationRepository: NotificationRepository,
+        /// Off under XCTest. A second window becoming key would restart the listener mid-teardown.
+        observesSceneLifecycle: Bool = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
     ) {
         self.friendRepository = friendRepository
         self.availabilityRepository = availabilityRepository
@@ -53,6 +66,9 @@ public final class FriendsScheduleViewModel: ObservableObject {
         // Default selectedDate to today
         self.selectedDate = Calendar.current.startOfDay(for: Date())
         hydratePersistedReplies()
+        if observesSceneLifecycle {
+            setupScheduleLifecycleObservers()
+        }
     }
 
     /// Empty `nonisolated` deinit works around a Swift 6.2 / iOS 26.2 XCTest bug where
@@ -233,6 +249,107 @@ public final class FriendsScheduleViewModel: ObservableObject {
                 status: response == .imIn ? .free : .busy
             )
         }
+    }
+
+    // MARK: - Live schedules
+
+    /// Start while Who's Free is on screen. No-op during integration tests so the
+    /// host app does not hold Firestore watches that stall the emulator clear.
+    public func setScheduleObservationActive(_ active: Bool) {
+        guard !TestConfiguration.isRunningIntegrationTests else { return }
+        wantsScheduleObservation = active
+        if !active {
+            stopScheduleObservation()
+            return
+        }
+        scheduleListenTask?.cancel()
+        scheduleListenTask = Task { [weak self] in
+            guard let self else { return }
+            if self.observedFriendIds.isEmpty {
+                let friends = (try? await self.friendRepository.getMyFriends()) ?? []
+                self.observedFriendIds = friends.compactMap(\.id).sorted()
+            }
+            guard self.wantsScheduleObservation, !Task.isCancelled else { return }
+            self.attachScheduleObservation(self.observedFriendIds)
+        }
+    }
+
+    /// Restart the listen when the friend set changes. Ignored until observation is active.
+    public func observeFriendSet(_ ids: [String]) {
+        let sorted = ids.sorted()
+        guard sorted != observedFriendIds else { return }
+        observedFriendIds = sorted
+        guard wantsScheduleObservation else { return }
+        attachScheduleObservation(sorted)
+    }
+
+    private func setupScheduleLifecycleObservers() {
+        #if canImport(UIKit)
+        NotificationCenter.default.publisher(for: UIScene.didEnterBackgroundNotification)
+            .sink { [weak self] _ in
+                self?.stopScheduleObservation()
+            }
+            .store(in: &lifecycleCancellables)
+
+        NotificationCenter.default.publisher(for: UIScene.didActivateNotification)
+            .sink { [weak self] _ in
+                guard let self, self.wantsScheduleObservation else { return }
+                self.attachScheduleObservation(self.observedFriendIds)
+            }
+            .store(in: &lifecycleCancellables)
+        #endif
+    }
+
+    private func stopScheduleObservation() {
+        scheduleListenTask?.cancel()
+        scheduleListenTask = nil
+        scheduleDebounceTask?.cancel()
+        scheduleDebounceTask = nil
+    }
+
+    private func attachScheduleObservation(_ ids: [String]) {
+        stopScheduleObservation()
+        guard wantsScheduleObservation else { return }
+        let ids = ids
+        scheduleListenTask = Task { [weak self] in
+            guard let self else { return }
+            let friends = (try? await self.friendRepository.getMyFriends()) ?? []
+            var names: [String: String] = [:]
+            for friend in friends {
+                if let id = friend.id {
+                    names[id] = friend.displayName
+                }
+            }
+            guard !Task.isCancelled else { return }
+            for await schedules in self.availabilityRepository.observeSchedules(for: ids) {
+                guard !Task.isCancelled else { return }
+                self.enqueueScheduleApply(schedules, names: names)
+            }
+        }
+    }
+
+    private func enqueueScheduleApply(_ schedules: [UserSchedule], names: [String: String]) {
+        scheduleDebounceTask?.cancel()
+        let delay = scheduleObservationDebounceNanoseconds
+        scheduleDebounceTask = Task { [weak self] in
+            if delay > 0 {
+                try? await Task.sleep(nanoseconds: delay)
+            }
+            guard !Task.isCancelled else { return }
+            self?.applyObservedSchedules(schedules, names: names)
+        }
+    }
+
+    private func applyObservedSchedules(_ schedules: [UserSchedule], names: [String: String]) {
+        let existingNames = Dictionary(uniqueKeysWithValues: friendSchedules.map { ($0.id, $0.displayName) })
+        friendSchedules = schedules.map { schedule in
+            FriendScheduleDisplay(
+                id: schedule.id,
+                displayName: existingNames[schedule.id] ?? names[schedule.id] ?? schedule.name,
+                userSchedule: schedule
+            )
+        }
+        reapplyNudgeReplyPatches()
     }
 
     // MARK: - Data Loading

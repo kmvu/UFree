@@ -138,6 +138,11 @@ class CompositeAvailabilityRepository: AvailabilityRepository {
         return try await remote.getSchedules(for: userIds)
     }
 
+    /// Friend schedules are remote. Local SwiftData only stores the signed-in user.
+    func observeSchedules(for userIds: [String]) -> AsyncStream<[UserSchedule]> {
+        remote.observeSchedules(for: userIds)
+    }
+
     // MARK: - Pending Sync
 
     /// Retry dirty local days that never received a remote ack.

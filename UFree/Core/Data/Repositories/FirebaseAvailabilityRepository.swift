@@ -220,4 +220,95 @@ class FirebaseAvailabilityRepository: AvailabilityRepository {
             weeklyStatus: days
         )
     }
+
+    // MARK: - Live friend schedules
+
+    func observeSchedules(for userIds: [String]) -> AsyncStream<[UserSchedule]> {
+        AsyncStream { continuation in
+            let ids = userIds
+            guard !ids.isEmpty else {
+                continuation.yield([])
+                continuation.finish()
+                return
+            }
+
+            let bag = ListenerBag()
+            let state = ScheduleListenState()
+            let todayString = DateFormatter.yyyyMMdd.string(from: Date())
+
+            for userId in ids {
+                let listener = db.collection("users")
+                    .document(userId)
+                    .collection("availability")
+                    .whereField(FieldPath.documentID(), isGreaterThanOrEqualTo: todayString)
+                    .limit(to: 7)
+                    .addSnapshotListener { snapshot, _ in
+                        let days = Self.days(from: snapshot)
+                        let schedule = days.isEmpty ? nil : UserSchedule(
+                            id: userId,
+                            name: "Friend",
+                            avatarURL: nil,
+                            weeklyStatus: days
+                        )
+                        let ordered = state.store(userId, schedule: schedule, order: ids)
+                        continuation.yield(ordered)
+                    }
+                bag.add(listener)
+            }
+
+            continuation.onTermination = { _ in
+                bag.removeAll()
+            }
+        }
+    }
+
+    private static func days(from snapshot: QuerySnapshot?) -> [DayAvailability] {
+        guard let snapshot else { return [] }
+        var days: [DayAvailability] = []
+        for doc in snapshot.documents {
+            if let dto = try? doc.data(as: FirestoreDayDTO.self),
+               let date = DateFormatter.yyyyMMdd.date(from: dto.dateString) {
+                days.append(dto.toDomain(originalDate: date))
+            }
+        }
+        return days
+    }
+}
+
+/// Holds snapshot listeners so `AsyncStream` termination can detach them.
+private final class ListenerBag: @unchecked Sendable {
+    private let lock = NSLock()
+    nonisolated(unsafe) private var listeners: [ListenerRegistration] = []
+
+    nonisolated func add(_ listener: ListenerRegistration) {
+        lock.lock()
+        listeners.append(listener)
+        lock.unlock()
+    }
+
+    nonisolated func removeAll() {
+        lock.lock()
+        let current = listeners
+        listeners = []
+        lock.unlock()
+        current.forEach { $0.remove() }
+    }
+}
+
+/// Latest schedule per friend, published in the caller's friend order.
+private final class ScheduleListenState: @unchecked Sendable {
+    private let lock = NSLock()
+    nonisolated(unsafe) private var latest: [String: UserSchedule] = [:]
+
+    nonisolated func store(_ userId: String, schedule: UserSchedule?, order: [String]) -> [UserSchedule] {
+        lock.lock()
+        if let schedule {
+            latest[userId] = schedule
+        } else {
+            latest.removeValue(forKey: userId)
+        }
+        let ordered = order.compactMap { latest[$0] }
+        lock.unlock()
+        return ordered
+    }
 }

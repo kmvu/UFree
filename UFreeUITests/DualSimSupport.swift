@@ -156,26 +156,16 @@ enum DualSimFlow {
 
     @MainActor
     static func assertFriendVisibleOnWhosFree(_ app: XCUIApplication, name: String) {
-        // Save on A returns as soon as SwiftData writes; Firestore may still be
-        // in flight. Who's Free is a one-shot load, so bounce the tab until the
-        // peer appears. Do not tap a chip whose value is "0" — that is freeCount,
-        // and toggleDate would deselect today.
-        let deadline = Date().addingTimeInterval(35)
-        while Date() < deadline {
-            dismissSheetsUntilClear(app)
-            app.openWhosFreeTab()
-            focusTodayChipIfNeeded(app)
-            let named = app.staticTexts[name]
-            let fuzzy = app.staticTexts.matching(
-                NSPredicate(format: "label CONTAINS[c] %@", name)
-            ).firstMatch
-            if named.waitForExistence(timeout: 2) || fuzzy.waitForExistence(timeout: 1) {
-                return
-            }
-            app.openScheduleTab()
-            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
-        }
-        XCTFail("Who's Free should list \(name) after they mark today free")
+        // One navigation onto Who's Free, then the name must arrive from the listener.
+        // Do not bounce Schedule — that reloads and hides a broken watch.
+        dismissSheetsUntilClear(app)
+        app.openWhosFreeTab()
+        focusTodayChipIfNeeded(app)
+        LiveExpectation.expectLive(
+            app.staticTexts[name],
+            within: 15,
+            update: "\(name) on Who's Free"
+        )
     }
 
     @MainActor
@@ -251,22 +241,20 @@ enum DualSimFlow {
     @MainActor
     static func assertInReplyOnWhosFree(_ app: XCUIApplication, name: String) {
         app.dismissBlockingSheets()
-        selectTodayChip(app)
-        let caption = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] %@", "In for")
-        ).firstMatch
-        let pill = app.staticTexts["In"]
-        if caption.waitForExistence(timeout: 8) || pill.waitForExistence(timeout: 4) {
-            return
+        if !app.buttons["whosFree.day.\(UITestDates.todayDateString())"].exists {
+            app.openWhosFreeTab()
         }
+        focusTodayChipIfNeeded(app)
+        LiveExpectation.expectLive(
+            app.staticTexts["In"],
+            within: 12,
+            update: "\(name) In on Who's Free"
+        )
         openInbox(app)
-        let inboxCopy = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] %@", "is in")
-        ).firstMatch
-        XCTAssertTrue(
-            inboxCopy.waitForExistence(timeout: 10)
-                || app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", name)).firstMatch.waitForExistence(timeout: 4),
-            "BVT-36: \(name)'s I'm in should land on Who's Free or the inbox"
+        LiveExpectation.expectLive(
+            app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "is in")).firstMatch,
+            within: 10,
+            update: "\(name) I'm in in the inbox"
         )
     }
 

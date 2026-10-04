@@ -375,6 +375,9 @@ struct MainAppView: View {
             handleFriendsCountChange(from: oldCount, to: newCount)
             refreshWeekendReminders()
         }
+        .onChange(of: friendsViewModel.friends.compactMap(\.id).sorted().joined(separator: ",")) { _, _ in
+            friendsScheduleViewModel.observeFriendSet(friendsViewModel.friends.compactMap(\.id))
+        }
         .onChange(of: onboardingStore.hasInvitedFriend) { wasInvited, isInvited in
             if !wasInvited && isInvited {
                 rootViewModel.presentOnboardingStepFeedback(

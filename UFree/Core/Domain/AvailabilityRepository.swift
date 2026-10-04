@@ -16,5 +16,24 @@ public protocol AvailabilityRepository {
     
     /// Updates a specific day in the current user's schedule.
     func updateMySchedule(for day: DayAvailability) async throws
+
+    /// Live schedules for the given friends. Emits the current window, then each change.
+    /// The stream ends when the consumer cancels.
+    func observeSchedules(for userIds: [String]) -> AsyncStream<[UserSchedule]>
+}
+
+public extension AvailabilityRepository {
+    /// One-shot stand-in so test spies keep compiling. Live repositories override this.
+    func observeSchedules(for userIds: [String]) -> AsyncStream<[UserSchedule]> {
+        let ids = userIds
+        return AsyncStream { continuation in
+            let task = Task {
+                let schedules = (try? await getSchedules(for: ids)) ?? []
+                continuation.yield(schedules)
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
 }
 

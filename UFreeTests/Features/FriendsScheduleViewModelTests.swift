@@ -881,4 +881,69 @@ final class FriendsScheduleViewModelTests: XCTestCase {
 
         XCTAssertFalse(sut.hasUnknownOnlyFriends(in: [friend], days: days))
     }
+
+    func test_observeSchedules_emissionUpdatesFriendSchedules() async {
+        sut.scheduleObservationDebounceNanoseconds = 0
+        let friend = UserProfile(id: "friend1", displayName: "Alice", hashedPhoneNumber: "hash1")
+        await mockFriendRepo.addFriend(friend)
+        sut.setScheduleObservationActive(true)
+        await waitUntil("listener attached") { !mockAvailabilityRepo.observedUserIdBatches.isEmpty }
+
+        let today = Calendar.current.startOfDay(for: Date())
+        mockAvailabilityRepo.pushSchedules([
+            UserSchedule(
+                id: "friend1",
+                name: "Friend",
+                weeklyStatus: [DayAvailability(date: today, status: .free)]
+            )
+        ])
+
+        await waitUntil("live schedule") {
+            sut.friendSchedules.first?.status(for: today) == .free
+        }
+        XCTAssertEqual(sut.friendSchedules.first?.displayName, "Alice")
+        sut.setScheduleObservationActive(false)
+    }
+
+    func test_observeFriendSet_restartsListener() async {
+        sut.scheduleObservationDebounceNanoseconds = 0
+        await mockFriendRepo.addFriend(UserProfile(id: "friend1", displayName: "Alice", hashedPhoneNumber: "h1"))
+        sut.setScheduleObservationActive(true)
+        await waitUntil("first listen") { mockAvailabilityRepo.observedUserIdBatches.count >= 1 }
+
+        await mockFriendRepo.addFriend(UserProfile(id: "friend2", displayName: "Bob", hashedPhoneNumber: "h2"))
+        sut.observeFriendSet(["friend1", "friend2"])
+
+        await waitUntil("restarted listen") { mockAvailabilityRepo.observedUserIdBatches.count >= 2 }
+        XCTAssertEqual(mockAvailabilityRepo.observedUserIdBatches.last?.sorted(), ["friend1", "friend2"])
+        sut.setScheduleObservationActive(false)
+    }
+
+    func test_observeSchedules_keepsNudgeReplyPatch() async {
+        sut.scheduleObservationDebounceNanoseconds = 0
+        let friend = UserProfile(id: "friend1", displayName: "Alice", hashedPhoneNumber: "hash1")
+        await mockFriendRepo.addFriend(friend)
+        let today = Calendar.current.startOfDay(for: Date())
+        mockAvailabilityRepo.addFriendSchedule(
+            UserSchedule(id: "friend1", name: "Alice", weeklyStatus: [DayAvailability(date: today, status: .busy)])
+        )
+        await sut.loadFriendsSchedules()
+        sut.applyNudgeReply(from: "friend1", response: .imIn, targetDate: today)
+        XCTAssertEqual(sut.friendSchedules.first?.status(for: today), .free)
+
+        sut.setScheduleObservationActive(true)
+        await waitUntil("listener attached") { !mockAvailabilityRepo.observedUserIdBatches.isEmpty }
+        mockAvailabilityRepo.pushSchedules([
+            UserSchedule(
+                id: "friend1",
+                name: "Friend",
+                weeklyStatus: [DayAvailability(date: today, status: .busy)]
+            )
+        ])
+
+        await waitUntil("patch reapplied") {
+            sut.friendSchedules.first?.status(for: today) == .free
+        }
+        sut.setScheduleObservationActive(false)
+    }
 }

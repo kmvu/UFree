@@ -14,6 +14,9 @@ public class MockAvailabilityRepository: AvailabilityRepository {
     public private(set) var getSchedulesCallCount: Int = 0
     /// When true, `updateMySchedule` throws so UI can show the offline/error path.
     public var shouldFailUpdates = false
+    /// Each `observeSchedules` call, in order. Tests assert a friend-set change restarts the listen.
+    public private(set) var observedUserIdBatches: [[String]] = []
+    private var scheduleContinuation: AsyncStream<[UserSchedule]>.Continuation?
 
     public init() {
         // Pre-populate with some data for the next 7 days
@@ -32,13 +35,31 @@ public class MockAvailabilityRepository: AvailabilityRepository {
 
     public func getSchedules(for userIds: [String]) async throws -> [UserSchedule] {
         getSchedulesCallCount += 1
-        var result: [UserSchedule] = []
-        for userId in userIds {
-            if let days = friendsSchedules[userId] {
-                result.append(UserSchedule(id: userId, name: "Friend", avatarURL: nil, weeklyStatus: days))
-            }
+        return schedules(for: userIds)
+    }
+
+    private func schedules(for userIds: [String]) -> [UserSchedule] {
+        userIds.compactMap { userId in
+            guard let days = friendsSchedules[userId] else { return nil }
+            return UserSchedule(id: userId, name: "Friend", avatarURL: nil, weeklyStatus: days)
         }
-        return result
+    }
+
+    public func observeSchedules(for userIds: [String]) -> AsyncStream<[UserSchedule]> {
+        observedUserIdBatches.append(userIds)
+        let current = schedules(for: userIds)
+        return AsyncStream { continuation in
+            scheduleContinuation = continuation
+            continuation.yield(current)
+        }
+    }
+
+    /// Push a live update to the most recent `observeSchedules` consumer.
+    public func pushSchedules(_ schedules: [UserSchedule]) {
+        for schedule in schedules {
+            friendsSchedules[schedule.id] = schedule.weeklyStatus
+        }
+        scheduleContinuation?.yield(schedules)
     }
 
     public func getMySchedule() async throws -> UserSchedule {

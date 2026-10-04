@@ -172,6 +172,14 @@ public final class SwiftDataAvailabilityRepository: AvailabilityRepository {
         return [] // Local storage only has current user's schedule
     }
 
+    /// Local storage has no friend rows. Yield once so callers are not left waiting.
+    public func observeSchedules(for userIds: [String]) -> AsyncStream<[UserSchedule]> {
+        AsyncStream { continuation in
+            continuation.yield([])
+            continuation.finish()
+        }
+    }
+
     // MARK: - Private Helpers
 
     @MainActor

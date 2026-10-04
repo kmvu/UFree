@@ -49,3 +49,11 @@ jobs:
         env:
           FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120
         run: ./Scripts/run_dual_sim_bvt.sh
+
+      - name: Upload simulator result bundles
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-sim-xcresults
+          path: ~/Library/Caches/UFreeBVT/results
+          if-no-files-found: ignore

@@ -123,30 +123,10 @@ struct UFreeApp: App {
             // (disk leftovers from HappyPath were slowing the next launch).
             let isInMemory = TestConfiguration.isRunningUnitTests
                 || TestConfiguration.isRunningUITests
-            let configuration = ModelConfiguration(isStoredInMemoryOnly: isInMemory)
             do {
-                container = try ModelContainer(
-                    for: PersistentDayAvailability.self,
-                    configurations: configuration
-                )
+                container = try LocalScheduleStore.makeContainer(inMemory: isInMemory)
             } catch {
-                guard !isInMemory,
-                      let applicationSupport = FileManager.default.urls(
-                        for: .applicationSupportDirectory,
-                        in: .userDomainMask
-                      ).first
-                else {
-                    fatalError("Failed to initialize SwiftData container: \(error)")
-                }
-                resetLocalSwiftDataStore(in: applicationSupport)
-                do {
-                    container = try ModelContainer(
-                        for: PersistentDayAvailability.self,
-                        configurations: configuration
-                    )
-                } catch {
-                    fatalError("Failed to initialize SwiftData container: \(error)")
-                }
+                fatalError("Failed to initialize SwiftData container: \(error)")
             }
         } catch {
             fatalError("Failed to initialize SwiftData container: \(error)")
@@ -192,14 +172,6 @@ extension Notification.Name {
     static let didReceiveProfileDeepLink = Notification.Name("didReceiveProfileDeepLink")
     static let didReceiveLocalRoute = Notification.Name("didReceiveLocalRoute")
     static let didDeleteAccount = Notification.Name("didDeleteAccount")
-}
-
-private func resetLocalSwiftDataStore(in directory: URL) {
-    let fileManager = FileManager.default
-    let items = (try? fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
-    for url in items where url.lastPathComponent.hasPrefix("default.store") {
-        try? fileManager.removeItem(at: url)
-    }
 }
 
 // MARK: - Keyboard Dismissal Helper

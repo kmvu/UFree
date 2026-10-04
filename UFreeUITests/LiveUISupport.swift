@@ -7,6 +7,17 @@
 
 import XCTest
 
+/// Waits for an element that a listener should reveal. Does not switch tabs, swipe, or relaunch.
+enum LiveExpectation {
+    @MainActor
+    static func expectLive(_ element: XCUIElement, within timeout: TimeInterval = 10, update: String) {
+        XCTAssertTrue(
+            element.waitForExistence(timeout: timeout),
+            "Live update did not arrive: \(update)"
+        )
+    }
+}
+
 enum LiveUIFlow {
     @MainActor
     static func prepareDriver() async throws -> PeerDriver {
@@ -67,37 +78,18 @@ enum LiveUIFlow {
         return (peer, persona1Uid)
     }
 
-    /// Incoming requests sit below the discovery card; Firestore can lag on CI.
-    /// Bounce Friends and scroll until Accept / Decline / the peer name is in the tree.
+    /// Friends is already the setup screen. Do not leave it — a live request must appear on its own.
     @MainActor
     static func waitForIncomingHandshakeRow(_ app: XCUIApplication, peerName: String) {
         app.dismissBlockingSheets()
-        app.openFriendsTab()
-        let deadline = Date().addingTimeInterval(22)
-        while Date() < deadline {
-            app.dismissBlockingSheets()
-            if incomingHandshakeRowVisible(app) {
-                return
-            }
-            app.swipeUp()
-            if incomingHandshakeRowVisible(app) {
-                return
-            }
-            app.openScheduleTab()
+        if !app.buttons["friends.searchPhone"].exists && !app.textFields["friends.searchPhone"].exists {
             app.openFriendsTab()
-            RunLoop.current.run(until: Date().addingTimeInterval(0.35))
         }
-        XCTAssertTrue(
-            incomingHandshakeRowVisible(app),
-            "Incoming request from \(peerName) should appear on Friends"
+        app.swipeUp()
+        LiveExpectation.expectLive(
+            app.buttons["friends.accept"],
+            within: 15,
+            update: "incoming request from \(peerName)"
         )
-    }
-
-    @MainActor
-    private static func incomingHandshakeRowVisible(_ app: XCUIApplication) -> Bool {
-        app.buttons["friends.accept"].exists
-            || app.buttons["friends.decline"].exists
-            || app.buttons["Accept"].exists
-            || app.buttons["Decline"].exists
     }
 }

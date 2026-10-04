@@ -23,6 +23,9 @@ final class BVTDualSimAvailabilityB: XCTestCase {
         DualSimFlow.acceptIncoming(app)
         try await MailboxClient.post("accepted")
 
+        app.dismissBlockingSheets()
+        app.openWhosFreeTab()
+        DualSimFlow.focusTodayChipIfNeeded(app)
         try await MailboxClient.waitFor("markedFree", timeout: 60)
         DualSimFlow.assertFriendVisibleOnWhosFree(app, name: DualSimFlow.persona1Name)
         try await MailboxClient.post("peerSeesFree")

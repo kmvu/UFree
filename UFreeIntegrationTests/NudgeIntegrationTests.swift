@@ -146,4 +146,57 @@ final class NudgeIntegrationTests: XCTestCase {
         }
         XCTAssertFalse(inbox.isEmpty)
     }
+
+    func test_sendNudge_nonFriend_isRejected() async throws {
+        let friends = FirebaseFriendRepository()
+        let notifications = FirebaseNotificationRepository()
+        _ = try await EmulatorHarness.signInUser(email: "alice-stranger@test.ufree", displayName: "Alice")
+        try await friends.saveUserProfile(displayName: "Alice", hashedPhoneNumbers: [])
+        let bobId = try await EmulatorHarness.signInUser(email: "bob-stranger@test.ufree", displayName: "Bob")
+        try await friends.saveUserProfile(displayName: "Bob", hashedPhoneNumbers: [])
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(email: "alice-stranger@test.ufree", displayName: "Alice")
+        do {
+            try await notifications.sendNudge(to: bobId, targetDate: Date())
+            XCTFail("A nudge to someone who is not a friend must be rejected")
+        } catch {
+            XCTAssertFalse((error as NSError).localizedDescription.isEmpty)
+        }
+    }
+
+    func test_sendNudgeReply_afterSenderDeleted_isSkipped() async throws {
+        let friends = FirebaseFriendRepository()
+        let notifications = FirebaseNotificationRepository()
+        let (aliceId, bobId) = try await EmulatorHarness.connectAliceToBob(
+            aliceEmail: "alice-gone-nudge@test.ufree",
+            bobEmail: "bob-gone-nudge@test.ufree"
+        )
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(email: "alice-gone-nudge@test.ufree", displayName: "Alice")
+        try await notifications.sendNudge(to: bobId, targetDate: Date())
+        try await friends.deleteAccountData()
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(email: "bob-gone-nudge@test.ufree", displayName: "Bob")
+        let day = AppNotification.dateString(from: Date())
+        do {
+            try await notifications.sendNudgeReply(
+                to: aliceId,
+                targetDateString: day,
+                response: .imIn
+            )
+        } catch {
+            // Rules reject the write once the sender's account is gone. That is the skip.
+        }
+
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(email: "alice-gone-nudge@test.ufree", displayName: "Alice")
+        let snap = try await Firestore.firestore()
+            .collection("users").document(aliceId).collection("notifications").getDocuments()
+        let replies = snap.documents.filter {
+            ($0.data()["type"] as? String) == AppNotification.NotificationType.nudgeReply.rawValue
+        }
+        XCTAssertTrue(replies.isEmpty)
+    }
 }

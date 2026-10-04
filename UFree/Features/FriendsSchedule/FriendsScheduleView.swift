@@ -118,10 +118,14 @@ public struct FriendsScheduleView: View {
             await viewModel.loadFriendsSchedules()
         }
         .task(id: rootViewModel.activeTab) {
-            guard rootViewModel.activeTab == .feed else { return }
+            guard rootViewModel.activeTab == .feed else {
+                viewModel.setScheduleObservationActive(false)
+                return
+            }
             await viewModel.loadFriendsSchedules(
                 showLoading: viewModel.friendSchedules.isEmpty
             )
+            viewModel.setScheduleObservationActive(true)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             OnboardingBottomCue(

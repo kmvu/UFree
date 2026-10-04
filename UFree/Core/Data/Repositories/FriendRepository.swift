@@ -127,6 +127,17 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         try await db.collection("users").document(userId).updateData([
             "friendIds": FieldValue.arrayRemove([currentUserId])
         ])
+
+        // Drop the accepted handshake so either person can invite again.
+        let forward = Self.friendRequestId(fromId: currentUserId, toId: userId)
+        let reverse = Self.friendRequestId(fromId: userId, toId: currentUserId)
+        for requestId in [forward, reverse] {
+            let ref = db.collection("friendRequests").document(requestId)
+            let snap = try await ref.getDocument()
+            if snap.exists {
+                try await ref.delete()
+            }
+        }
     }
 
     func findUserById(_ userId: String) async throws -> UserProfile? {
@@ -348,7 +359,22 @@ final class FirebaseFriendRepository: FriendRepositoryProtocol {
         batch.updateData(["friendIds": FieldValue.arrayUnion([fromId])], forDocument: myRef)
         batch.updateData(["friendIds": FieldValue.arrayUnion([toId])], forDocument: theirRef)
 
-        try await batch.commit()
+        do {
+            try await batch.commit()
+        } catch {
+            // A concurrent accept can commit first. The loser must not throw
+            // once the request is already accepted.
+            if let current = try await fetchFriendRequest(id: requestId),
+               current.status == .accepted {
+                await markRecipientFriendRequestNotificationsAccepted(
+                    toId: toId,
+                    fromId: fromId,
+                    requestId: requestId
+                )
+                return
+            }
+            throw error
+        }
 
         let acceptorName = Auth.auth().currentUser?.displayName ?? "Your friend"
         _ = try await db.collection("users").document(fromId).collection("notifications")

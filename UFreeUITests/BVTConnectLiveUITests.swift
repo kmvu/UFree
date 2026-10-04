@@ -66,11 +66,10 @@ final class BVTConnectLiveUITests: XCTestCase {
             recipientIdToken: peer.idToken
         )
 
-        let connected = app.staticTexts["Connected"]
-        let row = app.descendants(matching: .any)["friends.friend.\(peer.uid)"]
-        XCTAssertTrue(
-            connected.waitForExistence(timeout: 12) || row.waitForExistence(timeout: 6),
-            "BVT-15/20: peer accept lands \(peer.displayName) in the trusted circle"
+        LiveExpectation.expectLive(
+            app.staticTexts[peer.displayName],
+            within: 12,
+            update: "\(peer.displayName) in Friends after peer accept"
         )
         XCTAssertFalse(
             app.buttons["friends.request"].exists,
@@ -103,14 +102,10 @@ final class BVTConnectLiveUITests: XCTestCase {
         accept.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         app.dismissConnectChrome()
         app.openFriendsTab()
-
-        let peerRow = app.firstExisting(
-            app.descendants(matching: .any)["friends.friend.\(peer.uid)"],
-            app.staticTexts[peer.displayName]
-        )
-        XCTAssertTrue(
-            peerRow.waitForExistence(timeout: 12),
-            "BVT-15: accepting adds \(peer.displayName) to Friends"
+        LiveExpectation.expectLive(
+            app.staticTexts[peer.displayName],
+            within: 12,
+            update: "\(peer.displayName) in Friends after accept"
         )
     }
 
@@ -216,6 +211,54 @@ final class BVTConnectLiveUITests: XCTestCase {
         XCTAssertTrue(
             app.buttons["friends.syncContacts"].waitForExistence(timeout: 10),
             "BVT-21: Sync Contacts is available"
+        )
+    }
+
+    @MainActor
+    func test_acceptFromBell_clearsAcceptAndFriendAppearsLive() async throws {
+        let (driver, app) = try await launchPersona1()
+        let peer = try await driver.seedPersona(1)
+        let persona1Uid = try await driver.waitForUid(
+            phoneNumber: PeerDriver.personaPhones[0],
+            readerIdToken: peer.idToken
+        )
+        try await driver.sendFriendRequest(
+            fromId: peer.uid,
+            fromName: peer.displayName,
+            toId: persona1Uid,
+            senderIdToken: peer.idToken
+        )
+
+        DualSimFlow.openInbox(app)
+        let accept = app.buttons["notifications.accept"]
+        LiveExpectation.expectLive(accept, within: 12, update: "Accept in the bell for \(peer.displayName)")
+        accept.tap()
+        LiveExpectation.expectLive(
+            app.staticTexts["Connected"],
+            within: 12,
+            update: "bell row leaves Accept after the handshake"
+        )
+        XCTAssertFalse(app.buttons["notifications.accept"].exists)
+    }
+
+    @MainActor
+    func test_relaunchWithoutResetAuth_keepsFriend() async throws {
+        let (driver, app) = try await LiveUIFlow.launchFreshPersona1()
+        let (peer, _) = try await LiveUIFlow.acceptSeededPeer(driver, app: app)
+        app.terminate()
+
+        let relaunch = XCUIApplication()
+        relaunch.launchEnvironment = ["UFREE_INTEGRATION_TESTS": "1"]
+        relaunch.launch()
+        XCTAssertTrue(
+            relaunch.tabBars.buttons["tab.schedule"].waitForExistence(timeout: 30),
+            "Relaunch without reset auth stays signed in"
+        )
+        relaunch.openFriendsTab()
+        LiveExpectation.expectLive(
+            relaunch.staticTexts[peer.displayName],
+            within: 15,
+            update: "\(peer.displayName) still in Friends after relaunch"
         )
     }
 
