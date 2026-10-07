@@ -56,9 +56,6 @@ final class BVTConnectLiveUITests: XCTestCase {
         let request = app.buttons["friends.request"]
         XCTAssertTrue(request.waitForExistence(timeout: 10), "BVT-13: Request")
         request.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        if request.exists {
-            request.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        }
 
         try await driver.acceptFriendRequest(
             fromId: persona1Uid,
@@ -251,10 +248,7 @@ final class BVTConnectLiveUITests: XCTestCase {
         relaunch.launchArguments = ["UI_TEST_PERSONA=1"]
         relaunch.launchEnvironment = ["UFREE_INTEGRATION_TESTS": "1"]
         relaunch.launch()
-        XCTAssertTrue(
-            relaunch.tabBars.buttons["tab.schedule"].waitForExistence(timeout: 60),
-            "Relaunch without reset auth stays signed in"
-        )
+        EmulatorUILaunch.waitForPersonaReady(relaunch, persona: 1)
         relaunch.openFriendsTab()
         LiveExpectation.expectLive(
             relaunch.staticTexts[peer.displayName],
