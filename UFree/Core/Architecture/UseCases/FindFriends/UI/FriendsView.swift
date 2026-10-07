@@ -65,7 +65,10 @@ public struct FriendsView: View {
         }
         .task {
             // Warm listeners if this tab is opened before MainAppView.onAppear finishes.
-            // Do not stopListening on disappear — MainAppView owns the shared VM lifecycle.
+            // The integration host must not attach them; they stall the emulator clear.
+            guard !TestConfiguration.isRunningIntegrationTests || TestConfiguration.isLiveUIAutomation else {
+                return
+            }
             viewModel.listenToRequests()
             viewModel.listenToFriends()
             await viewModel.loadFriends()

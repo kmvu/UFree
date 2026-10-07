@@ -75,6 +75,12 @@ final class LoginViewModel: ObservableObject {
     #if DEBUG
     // MARK: - Debug Methods
     
+    /// True when Firebase Auth already has a user. Automatic persona login uses this
+    /// so a relaunch does not sign out and create a new anonymous UID.
+    func hasCurrentUser() async -> Bool {
+        await authRepository.currentUser != nil
+    }
+
     /// Logs in as a distinct DEBUG persona (anonymous auth + fixed phone hash for discovery).
     /// SiwA is unavailable on Simulator — keep these buttons for multi-account testing.
     /// - Parameter index: 0 = User 1, 1 = User 2, 2 = User 3

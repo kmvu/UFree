@@ -24,6 +24,30 @@ final class LocalScheduleStoreTests: XCTestCase {
         XCTAssertFalse(stored[0].isPendingSync)
     }
 
+    func test_open_prePendingSyncStore_migratesWithDefault() throws {
+        let fixture = try XCTUnwrap(
+            Bundle(for: LocalScheduleStoreTests.self).url(
+                forResource: "default",
+                withExtension: "store",
+                subdirectory: "Fixtures/pre-pending-sync"
+            ) ?? Bundle(for: LocalScheduleStoreTests.self).url(
+                forResource: "default",
+                withExtension: "store"
+            )
+        )
+        let directory = try makeDirectory()
+        let storeURL = directory.appendingPathComponent("default.store")
+        try FileManager.default.copyItem(at: fixture, to: storeURL)
+
+        let container = try LocalScheduleStore.makeContainer(storeURL: storeURL)
+        let stored = try ModelContext(container).fetch(FetchDescriptor<PersistentDayAvailability>())
+        XCTAssertEqual(stored.count, 1)
+        XCTAssertEqual(stored[0].note, "pre-pending-sync")
+        XCTAssertEqual(stored[0].id, UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE"))
+        XCTAssertFalse(stored[0].isPendingSync)
+        XCTAssertEqual(stored[0].ownerUserId, "")
+    }
+
     func test_open_unreadableStore_resetsAndRecreates() throws {
         let directory = try makeDirectory()
         let storeURL = directory.appendingPathComponent("default.store")

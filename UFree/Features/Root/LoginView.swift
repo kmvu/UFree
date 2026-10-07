@@ -164,6 +164,7 @@ struct LoginView: View {
         .task {
             #if DEBUG
             if let index = TestConfiguration.uiTestPersonaIndex {
+                if await viewModel.hasCurrentUser() { return }
                 await viewModel.loginAsTestUser(index: index)
             }
             #endif

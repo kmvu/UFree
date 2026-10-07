@@ -21,6 +21,8 @@ enum LiveExpectation {
 enum LiveUIFlow {
     @MainActor
     static func prepareDriver() async throws -> PeerDriver {
+        // A previous test's live watches make the emulator document-clear hang.
+        XCUIApplication().terminate()
         try EmulatorUILaunch.requireEmulator()
         let driver = PeerDriver()
         try await driver.resetEmulatorData()

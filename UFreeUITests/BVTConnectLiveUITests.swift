@@ -248,6 +248,7 @@ final class BVTConnectLiveUITests: XCTestCase {
         app.terminate()
 
         let relaunch = XCUIApplication()
+        relaunch.launchArguments = ["UI_TEST_PERSONA=1"]
         relaunch.launchEnvironment = ["UFREE_INTEGRATION_TESTS": "1"]
         relaunch.launch()
         XCTAssertTrue(
