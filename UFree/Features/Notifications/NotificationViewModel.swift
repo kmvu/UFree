@@ -60,7 +60,7 @@ public class NotificationViewModel: ObservableObject {
         
         // Integration tests attach their own listeners. A host watch here
         // keeps the Firestore emulator clear endpoint from answering.
-        if !TestConfiguration.isRunningIntegrationTests {
+        if !TestConfiguration.isRunningIntegrationTests || TestConfiguration.isLiveUIAutomation {
             startListening()
         }
     }

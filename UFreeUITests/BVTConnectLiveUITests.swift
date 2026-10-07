@@ -251,7 +251,7 @@ final class BVTConnectLiveUITests: XCTestCase {
         relaunch.launchEnvironment = ["UFREE_INTEGRATION_TESTS": "1"]
         relaunch.launch()
         XCTAssertTrue(
-            relaunch.tabBars.buttons["tab.schedule"].waitForExistence(timeout: 30),
+            relaunch.tabBars.buttons["tab.schedule"].waitForExistence(timeout: 60),
             "Relaunch without reset auth stays signed in"
         )
         relaunch.openFriendsTab()

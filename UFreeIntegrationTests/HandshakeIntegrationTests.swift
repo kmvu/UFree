@@ -433,6 +433,8 @@ final class HandshakeIntegrationTests: XCTestCase {
         XCTAssertEqual(bobAccepted.count, 1)
         XCTAssertEqual(bobAccepted.first?.data()["isRead"] as? Bool, true)
 
+        try EmulatorHarness.signOut()
+        _ = try await EmulatorHarness.signInUser(email: "alice-inbox@test.ufree", displayName: "Alice")
         let aliceNotes = try await Firestore.firestore()
             .collection("users").document(aliceId).collection("notifications").getDocuments()
         let aliceAccepted = aliceNotes.documents.filter {

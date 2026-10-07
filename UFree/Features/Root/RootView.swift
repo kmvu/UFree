@@ -329,9 +329,9 @@ struct MainAppView: View {
                 }
             }
             wireHandshakeCallback()
-            // Integration tests own their listeners. Host watches block the
-            // emulator's document-clear endpoint (NSURLError -1001).
-            if !TestConfiguration.isRunningIntegrationTests {
+            // The integration host must not keep watches open — they stall the
+            // emulator clear. Layer B/C sets the same flag and still needs them.
+            if !TestConfiguration.isRunningIntegrationTests || TestConfiguration.isLiveUIAutomation {
                 friendsViewModel.listenToRequests()
                 friendsViewModel.listenToFriends()
                 // RootView builds the VM while signed out (`UI_TEST_RESET_AUTH` / Login).

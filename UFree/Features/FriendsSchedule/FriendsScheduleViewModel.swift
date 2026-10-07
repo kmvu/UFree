@@ -256,7 +256,11 @@ public final class FriendsScheduleViewModel: ObservableObject {
     /// Start while Who's Free is on screen. No-op during integration tests so the
     /// host app does not hold Firestore watches that stall the emulator clear.
     public func setScheduleObservationActive(_ active: Bool) {
-        guard !TestConfiguration.isRunningIntegrationTests else { return }
+        // The integration test host must not keep watches open (they stall the
+        // emulator clear). Layer B/C sets the same flag and still needs this listen.
+        guard !TestConfiguration.isRunningIntegrationTests || TestConfiguration.isLiveUIAutomation else {
+            return
+        }
         wantsScheduleObservation = active
         if !active {
             stopScheduleObservation()
