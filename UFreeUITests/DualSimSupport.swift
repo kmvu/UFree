@@ -88,8 +88,9 @@ enum DualSimFlow {
     static func dismissSheetsUntilClear(_ app: XCUIApplication, attempts: Int = 5) {
         for _ in 0..<attempts {
             app.dismissBlockingSheets()
-            let blocked = app.descendants(matching: .any)["weekend.cta"].exists
-                || app.descendants(matching: .any)["hangout.checklist.sheet"].exists
+            let blocked = app.buttons["weekend.cta.dismiss"].exists
+                || app.buttons["hangout.checklist.notNow"].exists
+                || app.buttons["Not now"].exists
             if !blocked { return }
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }

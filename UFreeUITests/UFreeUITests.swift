@@ -114,16 +114,15 @@ extension XCUIApplication {
     }
 
     func dismissBlockingSheets() {
+        // Do not query `descendants(matching: .any)`. On a busy Dual-Sim run
+        // that snapshot never returns and the test dies with
+        // "Timed out while evaluating UI query."
         let candidates = [
             buttons["weekend.cta.dismiss"],
             buttons["hangout.checklist.notNow"],
             buttons["Not now"]
         ]
-        if descendants(matching: .any)["weekend.cta"].exists
-            || descendants(matching: .any)["hangout.checklist.sheet"].exists
-            || candidates.contains(where: \.exists) {
-            candidates.first(where: \.exists)?.tap()
-        }
+        candidates.first(where: \.exists)?.tap()
     }
 
     func dismissConnectChrome() {
