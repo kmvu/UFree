@@ -62,7 +62,11 @@ enum DualSimFlow {
 
     @MainActor
     static func launchPersona(_ persona: Int) -> XCUIApplication {
-        let app = EmulatorUILaunch.makeApp(persona: persona)
+        var extra: [String] = []
+        if persona == 1 {
+            extra.append("UI_TEST_SEARCH_PHONE=\(persona2Phone)")
+        }
+        let app = EmulatorUILaunch.makeApp(persona: persona, extraArguments: extra)
         app.launch()
         EmulatorUILaunch.waitForPersonaReady(app, persona: persona)
         dismissSheetsUntilClear(app)
@@ -100,11 +104,20 @@ enum DualSimFlow {
     static func invitePersona2(_ app: XCUIApplication) {
         app.dismissBlockingSheets()
         app.openFriendsTab()
-        app.searchFriendsPhone(persona2Phone)
+        let seeded = app.buttons["friends.searchSeededPhone"]
+        if seeded.waitForExistence(timeout: 6) {
+            seeded.tap()
+        } else {
+            app.searchFriendsPhone(persona2Phone)
+        }
         let named = app.staticTexts[persona2Name]
         let request = app.buttons["friends.request"]
         if !request.waitForExistence(timeout: 8) && !named.waitForExistence(timeout: 4) {
-            app.searchFriendsPhone(persona2Phone)
+            if seeded.exists {
+                seeded.tap()
+            } else {
+                app.searchFriendsPhone(persona2Phone)
+            }
         }
         XCTAssertTrue(
             request.waitForExistence(timeout: 12) || named.waitForExistence(timeout: 4),

@@ -64,6 +64,11 @@ struct TestConfiguration {
         uiTestPersonaIndex != nil || uiTestResetAuth
     }
 
+    /// Dual-Sim persona 1 fills Find by Phone without the keyboard.
+    static var uiTestSearchPhone: String? {
+        argumentValue(prefix: "UI_TEST_SEARCH_PHONE=")
+    }
+
     /// Returns true if any test environment
     static var isTesting: Bool {
         isRunningUnitTests || isRunningUITests || isRunningIntegrationTests

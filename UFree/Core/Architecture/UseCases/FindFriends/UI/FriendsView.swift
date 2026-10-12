@@ -279,6 +279,14 @@ public struct FriendsView: View {
                         .onSubmit { Task { await viewModel.performPhoneSearch() } }
                         .disabled(viewModel.isSearching)
                         .accessibilityIdentifier("friends.searchPhone")
+
+                    if let seededPhone = TestConfiguration.uiTestSearchPhone {
+                        Button("Search") {
+                            viewModel.searchText = seededPhone
+                            Task { await viewModel.performPhoneSearch() }
+                        }
+                        .accessibilityIdentifier("friends.searchSeededPhone")
+                    }
                     
                     if !viewModel.searchText.isEmpty {
                         Button(action: {

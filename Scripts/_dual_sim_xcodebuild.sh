@@ -102,6 +102,9 @@ run_pair() {
 
   run_xcode "$DEST_A" "$class_a" &
   local pid_a=$!
+  # Two xcodebuild launches at once make the second "Timed out while launching
+  # application via Xcode." A waits up to 120s for readyB, so B can start later.
+  sleep 25
   run_xcode "$DEST_B" "$class_b" &
   local pid_b=$!
 
