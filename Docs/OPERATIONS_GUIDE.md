@@ -20,7 +20,7 @@ Internal Firebase App Distribution (`fastlane alpha`) was removed. TestFlight is
 Deploy cannot skip quality. The flow is:
 
 1. Land the commit on `main` (a push, not only a PR merge SHA that never ran integration).
-2. Wait for **Quality Check** on that exact SHA from a **`push` event** to finish green: **Firestore Rules**, **Unit Tests**, **UI Tests**, **SwiftLint**, and **Emulator Integration**. **UI Emulator** (Layer B) and **Dual-Sim BVT** (Layer C) join this name-check after each job is green for a week — see the [testing guide BVT map](TESTING_GUIDE.md#ui-tests-bvt-automation). PR-only green cannot unlock TestFlight.
+2. Wait for **Quality Check** on that exact SHA from a **`push` event** to finish green: **Firestore Rules**, **Unit Tests**, **UI Tests**, **SwiftLint**, and **Emulator Integration**. **UI Emulator** (Layer B) joins this name-check after it is green for a week — see the [testing guide BVT map](TESTING_GUIDE.md#ui-tests-bvt-automation). PR-only green cannot unlock TestFlight.
 3. Trigger **Deploy to TestFlight** (workflow_dispatch, `main` only). The workflow refuses to ship if there is no successful main-push CI that name-checks all five jobs, required secrets are absent, or the ref is not `main`.
 4. `fastlane beta` runs the unit suite again, then signs, builds, and uploads to TestFlight.
 
@@ -50,7 +50,7 @@ bundle exec fastlane sync_certs   # refresh or create signing material when need
 ## TestFlight release checklist
 
 1. Confirm the [release gate](#release-gate-testflight) is satisfied for the intended commit.
-2. Run Layer A + B, and Layer C when the live handshake, Who’s Free, nudge, or deletion path changed. Then complete the leftover [manual smoke](TESTING_GUIDE.md#3-manual-release-smoke-test) (Sign in with Apple, camera QR, Apple re-auth, consoles).
+2. Run Layer A + B. Then complete the leftover [manual smoke](TESTING_GUIDE.md#3-manual-release-smoke-test) (Sign in with Apple, camera QR, Apple re-auth, consoles).
 3. Verify the marketing version in Xcode if it needs to change; Fastlane only increments the build number.
 4. Trigger **Deploy to TestFlight** in GitHub Actions, or run `bundle exec fastlane beta` with the required local credentials.
 5. Wait for Apple to process the build, then complete any TestFlight approval and tester-group actions in App Store Connect.
@@ -63,8 +63,8 @@ Do not promise that a TestFlight upload immediately reaches external testers: Ap
 ### Before recruiting people
 
 1. Complete the [founder launch checklist](#founder-launch-checklist-spark) above: rules and indexes deployed, Sign in with Apple enabled, App Check debug tokens registered before enforcement, push confirmed off.
-2. Run `./Scripts/run_dual_sim_bvt.sh` (sessions 1–3 cover connect → free → Both → nudge → I’m in). Optionally walk the same loop on two debug simulators with User 1 / 2 / 3 (anonymous Auth; SiwA is the device/TestFlight path). Keep both apps foregrounded — background push is Phase 7.
-3. Confirm Settings → Delete Account completes on a SiwA account (re-auth sheet → cloud wipe including peers’ friendIds → signed out). Layer C session 4 covers the DEBUG-persona wipe, not the Apple sheet.
+2. Walk the loop on two debug simulators with User 1 / 2 / 3 (anonymous Auth; SiwA is the device/TestFlight path), or rely on Layer B. Keep both apps foregrounded — background push is Phase 7. `./Scripts/run_dual_sim_bvt.sh` is an optional local two-simulator run, not CI.
+3. Confirm Settings → Delete Account completes on a SiwA account (re-auth sheet → cloud wipe including peers’ friendIds → signed out). Layer B covers the DEBUG-persona wipe, not the Apple sheet.
 4. Build and distribute through TestFlight only after the uncoached flow works.
 
 ### Recruiting and measuring

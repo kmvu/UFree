@@ -64,21 +64,21 @@ Three layers cover the TestFlight BVT IDs. The matrix below is the canonical hom
 |---|---|---|
 | A · Hermetic | `bundle exec fastlane ui_tests` | `UI_TESTING_MODE` + `UI_TESTING_SCENARIO=` (`default`, `login`, `empty`, `firstConnect`, `partialDay`, `batchNudge`, `busyUnknown`, `unreadInbox`, `offline`). Mock repos, in-memory SwiftData. PR gate. |
 | B · Emulator UI | `./Scripts/run_ui_emulator_tests.sh` | No `UI_TESTING_MODE`. `UFREE_INTEGRATION_TESTS=1` + `UI_TEST_PERSONA=1`. Real Firebase repos + production rules. Second user via REST `PeerDriver`. CI: every main push; PRs when rules / data / social UI paths change. Not a TestFlight name-check until green for a week. |
-| C · Two UIs | `./Scripts/run_dual_sim_bvt.sh` | Two simulators + localhost mailbox (`Scripts/bvt_mailbox.py`). Sessions 1–4: connect, availability, nudge, deletion. **Dispatch only** (`dual-sim-bvt.yml`). A failed run uploads `~/Library/Caches/UFreeBVT/results` as `dual-sim-xcresults`. Uncomment nightly and add to `deploy.yml` after a week of green **GitHub** dispatch runs. |
+| C · Two UIs | `./Scripts/run_dual_sim_bvt.sh` | Optional local walk only. Two simulators + localhost mailbox. Not a GitHub job: two-simulator XCTest on the hosted runner does not stay up (`testmanagerd` snapshot timeouts). Layer B plus emulator integration cover the same two-account outcomes. |
 
 **Plan (as of 4 Oct 2026)**
 
-Who's Free updates from a listener while the tab is open. Live UI checks use `LiveExpectation.expectLive` and must not switch tabs to wait for a peer's write. Handshake edges (409 / 410 / 411, duplicate pending, concurrent accept, remove-then-reinvite, accept after delete, missing request get) and nudge edges (non-friend, reply after delete) live in the emulator integration suite. Layer C is still dispatch-only until GitHub runs are green for a week. Failed Dual-Sim runs upload xcresult bundles.
+Who's Free updates from a listener while the tab is open. Live UI checks use `LiveExpectation.expectLive` and must not switch tabs to wait for a peer's write. Handshake edges (409 / 410 / 411, duplicate pending, concurrent accept, remove-then-reinvite, accept after delete, missing request get) and nudge edges (non-friend, reply after delete) live in the emulator integration suite. Two-account UI coverage is Layer B. Dual-Sim is not run on GitHub.
 
 | Done | Next | Stays manual |
 |---|---|---|
-| Layer A PR gate | **workflow_dispatch** Dual-Sim until it is green for a week | Sign in with Apple (03) |
-| Layer B live connect / Who’s Free / nudge / deletion / discovery / leak / decline / Sync Contacts, including live updates without tab bouncing | Uncomment Dual-Sim nightly after that week | Real camera QR (17); injected scan is Layer B |
-| Layer C sessions 1–4 locally | Add **UI Emulator** to `deploy.yml` after a week of green `ui-emulator` on main | Apple re-auth sheet (46) |
-| Integration handshake and nudge edge cases | Then add **Dual-Sim** to `deploy.yml` | Crashlytics / Analytics / App Check consoles (50–52) |
-| | Optional, not blocking: two-UI decline / remove / QR, live batch-nudge | Background push (Phase 7) |
+| Layer A PR gate | Add **UI Emulator** to `deploy.yml` after a week of green `ui-emulator` on main | Sign in with Apple (03) |
+| Layer B live connect / Who’s Free / nudge / deletion / discovery / leak / decline / Sync Contacts, including live updates without tab bouncing | | Real camera QR (17); injected scan is Layer B |
+| Integration handshake and nudge edge cases | | Apple re-auth sheet (46) |
+| | | Crashlytics / Analytics / App Check consoles (50–52) |
+| | | Background push (Phase 7) |
 
-Do not add Dual-Sim to the TestFlight name-check on the strength of a local run alone.
+Do not add a two-simulator GitHub job. Layer B is the live two-account check.
 
 Day cards use `schedule.day.yyyy-MM-dd` (UTC) and open the production day sheet (`schedule.sheet.freeAllDay` / `busy` / `afternoon` + `schedule.sheet.save`). Tabs: `tab.schedule` / `tab.whosFree` / `tab.friends`. Bell: `notifications.bell`. Layer B/C (`UI_TEST_PERSONA` / `UI_TEST_RESET_AUTH`) keep real Firebase repos; leftover weekend / pair sheets from the simulator install are suppressed so they cannot cover Friends.
 
@@ -244,7 +244,7 @@ Unit tests under `UFreeTests/` mirror the source layout (`Auth/`, `Domain/`, `Da
 
 ## 5. Two-person pilot smoke
 
-Prefer `./Scripts/run_dual_sim_bvt.sh` (sessions 1–3 walk connect → free → Both → nudge → I’m in). Use two TestFlight users or two debug simulators when you need a human walk, a real camera, or Sign in with Apple:
+Prefer Layer B (`./Scripts/run_ui_emulator_tests.sh`) for connect → free → Both → nudge → I’m in. Use two TestFlight users or two debug simulators when you need a human walk, a real camera, or Sign in with Apple:
 
 1. A shares a link or QR code; B sends or accepts the connection request.
 2. Both mark a weekend day free (e.g. Saturday).
@@ -262,7 +262,6 @@ For the actual recruiting, success threshold, and foreground-only limitation, us
 - [ ] Unit tests pass (`bundle exec fastlane tests`).
 - [ ] Layer A hermetic BVT passes (`bundle exec fastlane ui_tests`).
 - [ ] Layer B emulator UI passes (`./Scripts/run_ui_emulator_tests.sh`) when rules, data, or social UI changed.
-- [ ] Layer C two-simulator BVT passes (`./Scripts/run_dual_sim_bvt.sh`) when the live handshake, Who’s Free, nudge, or deletion path changed.
 - [ ] Remaining manual: Sign in with Apple (BVT-03), camera QR (BVT-17), Apple re-auth sheet on delete (BVT-46), Crashlytics / Analytics / App Check consoles (BVT-50–52).
 - [ ] Human two-person smoke (section 5) when recruiting, or when the SiwA / camera / Safari path changed.
 - [ ] Three-platform loop (iPhone + iPad + Mac Designed for iPad) when cross-device social behavior changed.

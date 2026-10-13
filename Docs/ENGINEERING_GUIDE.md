@@ -51,7 +51,7 @@ npm --prefix firebase-tests test    # Firestore rules (needs Java 21+)
 bundle exec fastlane tests          # unit suite (iPhone 17 Pro + coverage)
 bundle exec fastlane ui_tests       # Layer A hermetic BVT (UI_TESTING_MODE)
 ./Scripts/run_ui_emulator_tests.sh  # Layer B emulator UI (Auth+Firestore)
-./Scripts/run_dual_sim_bvt.sh       # Layer C two-simulator mailbox (dispatch)
+./Scripts/run_dual_sim_bvt.sh       # optional local two-simulator walk; not CI
 ./Scripts/run_integration_tests.sh  # Auth+Firestore emulator repository suite
 ```
 
@@ -65,7 +65,7 @@ Run the `run_*` wrappers from the repo root. Names starting with `_` are sourced
 |---|---|
 | `run_integration_tests.sh` | Java 21 + Auth/Firestore emulators, then Fastlane `integration_tests` (real Firebase repositories). |
 | `run_ui_emulator_tests.sh` | Layer B: same emulators, then Fastlane `ui_emulator_tests` (one simulator, `PeerDriver` as the second user). |
-| `run_dual_sim_bvt.sh` | Layer C: mailbox on port 4739, two simulators, emulators, then `_dual_sim_xcodebuild.sh`. Env: `DUAL_SIM_A` / `DUAL_SIM_B` (names or UDIDs), `DUAL_SIM_ONLY=connect` (or `availability` / `nudge` / `deletion`), `BVT_MAILBOX_PORT`. Artifacts: `~/Library/Caches/UFreeBVT`. |
+| `run_dual_sim_bvt.sh` | Optional local Layer C: mailbox on port 4739, two simulators, emulators, then `_dual_sim_xcodebuild.sh`. Not a GitHub job. Env: `DUAL_SIM_A` / `DUAL_SIM_B` (names or UDIDs), `DUAL_SIM_ONLY=connect` (or `availability` / `nudge` / `deletion`), `BVT_MAILBOX_PORT`. Artifacts: `~/Library/Caches/UFreeBVT`. |
 | `_ensure_java.sh` | Shared by the three wrappers. Treats macOS `/usr/bin/java` as missing; prefers repo `.jdk/`. |
 | `_dual_sim_xcodebuild.sh` | Build-for-testing once, then parallel `test-without-building` with separate xcresults and `-collect-test-diagnostics never`. Clears Auth + Firestore between pairs so DEBUG phone hashes are not still owned by the previous session. |
 | `bvt_mailbox.py` | Tiny HTTP board so the two UI tests can wait on keys (`readyB`, `requested`, …). Layer C resets it per pair. |
@@ -80,8 +80,7 @@ This table is the canonical description of what runs when; other guides link her
 | Workflow | Jobs | When |
 |---|---|---|
 | `ci.yml` (Quality Check) | `firestore-rules` (ubuntu) · `unit-tests` (macos-26, Xcode 26.6) · `ui-tests` (macos-26, Layer A `UI_TESTING_MODE`) · `lint` (SwiftLint baseline) · `emulator-integration` (Auth+Firestore emulators; **main pushes** always, **PRs** when rules/data/integration paths change) · `ui-emulator` (Layer B; **main pushes** always, **PRs** when rules/data/UI-test/social-UI paths change) | Push / PR to `main` |
-| `deploy.yml` (TestFlight) | Requires green **push** `ci.yml` on the same SHA with named jobs Firestore Rules, Unit Tests, UI Tests, SwiftLint, Emulator Integration; `main` only; runs `fastlane beta` (tests always on). **UI Emulator** joins this list after the job is green for a week. Dual-Sim BVT stays off this name-check until `dual-sim-bvt.yml` is green for a week. | Manual dispatch |
-| `dual-sim-bvt.yml` | Layer C sessions 1–4 (Connect, Availability, Nudge, Deletion) on two simulators + Auth/Firestore emulators + `Scripts/bvt_mailbox.py`. Failed runs upload `dual-sim-xcresults`. | `workflow_dispatch` only; uncomment the nightly cron after a week of green **GitHub** dispatch runs |
+| `deploy.yml` (TestFlight) | Requires green **push** `ci.yml` on the same SHA with named jobs Firestore Rules, Unit Tests, UI Tests, SwiftLint, Emulator Integration; `main` only; runs `fastlane beta` (tests always on). **UI Emulator** joins this list after the job is green for a week. | Manual dispatch |
 | `firebase-deploy.yml` | Rules tests → `firebase deploy --only firestore:rules,firestore:indexes,hosting` | Push to `main` when rules/indexes/`public/` change |
 
 There is no `alpha` / Firebase App Distribution lane. TestFlight is the only distribution path.
@@ -161,6 +160,6 @@ How the app guides a new pair from “connected” to a first real plan:
 ## Before opening a pull request
 
 1. Run the smallest relevant tests, then the full suite for behavior changes.
-2. For social, rules, or data-layer changes: Layer B (`./Scripts/run_ui_emulator_tests.sh`). For handshake / Who’s Free / nudge / deletion two-UI behavior: Layer C (`./Scripts/run_dual_sim_bvt.sh`). Remaining manual: Sign in with Apple, camera QR, Apple re-auth, consoles — see [TESTING_GUIDE.md](TESTING_GUIDE.md).
+2. For social, rules, or data-layer changes: Layer B (`./Scripts/run_ui_emulator_tests.sh`) and the emulator integration suite. Remaining manual: Sign in with Apple, camera QR, Apple re-auth, consoles — see [TESTING_GUIDE.md](TESTING_GUIDE.md).
 3. Do not include secrets, generated build artifacts, or local Firebase configuration.
 4. Update the relevant current guide only when the product behavior, setup, or operating process changes.
