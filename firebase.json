@@ -34,6 +34,16 @@
         ]
       }
     ],
-    "appAssociation": "NONE"
+    "appAssociation": "NONE",
+    "rewrites": [
+      {
+        "source": "/profile/**",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/notification/**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }

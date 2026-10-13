@@ -126,7 +126,7 @@ public struct FriendsView: View {
 
     @ViewBuilder
     private func shareInviteLinkButton(userId: String) -> some View {
-        if let inviteURL = URL(string: "https://ufree.app/profile/\(userId)") {
+        if let inviteURL = AppLinks.profileInvite(userId: userId) {
             shareInviteLinkContent(inviteURL: inviteURL)
         }
     }

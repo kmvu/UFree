@@ -144,8 +144,14 @@ final class ProfileResolutionViewTests: XCTestCase {
 @MainActor
 final class DeepLinkTests: XCTestCase {
 
+    func test_profileInvite_usesHostingHost() {
+        let url = AppLinks.profileInvite(userId: "user123")
+        XCTAssertEqual(url?.host, AppLinks.host)
+        XCTAssertEqual(url?.absoluteString, "https://ufree-313a2.web.app/profile/user123")
+    }
+
     func test_parse_notificationLink() {
-        let link = DeepLink.parse(URL(string: "https://ufree.app/notification/user123")!)
+        let link = DeepLink.parse(URL(string: "https://\(AppLinks.host)/notification/user123")!)
 
         guard case .notification(let senderId) = link else {
             return XCTFail("Expected a notification deep link, got \(link)")
@@ -154,7 +160,7 @@ final class DeepLinkTests: XCTestCase {
     }
 
     func test_parse_profileLink() {
-        let link = DeepLink.parse(URL(string: "https://ufree.app/profile/user123")!)
+        let link = DeepLink.parse(URL(string: "https://\(AppLinks.host)/profile/user123")!)
 
         guard case .profile(let userId) = link else {
             return XCTFail("Expected a profile deep link, got \(link)")
@@ -163,7 +169,7 @@ final class DeepLinkTests: XCTestCase {
     }
 
     func test_parse_unknownPathType() {
-        let link = DeepLink.parse(URL(string: "https://ufree.app/settings/theme")!)
+        let link = DeepLink.parse(URL(string: "https://\(AppLinks.host)/settings/theme")!)
 
         guard case .unknown = link else {
             return XCTFail("Expected an unknown deep link, got \(link)")
@@ -171,7 +177,7 @@ final class DeepLinkTests: XCTestCase {
     }
 
     func test_parse_tooFewPathComponents() {
-        let link = DeepLink.parse(URL(string: "https://ufree.app/profile")!)
+        let link = DeepLink.parse(URL(string: "https://\(AppLinks.host)/profile")!)
 
         guard case .unknown = link else {
             return XCTFail("Expected an unknown deep link, got \(link)")
@@ -179,7 +185,7 @@ final class DeepLinkTests: XCTestCase {
     }
 
     func test_parse_rootUrl() {
-        let link = DeepLink.parse(URL(string: "https://ufree.app/")!)
+        let link = DeepLink.parse(URL(string: "https://\(AppLinks.host)/")!)
 
         guard case .unknown = link else {
             return XCTFail("Expected an unknown deep link, got \(link)")

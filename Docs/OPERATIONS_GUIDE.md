@@ -11,7 +11,7 @@ Use this guide to release a build, operate the TestFlight pilot, and understand 
 | Automated quality check | GitHub Actions **Quality Check** (`ci.yml`); jobs and triggers in the [engineering guide CI/CD map](ENGINEERING_GUIDE.md#cicd-map) | Engineering |
 | TestFlight upload | Manual **Deploy to TestFlight** (`deploy.yml`); see [Release gate](#release-gate-testflight) | Release owner |
 | Firestore rules, indexes, hosting | Auto on `main` when those paths change (`firebase-deploy.yml`); or local `firebase deploy --only …` | Engineering |
-| App Check enforcement | Firebase Console → App Check → Firestore (enforce after debug tokens are registered for simulators) | Engineering |
+| App Check enforcement | Firebase Console → App Check → Firestore. Enforce only after a TestFlight device shows verified App Attest requests. | Engineering |
 
 Internal Firebase App Distribution (`fastlane alpha`) was removed. TestFlight is the only internal distribution path.
 
@@ -32,8 +32,9 @@ Complete before recruiting TestFlight pairs:
 
 1. **Rules / indexes live** — merge to `main` so `firebase-deploy.yml` runs, or `npm --prefix firebase-tests test` then `firebase deploy --only firestore:rules,firestore:indexes`.
 2. **Sign in with Apple** — enable the capability in Apple Developer for the App ID; enable the Apple provider in Firebase Console → Authentication.
-3. **App Check** — register each Simulator/DEBUG token (Xcode console) under Firebase Console → App Check → Manage debug tokens, then **Enforce** App Check for **Firestore**. Device/TestFlight builds use App Attest.
-4. **Push stays off** — no APNs / FCM until Phase 7 (Blaze). In-app inbox works only while the app is foregrounded.
+3. **App Attest** — in [Apple Developer → Identifiers](https://developer.apple.com/account/resources/identifiers/list), open `com.khangvu.UFree` and enable **App Attest**. The App Store Connect API cannot turn this on (`APP_ATTEST` is not an accepted capability type). Then regenerate the App Store profile with `bundle exec fastlane match appstore --force`. The `beta` lane uses a read-only profile, so it will not pick up the capability until this runs. Release builds set `com.apple.developer.devicecheck.appattest-environment` to `production`. Do not upload a TestFlight build until that profile includes the entitlement, or codesign fails.
+4. **App Check** — register each Simulator/DEBUG token (Xcode console) under Firebase Console → App Check → Manage debug tokens. On a TestFlight device, confirm Firestore metrics show **verified** requests, then **Enforce** App Check for **Firestore**. If a phone stops loading, switch enforcement back off. Unenforced is safe for a small family pilot.
+5. **Push stays off** — no APNs / FCM until Phase 7 (Blaze). In-app inbox works only while the app is foregrounded. Tell every tester that a nudge appears only after they open UFree.
 
 Validation of the flow itself happens in [Before recruiting people](#before-recruiting-people) below.
 
@@ -62,10 +63,20 @@ Do not promise that a TestFlight upload immediately reaches external testers: Ap
 
 ### Before recruiting people
 
-1. Complete the [founder launch checklist](#founder-launch-checklist-spark) above: rules and indexes deployed, Sign in with Apple enabled, App Check debug tokens registered before enforcement, push confirmed off.
+1. Complete the [founder launch checklist](#founder-launch-checklist-spark) above: rules and indexes deployed, Sign in with Apple enabled, App Attest capability on the App ID, App Check verified on a device before enforcement, push confirmed off.
 2. Walk the loop on two debug simulators with User 1 / 2 / 3 (anonymous Auth; SiwA is the device/TestFlight path), or rely on Layer B. Keep both apps foregrounded — background push is Phase 7. `./Scripts/run_dual_sim_bvt.sh` is an optional local two-simulator run, not CI.
 3. Confirm Settings → Delete Account completes on a SiwA account (re-auth sheet → cloud wipe including peers’ friendIds → signed out). Layer B covers the DEBUG-persona wipe, not the Apple sheet.
 4. Build and distribute through TestFlight only after the uncoached flow works.
+
+### Family pilot
+
+Family joins through an **external** TestFlight group named Family, not as App Store Connect users.
+
+1. After **Deploy to TestFlight**, create the Family group, fill in Test Information, add the build, and submit it for Beta App Review. The first external build takes about a day.
+2. When Apple approves it, turn on the **public link**. Put that URL in `public/index.html` (the `TESTFLIGHT_PUBLIC_URL` note) and push so Firebase Hosting updates the invite fallback page.
+3. Do a founder smoke on one iPhone first (Sign in with Apple, Crashlytics, Analytics, App Check verified, invite link opens the app). Then walk [section 5](TESTING_GUIDE.md#5-two-person-pilot-smoke) with one family member, both apps in the foreground, including camera QR and Delete Account.
+4. Enforce App Check only after that pair still works and metrics show verified requests.
+5. Send the public link with one message: “Install TestFlight, open this link, sign in with Apple, invite each other, mark the weekend free, and nudge a day. There are no push notifications yet, so open UFree to see nudges.” Do not coach after that.
 
 ### Recruiting and measuring
 

@@ -47,7 +47,7 @@ final class BVTDiscoveryLiveUITests: XCTestCase {
     func test_profileLink_showsPeerAndSendsRequest() async throws {
         let driver = try await LiveUIFlow.prepareDriver()
         let peer = try await driver.seedPersona(1)
-        let profileURL = "https://ufree.app/profile/\(peer.uid)"
+        let profileURL = "https://ufree-313a2.web.app/profile/\(peer.uid)"
         let app = LiveUIFlow.launchPersona1(
             extraArguments: ["UI_TEST_OPEN_URL=\(profileURL)"]
         )

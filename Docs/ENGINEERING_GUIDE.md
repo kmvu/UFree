@@ -140,7 +140,7 @@ How the app guides a new pair from “connected” to a first real plan:
   ```
 
   CI runs the same suite on every pull request via the **Firestore Rules** job. Merges that touch rules/indexes/hosting also run `firebase-deploy.yml` after those tests pass.
-- Firebase Hosting serves the Apple App Site Association file for `ufree.app`.
+- Firebase Hosting serves the Apple App Site Association file for `ufree-313a2.web.app`. Invite links use that host (`AppLinks.host`). `ufree.app` is a separate site and does not open the app.
 - Deep links support notification and profile paths; keep app entitlements, hosting configuration, and parser behavior aligned when changing them.
 - Release builds enable Analytics and Crashlytics; debug builds disable analytics to avoid development noise. The event catalog lives in [ANALYTICS_EVENTS.md](ANALYTICS_EVENTS.md).
 - **Push:** Firebase Messaging / APNs are not linked. Treat background push as unavailable until Phase 7 (Blaze). Foreground in-app inbox via Firestore listeners only.

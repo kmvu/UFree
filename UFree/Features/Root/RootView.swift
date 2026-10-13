@@ -553,7 +553,7 @@ struct MainAppView: View {
     // MARK: - Universal Links Handler
     
     /// Handles incoming Universal Links (App Site Association)
-    /// Example: https://ufree.app/notification/user123
+    /// Example: https://ufree-313a2.web.app/notification/user123
     private func handleUniversalLink(_ url: URL) {
         let deepLink = DeepLink.parse(url)
         AnalyticsManager.logLinkOpened(route: deepLink.analyticsRoute)
@@ -575,6 +575,22 @@ struct MainAppView: View {
     }
 }
 
+// MARK: - Universal Link host
+
+/// Host for invite links and Universal Links.
+/// Keep `applinks:` in `UFree.entitlements` and the Firebase Hosting AASA on this host.
+enum AppLinks {
+    static let host = "ufree-313a2.web.app"
+
+    static func profileInvite(userId: String) -> URL? {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = host
+        components.path = "/profile/\(userId)"
+        return components.url
+    }
+}
+
 // MARK: - Deep Link Parser
 
 enum DeepLink {
@@ -592,7 +608,7 @@ enum DeepLink {
     }
     
     /// Parses Universal Link URLs into navigation actions
-    /// - Parameter url: Universal Link URL (e.g., https://ufree.app/notification/user123)
+    /// - Parameter url: Universal Link URL (e.g., https://ufree-313a2.web.app/notification/user123)
     static func parse(_ url: URL) -> DeepLink {
         let components = url.pathComponents.filter { $0 != "/" }
         

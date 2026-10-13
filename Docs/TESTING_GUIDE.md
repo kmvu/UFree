@@ -181,7 +181,7 @@ Use this when you want **three different people** interacting at once. Mac runs 
 Mac QR **scan** is soft-gated when no usable camera is available. Prefer:
 
 - Phone search: User A finds User B by `+1555000000X`, or
-- Invite / profile link: share `https://ufree.app/profile/{userId}`, or
+- Invite / profile link: share `https://ufree-313a2.web.app/profile/{userId}`, or
 - Show QR on Mac, scan from iPhone/iPad (scan direction toward a device with a camera).
 
 Accept friend requests on each side until all three are connected (or the dyads you care about).
@@ -208,7 +208,7 @@ Accept friend requests on each side until all three are connected (or the dyads 
 
 ## 3. Manual release smoke test
 
-Layer A + B + C now cover the two-user product loop (connect, mark free, Both, nudge, reply, deletion) on simulators. Run those first. Use this table for Apple / camera / console leftovers, and for a human walk when you want to see the product rather than prove the handshake.
+Layer A, Layer B, and the emulator integration suite cover the two-user product loop (connect, mark free, Both, nudge, reply, deletion) on simulators. Run those first. Use this table for Apple / camera / console leftovers, and for a human walk when you want to see the product rather than prove the handshake.
 
 | # | Scenario | Steps | Expected Result |
 |---|---|---|---|
@@ -220,7 +220,7 @@ Layer A + B + C now cover the two-user product loop (connect, mark free, Both, n
 | 5 | **Rapid-Tap Guard** | Rapidly tap any nudge or request button. | Only **one** request sent; button disables while processing. |
 | 6 | **Offline Mode** | Airplane mode → try to send nudge. | Error toast shown. No crash. |
 | 7 | **Heatmap Badges** | Check Friends Schedule day filters. | Badge counts correctly reflect number of "free" friends. |
-| 8 | **Deep Linking** | Visit `https://ufree.app/profile/{userId}` in Safari. | App opens to specific user's card. |
+| 8 | **Deep Linking** | Visit `https://ufree-313a2.web.app/profile/{userId}` in Safari. | App opens to specific user's card. |
 | 9 | **Cold Start** | Force-quit app → reopen. | User stays logged in. Local data loads from SwiftData cache. |
 | 10 | **Notification Bell** | Tap bell after receiving nudge. | Inbox opens; unread count resets to 0. |
 | 11 | **Large screen** | Run on iPad (or iPhone landscape). | Sidebar on regular width; Who’s Free uses a week matrix; status banner doesn’t crowd the schedule. |
